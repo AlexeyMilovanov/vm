@@ -11,10 +11,13 @@ shard, nsh = int(sys.argv[1]), int(sys.argv[2])
 os.makedirs("results",exist_ok=True)
 outp="results/shard_%d.jsonl"%shard
 done=set()
-if os.path.exists(outp):
-    for L in open(outp):
-        try: done.add(json.loads(L)["key"])
-        except Exception: pass
+import glob
+for prev in glob.glob("results/*.jsonl"):
+    try:
+        for L in open(prev):
+            try: done.add(json.loads(L)["key"])
+            except Exception: pass
+    except Exception: pass
 out=open(outp,"a",buffering=1)
 lib=library()
 tasks=[]
