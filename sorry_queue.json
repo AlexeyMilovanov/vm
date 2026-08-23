@@ -1,0 +1,22 @@
+{"entries": [
+ {"name": "signRank_reindex", "file": "HeadComplexity/Separations/SignRank.lean", "status": "jules_ready", "pref": "P1.1", "note": "bijection A |-> reindex A + Matrix.rank_reindex; sInf sets equal"},
+ {"name": "signRank_le_of_computableWithHeadsN", "file": "HeadComplexity/Separations/SignRankBridge.lean", "status": "hard", "pref": "P2", "note": "T-grouping of cleared softmax score; decompose per P2.1-P2.4"},
+ {"name": "signRank_le_of_thresholdDegLE", "file": "HeadComplexity/Separations/SignRankBridge.lean", "status": "hard", "pref": "P3", "note": "multilinearize, group by left monomials, eta-shift"},
+ {"name": "warren_sign_patterns", "file": "HeadComplexity/Separations/Warren.lean", "status": "external", "pref": "P9", "note": "cite-level monument; DO NOT ATTEMPT"},
+ {"name": "forster", "file": "HeadComplexity/Separations/Forster.lean", "status": "hard", "pref": "P5", "note": "decompose: general position, isotropic lemma, main chain"},
+ {"name": "specNorm_kronecker", "file": "HeadComplexity/Separations/Forster.lean", "status": "hard", "pref": "P6.2", "note": "upper via (A(x)I)(I(x)B) factorization, lower via u(x)v witness"},
+ {"name": "specNorm_reindex", "file": "HeadComplexity/Separations/Forster.lean", "status": "jules_ready", "pref": "P6.1", "note": "conjugation by coordinate-permutation isometry"},
+ {"name": "thresholdDegLE_distThreshold", "file": "HeadComplexity/Separations/DistanceThreshold.lean", "status": "jules_ready", "pref": "P7.1", "note": "P = sum (Xi+Yi-2XiYi) - m/2; half-integer values"},
+ {"name": "thresholdDeg_distThreshold", "file": "HeadComplexity/Separations/DistanceThreshold.lean", "status": "hard", "pref": "P7.2", "note": "restriction to 2-bit XOR + 4-point affine identity"},
+ {"name": "specNorm_signMatrix_distThreshold", "file": "HeadComplexity/Separations/DistanceThreshold.lean", "status": "hard", "pref": "P4", "note": "character eigenbasis; pairing identity; decompose per P4.1-P4.3"},
+ {"name": "forsterRatio_le_signRank", "file": "HeadComplexity/Separations/DistanceThreshold.lean", "status": "jules_ready", "pref": "P7.3", "note": "compose forster + specNorm value (both may be sorried deps); divide by positive binomial"},
+ {"name": "theoremA", "file": "HeadComplexity/Separations/DistanceThreshold.lean", "status": "jules_ready", "pref": "P7.4", "note": "composition; nonconstancy of F_m gives 1 <= HStar via HStar_eq_zero_iff"},
+ {"name": "sqrt_le_forsterRatio", "file": "HeadComplexity/Separations/DistanceThreshold.lean", "status": "jules_ready", "pref": "P7.5", "note": "Wallis-style product bound C(2t,t) <= 4^t/sqrt(2t+1)"},
+ {"name": "four_le_HStar_distThreshold_127", "file": "HeadComplexity/Separations/DistanceThreshold.lean", "status": "hard", "pref": "P7.6", "note": "kernel-check 14*C(126,63) < 2^126, then bridge contradiction"},
+ {"name": "thresholdDegLE_tensorDistThreshold", "file": "HeadComplexity/Separations/Tensor.lean", "status": "hard", "pref": "P8.4", "note": "product of block quadratics with global sign (-1)^(k+1)"},
+ {"name": "theoremB_HStar", "file": "HeadComplexity/Separations/Tensor.lean", "status": "hard", "pref": "P8.3", "note": "needs HStar_comp_equiv + sign matrix Kronecker identity; decompose per P8.1-P8.3"},
+ {"name": "theoremB_gap", "file": "HeadComplexity/Separations/Tensor.lean", "status": "jules_ready", "pref": "P8.5", "note": "logb algebra from theoremB_HStar + thresholdDeg <= 2k + deg <= HStar; k=0 case separate"},
+ {"name": "pow_le_of_leftShatters", "file": "HeadComplexity/Separations/NDISJ.lean", "status": "hard", "pref": "P10.1", "note": "freeze left points, clear, Warren in 2H shift vars; case split H=0, k<2H"},
+ {"name": "HStar_ndisj_le", "file": "HeadComplexity/Separations/NDISJ.lean", "status": "hard", "pref": "P10.2", "note": "m epsilon-atoms via HStar_eq_Lfrac; check FracAtom slope interface"},
+ {"name": "thresholdDeg_ndisj", "file": "HeadComplexity/Separations/NDISJ.lean", "status": "jules_ready", "pref": "P10.3", "note": "sum XiYi - 1/2 upper; 4-point affine contradiction lower"}
+]}
