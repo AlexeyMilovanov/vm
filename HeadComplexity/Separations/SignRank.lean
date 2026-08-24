@@ -109,7 +109,12 @@ follows from `LinearMap.rank_add_le`/`Submodule.finrank_add_le_finrank_add_finra
 count the `2 ^ (H + 1) - 2` rank-one pieces of the cleared bridge polynomial. -/
 theorem rank_add_le {α β : Type*} [Fintype β] (A B : Matrix α β ℝ) :
     (A + B).rank ≤ A.rank + B.rank := by
-  sorry
+  unfold Matrix.rank
+  rw [Matrix.mulVecLin_add]
+  have h_range := LinearMap.range_add_le A.mulVecLin B.mulVecLin
+  have h_mono := Submodule.finrank_mono h_range
+  have h_sup := Submodule.finrank_add_le_finrank_add_finrank A.mulVecLin.range B.mulVecLin.range
+  exact h_mono.trans h_sup
 
 /-- Sign-rank is invariant under negation (PROOFS.md P1.2): `A ↦ -A` is a
 rank-preserving bijection carrying sign-matches of `M` onto sign-matches of

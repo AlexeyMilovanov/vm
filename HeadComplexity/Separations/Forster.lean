@@ -386,6 +386,48 @@ Forster): every column of a `±1` matrix has Euclidean norm `√N`
 theorem card_le_specNorm_sq {ι : Type*} [Fintype ι] [DecidableEq ι]
     (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
     (Fintype.card ι : ℝ) ≤ (specNorm M) ^ 2 := by
-  sorry
+  by_cases hι : IsEmpty ι
+  · have h_card : Fintype.card ι = 0 := Fintype.card_eq_zero
+    rw [h_card, Nat.cast_zero]
+    exact sq_nonneg _
+  · rw [not_isEmpty_iff] at hι
+    have j : ι := Classical.choice hι
+    set e_j : ι → ℝ := Pi.single j 1
+    have he_j_norm : ‖(WithLp.equiv 2 _).symm e_j‖ = 1 := by
+      have hsq : ‖(WithLp.equiv 2 _).symm e_j‖^2 = 1 := by
+        rw [norm_sq_eq]
+        have h_sum : ∑ i, e_j i ^ 2 = 1 := by
+          rw [Finset.sum_eq_single j]
+          · simp [e_j]
+          · intro b _ hb
+            simp [e_j, Pi.single_eq_of_ne hb]
+          · intro hb
+            exact False.elim (hb (Finset.mem_univ j))
+        exact h_sum
+      have hpos : 0 ≤ ‖(WithLp.equiv 2 _).symm e_j‖ := norm_nonneg _
+      nlinarith
+    have h_mulVec : M *ᵥ e_j = fun i => M i j := by
+      ext i
+      simp [Matrix.mulVec, dotProduct, e_j, Pi.single_apply]
+    have h_action_norm : ‖(WithLp.equiv 2 (ι → ℝ)).symm (M *ᵥ e_j)‖^2 =
+        (Fintype.card ι : ℝ) := by
+      rw [h_mulVec, norm_sq_eq]
+      have h_sum : ∑ i, (M i j) ^ 2 = (Fintype.card ι : ℝ) := by
+        have h_entry : ∀ i, (M i j) ^ 2 = 1 := by
+          intro i
+          rcases hM i j with h1 | h2
+          · rw [h1]; ring
+          · rw [h2]; ring
+        simp_rw [h_entry]
+        simp
+      exact h_sum
+    have h_op : ‖(WithLp.equiv 2 _).symm (M *ᵥ e_j)‖ ≤ specNorm M * ‖(WithLp.equiv 2 _).symm e_j‖ := by
+      have : (WithLp.equiv 2 _).symm (M *ᵥ e_j) = Matrix.toEuclideanCLM (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm e_j) := rfl
+      rw [this]
+      exact ContinuousLinearMap.le_opNorm _ _
+    rw [he_j_norm, mul_one] at h_op
+    have h_op_sq : ‖(WithLp.equiv 2 _).symm (M *ᵥ e_j)‖^2 ≤ (specNorm M)^2 := by
+      nlinarith [h_op, norm_nonneg ((WithLp.equiv 2 (ι → ℝ)).symm (M *ᵥ e_j)), norm_nonneg (Matrix.toEuclideanCLM (𝕜 := ℝ) M)]
+    rwa [h_action_norm] at h_op_sq
 
 end HeadComplexity

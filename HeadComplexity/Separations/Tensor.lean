@@ -30,12 +30,205 @@ def xorPower (k : ℕ) {N : ℕ} (f : (Fin N → Bool) → Bool) :
 def tensorDistThreshold (m k : ℕ) : (Fin (k * (m + m)) → Bool) → Bool :=
   xorPower k (distThreshold m)
 
+private theorem sign_xor_prod_helper {k : ℕ} (g : Fin k → Bool) :
+    (if (decide (Odd (Finset.univ.filter fun j : Fin k => g j).card)) then (1 : ℝ) else -1)
+      = (-1 : ℝ) ^ (k + 1) * ∏ j : Fin k, (if g j then (1 : ℝ) else -1) := by
+  classical
+  set T := Finset.univ.filter fun j : Fin k => g j = true
+  set F := Finset.univ.filter fun j : Fin k => ¬ (g j = true)
+  have hTF : Disjoint T F := Finset.disjoint_filter_filter_not Finset.univ Finset.univ (fun j => g j = true)
+  have hTFU : T ∪ F = Finset.univ := by
+    rw [← Finset.filter_union_filter_not_eq (fun j => g j = true) Finset.univ]
+  have hcard : T.card + F.card = k := by
+    rw [← Finset.card_union_of_disjoint hTF, hTFU, Finset.card_fin]
+  have hprod : (∏ j : Fin k, (if g j then (1 : ℝ) else -1)) = (-1 : ℝ) ^ F.card := by
+    have h1 : (∏ j ∈ T, (if g j then (1 : ℝ) else -1)) = 1 := by
+      refine Finset.prod_eq_one (fun j hj => ?_)
+      have hj' : g j = true := (Finset.mem_filter.mp hj).2
+      simp [hj']
+    have h2 : (∏ j ∈ F, (if g j then (1 : ℝ) else -1)) = (-1 : ℝ) ^ F.card := by
+      have h2' : ∀ j ∈ F, (if g j then (1 : ℝ) else -1) = -1 := fun j hj => by
+        have hj' : g j = false := Bool.eq_false_iff.mpr (Finset.mem_filter.mp hj).2
+        simp [hj']
+      rw [Finset.prod_congr rfl h2', Finset.prod_const]
+    have hsplit : (∏ j : Fin k, (if g j then (1 : ℝ) else -1)) =
+        (∏ j ∈ T, (if g j then (1 : ℝ) else -1)) * (∏ j ∈ F, (if g j then (1 : ℝ) else -1)) := by
+      rw [← Finset.prod_union hTF, hTFU]
+    rw [hsplit, h1, h2, one_mul]
+  rw [hprod]
+  have hpow : (-1 : ℝ) ^ (k + 1) * (-1 : ℝ) ^ F.card = (-1 : ℝ) ^ (T.card + 1) := by
+    have h_exp : k + 1 + F.card = T.card + 1 + 2 * F.card := by omega
+    have h_pow_eq : (-1 : ℝ) ^ (k + 1 + F.card) = (-1 : ℝ) ^ (T.card + 1 + 2 * F.card) := by rw [h_exp]
+    rw [← pow_add, h_pow_eq, pow_add, pow_mul]
+    have h_sq : ((-1 : ℝ) ^ 2) = 1 := by ring
+    rw [h_sq, one_pow, mul_one]
+  rw [hpow]
+  by_cases h : Odd (Finset.univ.filter fun j : Fin k => g j).card
+  · have h_dec : decide (Odd (Finset.univ.filter fun j : Fin k => g j).card) = true := decide_eq_true h
+    rw [if_pos h_dec]
+    obtain ⟨m, hm⟩ := h
+    rw [hm]
+    have h_exp2 : 2 * m + 1 + 1 = 2 * (m + 1) := by ring
+    rw [h_exp2, pow_mul]
+    have h_sq : ((-1 : ℝ) ^ 2) = 1 := by ring
+    rw [h_sq, one_pow]
+  · have h_dec : decide (Odd (Finset.univ.filter fun j : Fin k => g j).card) = false := decide_eq_false h
+    rw [if_neg (by rw [h_dec]; norm_num)]
+    have h_even : Even T.card := Nat.not_odd_iff_even.mp h
+    obtain ⟨m, hm⟩ := h_even
+    rw [hm]
+    have h_exp : m + m + 1 = 2 * m + 1 := by omega
+    rw [h_exp, pow_add, pow_mul]
+    have h_sq : ((-1 : ℝ) ^ 2) = 1 := by ring
+    rw [h_sq, one_pow, one_mul, pow_one]
+
+open MvPolynomial in
+private theorem blockSignRep_distThreshold_helper {m : ℕ} (hm : Odd m) {k : ℕ} (j : Fin k) :
+    ∃ P : MvPolynomial (Fin (k * (m + m))) ℝ, P.totalDegree ≤ 2 ∧
+      (∀ z : Fin (k * (m + m)) → Bool, eval (cubePoint z) P ≠ 0) ∧
+      (∀ z : Fin (k * (m + m)) → Bool,
+        (0 < eval (cubePoint z) P ↔ distThreshold m (blockOf z j) = true)) := by
+  classical
+  set P0 : MvPolynomial (Fin (m + m)) ℝ :=
+    (∑ i : Fin m, (X (Fin.castAdd m i) + X (Fin.natAdd m i)
+      - C 2 * (X (Fin.castAdd m i) * X (Fin.natAdd m i)))) - C ((m : ℝ) / 2) with hP0
+  set σ : Fin (m + m) → Fin (k * (m + m)) := fun i => finProdFinEquiv (j, i)
+  set P : MvPolynomial (Fin (k * (m + m))) ℝ := rename σ P0 with hP
+  have hP0deg : P0.totalDegree ≤ 2 := by
+    rw [hP0]
+    refine (totalDegree_sub _ _).trans (max_le ?_ ?_)
+    · refine totalDegree_finsetSum_le (fun i _ => ?_)
+      refine (totalDegree_sub _ _).trans (max_le ?_ ?_)
+      · exact (totalDegree_add _ _).trans
+          (max_le (by rw [totalDegree_X]; norm_num) (by rw [totalDegree_X]; norm_num))
+      · refine (totalDegree_mul _ _).trans ?_
+        rw [totalDegree_C, zero_add]
+        refine (totalDegree_mul _ _).trans ?_
+        rw [totalDegree_X, totalDegree_X]
+    · rw [totalDegree_C]; norm_num
+  have hdeg : P.totalDegree ≤ 2 := (totalDegree_rename_le σ P0).trans hP0deg
+  have hbool : ∀ a b : Bool,
+      boolToReal a + boolToReal b - 2 * (boolToReal a * boolToReal b)
+        = if a ≠ b then (1 : ℝ) else 0 := by
+    intro a b; cases a <;> cases b <;> norm_num [boolToReal]
+  have heval : ∀ z : Fin (k * (m + m)) → Bool,
+      eval (cubePoint z) P = (hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j)) : ℝ) - (m : ℝ) / 2 := by
+    intro z
+    rw [hP, eval_rename]
+    have hcomp : (cubePoint z) ∘ σ = cubePoint (blockOf z j) := by
+      ext i
+      simp [cubePoint, σ, blockOf]
+    rw [hcomp, hP0, map_sub, eval_C, map_sum]
+    have hpair : ∀ i : Fin m,
+        eval (cubePoint (blockOf z j)) (X (Fin.castAdd m i) + X (Fin.natAdd m i)
+          - C 2 * (X (Fin.castAdd m i) * X (Fin.natAdd m i)))
+          = if leftBits m m (blockOf z j) i ≠ rightBits m m (blockOf z j) i then (1 : ℝ) else 0 := by
+      intro i
+      simp only [map_sub, map_add, map_mul, eval_C, eval_X, cubePoint]
+      exact hbool (blockOf z j (Fin.castAdd m i)) (blockOf z j (Fin.natAdd m i))
+    rw [Finset.sum_congr rfl (fun i _ => hpair i)]
+    congr 1
+    rw [hammingDist, Finset.card_filter]
+    have hsum_cast : (∑ i : Fin m, if leftBits m m (blockOf z j) i ≠ rightBits m m (blockOf z j) i then (1 : ℝ) else 0)
+        = (∑ i : Fin m, if leftBits m m (blockOf z j) i ≠ rightBits m m (blockOf z j) i then 1 else 0 : ℕ) := by
+      rw [Nat.cast_sum]
+      congr 1 with i
+      split_ifs <;> norm_num
+    rw [hsum_cast]
+  refine ⟨P, hdeg, fun z => ?_, fun z => ?_⟩
+  · rw [heval z]
+    intro h0
+    have h_eq : (hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j)) : ℝ) = (m : ℝ) / 2 := by linarith
+    have h_two : 2 * (hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j)) : ℝ) = (m : ℝ) := by linarith
+    have h_even : Even m := by
+      use hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j))
+      have h_int : 2 * (hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j)) : ℤ) = (m : ℤ) := by exact_mod_cast h_two
+      omega
+    obtain ⟨k1, hk1⟩ := hm
+    obtain ⟨k2, hk2⟩ := h_even
+    omega
+  · rw [heval z]
+    rw [distThreshold, decide_eq_true_eq]
+    constructor
+    · intro h
+      have h2 : (m : ℝ) / 2 < (hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j)) : ℝ) := by linarith
+      have h3 : (m : ℝ) < 2 * (hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j)) : ℝ) := by linarith
+      have h4 : m < 2 * hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j)) := by exact_mod_cast h3
+      obtain ⟨k1, hk1⟩ := hm
+      omega
+    · intro h
+      obtain ⟨k1, hk1⟩ := hm
+      have h4 : m < 2 * hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j)) := by omega
+      have h3 : (m : ℝ) < 2 * (hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j)) : ℝ) := by exact_mod_cast h4
+      linarith
+
+open MvPolynomial in
 /-- Degree upper bound: the product of the `k` quadratic block sign
 polynomials (with the appropriate global sign) sign-represents `G_{m,k}`,
 so `deg±(G_{m,k}) ≤ 2 k`. -/
 theorem thresholdDegLE_tensorDistThreshold {m : ℕ} (hm : Odd m) (k : ℕ) :
     ThresholdDegLE (tensorDistThreshold m k) (2 * k) := by
-  sorry
+  classical
+  rcases Nat.eq_zero_or_pos k with rfl | hk
+  · refine ⟨-1, by simp, fun z => ?_⟩
+    simp [tensorDistThreshold, xorPower]
+  · choose P_block hdeg_block hne_block hsign_block using fun j : Fin k => blockSignRep_distThreshold_helper hm j
+    set Q : MvPolynomial (Fin (k * (m + m))) ℝ :=
+      C ((-1 : ℝ) ^ (k + 1)) * ∏ j : Fin k, P_block j with hQ
+    refine ⟨Q, ?_, ?_⟩
+    · rw [hQ]
+      refine (totalDegree_mul _ _).trans ?_
+      rw [totalDegree_C, zero_add]
+      refine (totalDegree_finsetProd _ _).trans ?_
+      have hsum : (∑ j : Fin k, (P_block j).totalDegree) ≤ ∑ j : Fin k, 2 :=
+        Finset.sum_le_sum (fun j _ => hdeg_block j)
+      rw [Finset.sum_const, Finset.card_fin, nsmul_eq_mul] at hsum
+      linarith
+    · intro z
+      have h_decomp : ∀ j : Fin k, eval (cubePoint z) (P_block j) =
+          |eval (cubePoint z) (P_block j)| * (if distThreshold m (blockOf z j) = true then (1 : ℝ) else -1) := by
+        intro j
+        have hne := hne_block j z
+        have hiff := hsign_block j z
+        by_cases hpos : 0 < eval (cubePoint z) (P_block j)
+        · have hb : distThreshold m (blockOf z j) = true := hiff.mp hpos
+          simp [abs_of_pos hpos, hb]
+        · have hneg : eval (cubePoint z) (P_block j) < 0 := lt_of_le_of_ne (not_lt.mp hpos) hne
+          have hb : distThreshold m (blockOf z j) = false := by
+            cases hbg : distThreshold m (blockOf z j)
+            · rfl
+            · exfalso; exact hpos (hiff.mpr hbg)
+          simp [abs_of_neg hneg, hb]
+      have hQ_eval : eval (cubePoint z) Q =
+          (∏ j : Fin k, |eval (cubePoint z) (P_block j)|) *
+          ((-1 : ℝ) ^ (k + 1) * ∏ j : Fin k, (if distThreshold m (blockOf z j) = true then (1 : ℝ) else -1)) := by
+        rw [hQ, map_mul, eval_C, map_prod]
+        have h_prod_eq : (∏ j : Fin k, eval (cubePoint z) (P_block j)) =
+            (∏ j : Fin k, |eval (cubePoint z) (P_block j)|) *
+            (∏ j : Fin k, (if distThreshold m (blockOf z j) = true then (1 : ℝ) else -1)) := by
+          rw [← Finset.prod_mul_distrib]
+          congr 1 with j
+          exact h_decomp j
+        rw [h_prod_eq]
+        ring
+      have h_pos_prod : 0 < ∏ j : Fin k, |eval (cubePoint z) (P_block j)| := by
+        refine Finset.prod_pos (fun j _ => abs_pos.mpr (hne_block j z))
+      have h_xor_sign := sign_xor_prod_helper (fun j => distThreshold m (blockOf z j))
+      rw [hQ_eval]
+      have h_sign_eq : ((-1 : ℝ) ^ (k + 1) * ∏ j : Fin k, (if distThreshold m (blockOf z j) = true then (1 : ℝ) else -1)) =
+          if tensorDistThreshold m k z = true then (1 : ℝ) else -1 := by
+        rw [tensorDistThreshold, xorPower]
+        exact h_xor_sign.symm
+      rw [h_sign_eq]
+      constructor
+      · intro h
+        have h_mul_pos : 0 < if tensorDistThreshold m k z = true then (1 : ℝ) else -1 := by
+          exact pos_of_mul_pos_right h (le_of_lt h_pos_prod)
+        split_ifs at h_mul_pos with hG
+        · exact hG
+        · linarith
+      · intro h
+        simp [h, h_pos_prod]
 
 /-- **Theorem B, lower half**: the Forster ratio tensors, so
 `γ_m ^ k ≤ 2 ^ (H* + 1) - 2` for the `k`-fold XOR power.  (Route: the sign
@@ -58,7 +251,55 @@ product of the `k` block sign polynomials sign-represent the tensored family
 theorem sign_xor_prod {k : ℕ} (g : Fin k → Bool) :
     (if (decide (Odd (Finset.univ.filter fun j : Fin k => g j).card)) then (1 : ℝ) else -1)
       = (-1 : ℝ) ^ (k + 1) * ∏ j : Fin k, (if g j then (1 : ℝ) else -1) := by
-  sorry
+  have hsplit := (Finset.prod_filter_mul_prod_filter_not (Finset.univ : Finset (Fin k))
+    (fun j => g j = true) (fun j => if g j then (1 : ℝ) else -1)).symm
+  have hpos : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => g j = true),
+      (if g j then (1 : ℝ) else -1) = 1 := by
+    have h1 : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => g j = true),
+        (if g j then (1 : ℝ) else -1) =
+        ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => g j = true), (1 : ℝ) := by
+      refine Finset.prod_congr rfl (fun x hx => ?_)
+      have hg : g x = true := (Finset.mem_filter.mp hx).2
+      simp [hg]
+    rw [h1, Finset.prod_const_one]
+  have hneg : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true)),
+      (if g j then (1 : ℝ) else -1) =
+      (-1 : ℝ) ^ ((Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true))).card := by
+    have h1 : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true)),
+        (if g j then (1 : ℝ) else -1) =
+        ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true)), (-1 : ℝ) := by
+      refine Finset.prod_congr rfl (fun x hx => ?_)
+      have hg : g x = false := Bool.eq_false_iff.mpr (Finset.mem_filter.mp hx).2
+      simp [hg]
+    rw [h1, Finset.prod_const]
+  rw [hsplit, hpos, one_mul, hneg]
+  have hcard := Finset.card_filter_add_card_filter_not (s := (Finset.univ : Finset (Fin k)))
+    (fun j => g j = true)
+  rw [Finset.card_univ, Fintype.card_fin] at hcard
+  set n_true := ((Finset.univ : Finset (Fin k)).filter (fun j => g j = true)).card
+  set n_false := ((Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true))).card
+  have hk : k = n_true + n_false := hcard.symm
+  rw [hk]
+  have hpow_eq : (-1 : ℝ) ^ (n_true + n_false + 1) * (-1 : ℝ) ^ n_false =
+      (-1 : ℝ) ^ (n_true + 1) := by
+    have h1 : (-1 : ℝ) ^ (n_true + n_false + 1) * (-1 : ℝ) ^ n_false =
+        (-1 : ℝ) ^ (n_true + 1 + 2 * n_false) := by
+      rw [← pow_add]
+      congr 1
+      ring
+    rw [h1, pow_add]
+    have h_even : Even (2 * n_false) := even_two_mul n_false
+    rw [h_even.neg_one_pow, mul_one]
+  rw [hpow_eq]
+  change (if (decide (Odd n_true)) then (1 : ℝ) else -1) = (-1 : ℝ) ^ (n_true + 1)
+  by_cases h : Odd n_true
+  · rw [decide_eq_true h, if_pos rfl]
+    have h_even : Even (n_true + 1) := h.add_one
+    exact h_even.neg_one_pow.symm
+  · rw [decide_eq_false h, if_neg Bool.false_ne_true]
+    have h_even : Even n_true := Nat.not_odd_iff_even.mp h
+    have h_odd : Odd (n_true + 1) := h_even.add_one
+    exact h_odd.neg_one_pow.symm
 
 open MvPolynomial in
 /-- **Per-block strict sign representation** (PROOFS.md P8.4): the block-`j` copy
@@ -73,7 +314,74 @@ theorem blockSignRep_distThreshold {m : ℕ} (hm : Odd m) {k : ℕ} (j : Fin k) 
       (∀ z : Fin (k * (m + m)) → Bool, eval (cubePoint z) P ≠ 0) ∧
       (∀ z : Fin (k * (m + m)) → Bool,
         (0 < eval (cubePoint z) P ↔ distThreshold m (blockOf z j) = true)) := by
-  sorry
+  set P_base : MvPolynomial (Fin (m + m)) ℝ :=
+    (∑ i : Fin m, (X (Fin.castAdd m i) + X (Fin.natAdd m i)
+      - C 2 * (X (Fin.castAdd m i) * X (Fin.natAdd m i)))) - C ((m : ℝ) / 2) with hP_base
+  let σ : Fin (m + m) → Fin (k * (m + m)) := fun i => finProdFinEquiv (j, i)
+  set P := rename σ P_base with hP
+  have heval_base : ∀ x : Fin (m + m) → Bool,
+      eval (cubePoint x) P_base = (hammingDist (leftBits m m x) (rightBits m m x) : ℝ) - (m : ℝ) / 2 := by
+    intro x
+    have hbool : ∀ a b : Bool,
+        boolToReal a + boolToReal b - 2 * (boolToReal a * boolToReal b)
+          = if a ≠ b then (1 : ℝ) else 0 := by
+      intro a b; cases a <;> cases b <;> norm_num [boolToReal]
+    have hpair : ∀ i : Fin m,
+        eval (cubePoint x) (X (Fin.castAdd m i) + X (Fin.natAdd m i)
+          - C 2 * (X (Fin.castAdd m i) * X (Fin.natAdd m i)))
+          = if leftBits m m x i ≠ rightBits m m x i then (1 : ℝ) else 0 := by
+      intro i
+      simp only [map_sub, map_add, map_mul, eval_C, eval_X, cubePoint]
+      exact hbool (x (Fin.castAdd m i)) (x (Fin.natAdd m i))
+    rw [hP_base, map_sub, eval_C, map_sum]
+    congr 1
+    unfold hammingDist
+    rw [Finset.card_filter]
+    push_cast
+    exact Finset.sum_congr rfl (fun i _ => hpair i)
+  have heval : ∀ z : Fin (k * (m + m)) → Bool,
+      eval (cubePoint z) P = (hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j)) : ℝ) - (m : ℝ) / 2 := by
+    intro z
+    rw [hP, eval_rename]
+    exact heval_base (blockOf z j)
+  refine ⟨P, ?_, ?_, ?_⟩
+  · -- degree ≤ 2
+    rw [hP]
+    refine (totalDegree_rename_le σ P_base).trans ?_
+    rw [hP_base]
+    refine (totalDegree_sub _ _).trans (max_le ?_ ?_)
+    · refine totalDegree_finsetSum_le (fun i _ => ?_)
+      refine (totalDegree_sub _ _).trans (max_le ?_ ?_)
+      · exact (totalDegree_add _ _).trans
+          (max_le (by rw [totalDegree_X]; norm_num) (by rw [totalDegree_X]; norm_num))
+      · refine (totalDegree_mul _ _).trans ?_
+        rw [totalDegree_C, zero_add]
+        refine (totalDegree_mul _ _).trans ?_
+        rw [totalDegree_X, totalDegree_X]
+    · rw [totalDegree_C]; norm_num
+  · -- non-zero
+    intro z
+    rw [heval]
+    set D := hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j))
+    intro hzero
+    have h2D : 2 * (D : ℝ) = m := by linarith [hzero]
+    have h2D' : 2 * D = m := by exact_mod_cast h2D
+    have hodd := Nat.odd_iff.mp hm
+    omega
+  · -- sign representation
+    intro z
+    rw [heval, distThreshold, decide_eq_true_eq]
+    set D := hammingDist (leftBits m m (blockOf z j)) (rightBits m m (blockOf z j))
+    have hodd := Nat.odd_iff.mp hm
+    constructor
+    · intro h
+      have hmD : (m : ℝ) < 2 * (D : ℝ) := by linarith
+      have hmD' : m < 2 * D := by exact_mod_cast hmD
+      omega
+    · intro h
+      have hmD' : m < 2 * D := by omega
+      have hmD : (m : ℝ) < 2 * (D : ℝ) := by exact_mod_cast hmD'
+      linarith
 
 /-- **Theorem B** (`audit/sources/EXPLICIT_GAP.md`): explicit additive gap linear in
 the input length: `H*(G_{m,k}) - deg±(G_{m,k}) ≥ k (log₂ γ_m - 2) - 1`,

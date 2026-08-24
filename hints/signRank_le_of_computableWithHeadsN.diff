@@ -1,0 +1,22 @@
+diff --git a/HeadComplexity/Separations/SignRankBridge.lean b/HeadComplexity/Separations/SignRankBridge.lean
+index e535b0b..33ba26d 100644
+--- a/HeadComplexity/Separations/SignRankBridge.lean
++++ b/HeadComplexity/Separations/SignRankBridge.lean
+@@ -18,6 +18,17 @@ certify (ratio `≲ log n`, additive gap `≲ n / 2`).
+ 
+ namespace HeadComplexity
+ 
++/-- Helper lemma: two-block decomposition of head attention denominator.
++`D_h(x, y) = A_h(x) + B_h(y)`. -/
++noncomputable def headA {n d : ℕ} {a b : ℕ} (hab : n = a + b)
++    (H : Head n d) (x : Fin a → Bool) : ℝ :=
++  H.sigma (hab ▸ blockJoin x (fun _ => false)) none +
++  ∑ i : Fin a, H.sigma (hab ▸ blockJoin x (fun _ => false)) (some (hab ▸ Fin.castAdd b i))
++
++noncomputable def headB {n d : ℕ} {a b : ℕ} (hab : n = a + b)
++    (H : Head n d) (y : Fin b → Bool) : ℝ :=
++  ∑ j : Fin b, H.sigma (hab ▸ blockJoin (fun _ => false) y) (some (hab ▸ Fin.natAdd a j))
++
+ /-- **Sign-rank bridge** (theorem 028 of the corpus): `H ≥ 1` heads give
+ sign-rank at most `2 ^ (H + 1) - 2` under the left/right block partition.
+ (`H = 0` is genuinely excluded: a constant function has sign-rank `1 > 0`.) -/

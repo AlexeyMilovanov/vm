@@ -284,6 +284,15 @@ theorem charFn_xor {m : ℕ} (S : Finset (Fin m)) (x y : Fin m → Bool) :
   rw [← Finset.prod_mul_distrib]
   exact Finset.prod_congr rfl fun i _ => key (x i) (y i)
 
+private theorem charFn_eq_prod_univ {m : ℕ} (S : Finset (Fin m)) (x : Fin m → Bool) :
+    charFn S x = ∏ i : Fin m, if i ∈ S then (if x i then (-1 : ℝ) else 1) else 1 := by
+  unfold charFn
+  have h := Finset.prod_subset (s₁ := S) (s₂ := Finset.univ)
+    (f := fun i => if i ∈ S then (if x i then (-1 : ℝ) else 1) else 1)
+    (Finset.subset_univ S) (fun i _ hi => if_neg hi)
+  rw [← h]
+  exact Finset.prod_congr rfl (fun i hi => (if_pos hi).symm)
+
 /-- **Character orthogonality** (PROOFS.md P4.3): the `2^m` characters are
 pairwise orthogonal with squared norm `2^m`, i.e.
 `∑_x χ_S(x) χ_T(x) = if S = T then 2^m else 0`.  Proof: write the summand as
@@ -292,7 +301,45 @@ cube); each coordinate factor `∑_b cᵢ(b)` is `2` off `S △ T` and `0` on it
 the whole product vanishes unless `S = T`. -/
 theorem charFn_orthogonal {m : ℕ} (S T : Finset (Fin m)) :
     ∑ x : Fin m → Bool, charFn S x * charFn T x = if S = T then (2 : ℝ) ^ m else 0 := by
-  sorry
+  have h_prod : ∀ x : Fin m → Bool, charFn S x * charFn T x =
+      ∏ i : Fin m, ((if i ∈ S then (if x i then (-1 : ℝ) else 1) else 1) *
+                   (if i ∈ T then (if x i then (-1 : ℝ) else 1) else 1)) := by
+    intro x
+    rw [charFn_eq_prod_univ S x, charFn_eq_prod_univ T x, ← Finset.prod_mul_distrib]
+  simp_rw [h_prod]
+  have h_cube : (Finset.univ : Finset (Fin m → Bool)) =
+      Fintype.piFinset (fun _ : Fin m => (Finset.univ : Finset Bool)) := by
+    ext x; simp [Fintype.mem_piFinset]
+  have h_sum : (∑ x : Fin m → Bool, ∏ i : Fin m, ((if i ∈ S then (if x i then (-1 : ℝ) else 1) else 1) *
+                   (if i ∈ T then (if x i then (-1 : ℝ) else 1) else 1))) =
+      ∏ i : Fin m, (((if i ∈ S then (-1 : ℝ) else 1) * (if i ∈ T then (-1 : ℝ) else 1)) + 1) := by
+    have h2 := (Finset.prod_univ_sum (fun _ : Fin m => (Finset.univ : Finset Bool))
+      (fun i (b : Bool) => (if i ∈ S then (if b then (-1 : ℝ) else 1) else 1) *
+                           (if i ∈ T then (if b then (-1 : ℝ) else 1) else 1))).symm
+    rw [h_cube, h2]
+    congr 1; ext i
+    rw [Fintype.sum_bool]
+    simp
+  rw [h_sum]
+  by_cases hST : S = T
+  · subst hST
+    rw [if_pos rfl]
+    have h_term : (∀ i : Fin m, (((if i ∈ S then (-1 : ℝ) else 1) *
+                    (if i ∈ S then (-1 : ℝ) else 1)) + 1) = 2) := by
+      intro i
+      split_ifs <;> norm_num
+    rw [Finset.prod_congr rfl (fun i _ => h_term i)]
+    simp
+  · rw [if_neg hST]
+    have h_ne : ∃ i : Fin m, (i ∈ S ∧ i ∉ T) ∨ (i ∉ S ∧ i ∈ T) := by
+      contrapose! hST
+      ext i
+      exact ⟨fun hS => (hST i).1 hS, fun hT => by_contra fun hS => (hST i).2 hS hT⟩
+    obtain ⟨i, hi⟩ := h_ne
+    apply Finset.prod_eq_zero (i := i) (by simp)
+    rcases hi with ⟨hS, hT⟩ | ⟨hS, hT⟩
+    · simp [hS, hT]
+    · simp [hS, hT]
 
 /-- The two-block sign matrix of `F_m` is the majority sign of the XOR
 (PROOFS.md P4.1): `signMatrix m m (distThreshold m) x y = s(x ⊕ y)`.  Unfold
@@ -311,7 +358,34 @@ eigenvector of the sign matrix, `M χ_S = λ_S χ_S`, with eigenvalue
 theorem signMatrix_mulVec_charFn {m : ℕ} (S : Finset (Fin m)) :
     signMatrix m m (distThreshold m) *ᵥ charFn S
       = (∑ u : Fin m → Bool, distSign m u * charFn S u) • charFn S := by
-  sorry
+  ext x
+  simp only [mulVec, dotProduct, Pi.smul_apply, smul_eq_mul]
+  let e : (Fin m → Bool) ≃ (Fin m → Bool) :=
+    { toFun := fun u i => xor (x i) (u i)
+      invFun := fun u i => xor (x i) (u i)
+      left_inv := fun u => by ext i; dsimp; cases x i <;> cases u i <;> rfl
+      right_inv := fun u => by ext i; dsimp; cases x i <;> cases u i <;> rfl }
+  rw [← e.sum_comp]
+  have h_dist : ∀ u : Fin m → Bool,
+      signMatrix m m (distThreshold m) x (e u) = distSign m u := by
+    intro u
+    rw [signMatrix_distThreshold_apply]
+    congr 1
+    ext i
+    dsimp [e]
+    cases x i <;> cases u i <;> rfl
+  have h_char : ∀ u : Fin m → Bool,
+      charFn S (e u) = charFn S x * charFn S u := by
+    intro u
+    exact charFn_xor S x u
+  have h_summand : ∀ u : Fin m → Bool,
+      signMatrix m m (distThreshold m) x (e u) * charFn S (e u)
+        = (distSign m u * charFn S u) * charFn S x := by
+    intro u
+    rw [h_dist u, h_char u]
+    ring
+  rw [Finset.sum_congr rfl (fun u _ => h_summand u)]
+  rw [← Finset.sum_mul]
 
 /-- The level-`0` eigenvalue vanishes (PROOFS.md P4.2, consequence 3):
 `λ_∅ = ∑_u s(u) = 0` for odd `m`.  Proof: the complement involution `u ↦ ū`

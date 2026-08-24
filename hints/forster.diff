@@ -1,0 +1,106 @@
+diff --git a/HeadComplexity/Separations/Forster.lean b/HeadComplexity/Separations/Forster.lean
+index fa7e926..f72d948 100644
+--- a/HeadComplexity/Separations/Forster.lean
++++ b/HeadComplexity/Separations/Forster.lean
+@@ -23,12 +23,6 @@ noncomputable def specNorm {ι : Type*} [Fintype ι] [DecidableEq ι]
+     (M : Matrix ι ι ℝ) : ℝ :=
+   ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M‖
+ 
+-/-- **Forster's theorem** (Forster 2002): a `±1` matrix of size `N × N` has
+-sign-rank at least `N / ‖M‖₂`. -/
+-theorem forster {ι : Type*} [Fintype ι] [DecidableEq ι]
+-    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
+-    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
+-  sorry
+ 
+ open Matrix
+ open scoped Kronecker
+@@ -386,6 +380,88 @@ Forster): every column of a `±1` matrix has Euclidean norm `√N`
+ theorem card_le_specNorm_sq {ι : Type*} [Fintype ι] [DecidableEq ι]
+     (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
+     (Fintype.card ι : ℝ) ≤ (specNorm M) ^ 2 := by
++  by_cases hι : Nonempty ι
++  · obtain ⟨j⟩ := hι
++    let e_j : ι → ℝ := Pi.single j 1
++    let u := (WithLp.equiv 2 (ι → ℝ)).symm e_j
++    have hu_sq : ‖u‖ ^ 2 = 1 := by
++      rw [norm_sq_eq]
++      dsimp [e_j]
++      rw [Finset.sum_eq_single j]
++      · simp
++      · intro i _ hi
++        simp [hi]
++      · intro hj
++        exact False.elim (hj (Finset.mem_univ j))
++    have hu_norm : ‖u‖ = 1 := by
++      have : 0 ≤ ‖u‖ := norm_nonneg _
++      nlinarith
++    have hMu : (WithLp.equiv 2 (ι → ℝ)).symm (M *ᵥ e_j) = Matrix.toEuclideanCLM (𝕜 := ℝ) M u := rfl
++    have hMu_sq : ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M u‖ ^ 2 = (Fintype.card ι : ℝ) := by
++      rw [← hMu, norm_sq_eq]
++      have h_col : ∀ i, (M *ᵥ e_j) i = M i j := by
++        intro i
++        dsimp [Matrix.mulVec, dotProduct, e_j]
++        rw [Finset.sum_eq_single j]
++        · simp [Pi.single]
++        · intro k _ hk
++          simp [Pi.single, hk]
++        · intro hj
++          exact False.elim (hj (Finset.mem_univ j))
++      simp_rw [h_col]
++      have h_sq1 : ∀ i, M i j ^ 2 = 1 := by
++        intro i
++        rcases hM i j with h1 | h1 <;> rw [h1] <;> ring
++      simp_rw [h_sq1]
++      simp
++    have h_op : ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M u‖ ≤ specNorm M * ‖u‖ := by
++      exact ContinuousLinearMap.le_opNorm (Matrix.toEuclideanCLM (𝕜 := ℝ) M) u
++    have h1 : 0 ≤ ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M u‖ := norm_nonneg _
++    have h2 : 0 ≤ specNorm M * ‖u‖ := mul_nonneg (norm_nonneg _) (norm_nonneg _)
++    have h_op_sq : ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M u‖ ^ 2 ≤ (specNorm M * ‖u‖) ^ 2 :=
++      sq_le_sq.mpr (by rw [abs_of_nonneg h1, abs_of_nonneg h2]; exact h_op)
++    rw [hu_norm, mul_one, hMu_sq] at h_op_sq
++    exact h_op_sq
++  · rw [not_nonempty_iff] at hι
++    simp only [Fintype.card_eq_zero, CharP.cast_eq_zero]
++    exact sq_nonneg _
++
++private theorem forster_of_card_le_signRank {ι : Type*} [Fintype ι] [DecidableEq ι]
++    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
++    (hr : (Fintype.card ι : ℝ) ≤ (signRank M : ℝ)) :
++    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
++  by_cases hN : Fintype.card ι = 0
++  · simp [hN]
++    have h1 : 0 ≤ (signRank M : ℝ) := Nat.cast_nonneg _
++    have h2 : 0 ≤ specNorm M := norm_nonneg _
++    exact mul_nonneg h1 h2
++  · have hN1 : 1 ≤ (Fintype.card ι : ℝ) := by
++      have : 1 ≤ Fintype.card ι := Nat.one_le_iff_ne_zero.mpr hN
++      exact Nat.one_le_cast.mpr this
++    have h_sq := card_le_specNorm_sq M hM
++    have h_spec_nonneg : 0 ≤ specNorm M := norm_nonneg _
++    have h_spec1 : 1 ≤ specNorm M := by
++      nlinarith [hN1, h_sq, h_spec_nonneg]
++    have h_sr_nonneg : 0 ≤ (signRank M : ℝ) := Nat.cast_nonneg _
++    nlinarith [hr, h_spec1, h_sr_nonneg]
++
++/-- Forster's theorem in the `signRank M < card ι` regime (PROOFS.md P5.2–P5.4).
++Constructs perturbed vectors in general position, applies the isotropic position
++kernel to obtain unit vectors `û_x, v̂_y`, and bound `N^2 / r ≤ N * specNorm M`. -/
++private theorem forster_of_signRank_lt {ι : Type*} [Fintype ι] [DecidableEq ι]
++    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
++    (hr : (signRank M : ℝ) < (Fintype.card ι : ℝ)) :
++    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
+   sorry
+ 
++/-- **Forster's theorem** (Forster 2002): a `±1` matrix of size `N × N` has
++sign-rank at least `N / ‖M‖₂`. -/
++theorem forster {ι : Type*} [Fintype ι] [DecidableEq ι]
++    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
++    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
++  by_cases hr : (Fintype.card ι : ℝ) ≤ (signRank M : ℝ)
++  · exact forster_of_card_le_signRank M hM hr
++  · have h_lt : (signRank M : ℝ) < (Fintype.card ι : ℝ) := not_le.mp hr
++    exact forster_of_signRank_lt M hM h_lt
++
+ end HeadComplexity

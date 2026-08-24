@@ -47,7 +47,11 @@ estimate into the `pow_le_of_leftShatters` conclusion. -/
 theorem warren_pow_simp (H k : ℕ) (hH : 1 ≤ H) :
     (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H)
       = (2 * Real.exp 1 * (k : ℝ)) ^ (2 * H) := by
-  sorry
+  have hH0 : (H : ℝ) ≠ 0 := by positivity
+  have hbase : 4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ)) = 2 * Real.exp 1 * (k : ℝ) := by
+    field_simp [hH0]
+    ring
+  rw [hbase]
 
 /-- `NDISJ_m` left-shatters `m` points: the indicator left blocks `e_j`
 satisfy `NDISJ(e_j, w) = w j`. -/

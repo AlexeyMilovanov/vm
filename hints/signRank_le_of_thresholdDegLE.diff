@@ -1,0 +1,70 @@
+diff --git a/HeadComplexity/Separations/SignRankBridge.lean b/HeadComplexity/Separations/SignRankBridge.lean
+index e535b0b..4c4f1aa 100644
+--- a/HeadComplexity/Separations/SignRankBridge.lean
++++ b/HeadComplexity/Separations/SignRankBridge.lean
+@@ -34,14 +34,15 @@ theorem signRank_le_pow_HStar (a b : ℕ) (f : (Fin (a + b) → Bool) → Bool)
+     signRank (signMatrix a b f) ≤ 2 ^ (HStar (a + b) f + 1) - 2 :=
+   signRank_le_of_computableWithHeadsN hH (HStar_computable f)
+ 
+-/-- **Theorem C, degree half** (ceiling of the sign-rank route): a degree-`d`
+-sign representation factors the sign matrix through its monomials in the
+-left-block variables, so sign-rank is at most `(a + 1) ^ d`.  Hence sign-rank
+-can never certify more than `H* ≳ d · log₂ a` for a degree-`d` function. -/
+-theorem signRank_le_of_thresholdDegLE {a b d : ℕ}
+-    {f : (Fin (a + b) → Bool) → Bool} (h : ThresholdDegLE f d) :
+-    signRank (signMatrix a b f) ≤ (a + 1) ^ d := by
+-  sorry
++theorem choose_le_mul_choose (a k : ℕ) : a.choose (k + 1) ≤ a * a.choose k := by
++  have h := Nat.choose_succ_right_eq a k
++  have h1 : a - k ≤ a := Nat.sub_le a k
++  have h2 : a.choose k * (a - k) ≤ a.choose k * a := Nat.mul_le_mul_left _ h1
++  rw [mul_comm (a.choose k) a] at h2
++  have h3 : a.choose (k + 1) * 1 ≤ a.choose (k + 1) * (k + 1) :=
++    Nat.mul_le_mul_left _ (Nat.succ_le_succ (Nat.zero_le k))
++  rw [mul_one] at h3
++  exact h3.trans (h.le.trans h2)
+ 
+ /-- Counting bound for `signRank_le_of_thresholdDegLE` (PROOFS.md P3.3): the
+ number of left sub-monomials of degree `≤ d` in `a` variables, `∑_{i ≤ d}
+@@ -51,8 +52,41 @@ together with `C(a, d) ≤ ∑_{i ≤ d} C(a, i) ≤ (a + 1) ^ d` (a term is `
+ which is `≤` the inductive bound). -/
+ theorem sum_choose_le_pow (a d : ℕ) :
+     ∑ i ∈ Finset.range (d + 1), a.choose i ≤ (a + 1) ^ d := by
++  induction d with
++  | zero => simp
++  | succ d ih =>
++    rw [Finset.sum_range_succ]
++    calc
++      ∑ i ∈ Finset.range (d + 1), a.choose i + a.choose (d + 1)
++        ≤ (a + 1) ^ d + a * a.choose d := by
++          gcongr
++          exact choose_le_mul_choose a d
++      _ ≤ (a + 1) ^ d + a * ∑ i ∈ Finset.range (d + 1), a.choose i := by
++          gcongr
++          exact Finset.single_le_sum (fun _ _ => Nat.zero_le _)
++            (Finset.mem_range.mpr (Nat.lt_succ_self d))
++      _ ≤ (a + 1) ^ d + a * (a + 1) ^ d := by
++          gcongr
++      _ = (a + 1) * (a + 1) ^ d := by ring
++      _ = (a + 1) ^ (d + 1) := by ring
++
++/-- Multilinearization & left-monomial factorization bound (PROOFS.md P3.1-P3.2):
++a degree-`d` sign polynomial yields a sign-rank bound by the number of left sub-monomials
++of degree `≤ d` in `a` variables, `∑_{i ≤ d} C(a, i)`. -/
++private theorem signRank_le_sum_choose {a b d : ℕ}
++    {f : (Fin (a + b) → Bool) → Bool} (h : ThresholdDegLE f d) :
++    signRank (signMatrix a b f) ≤ ∑ i ∈ Finset.range (d + 1), a.choose i := by
+   sorry
+ 
++/-- **Theorem C, degree half** (ceiling of the sign-rank route): a degree-`d`
++sign representation factors the sign matrix through its monomials in the
++left-block variables, so sign-rank is at most `(a + 1) ^ d`.  Hence sign-rank
++can never certify more than `H* ≳ d · log₂ a` for a degree-`d` function. -/
++theorem signRank_le_of_thresholdDegLE {a b d : ℕ}
++    {f : (Fin (a + b) → Bool) → Bool} (h : ThresholdDegLE f d) :
++    signRank (signMatrix a b f) ≤ (a + 1) ^ d :=
++  (signRank_le_sum_choose h).trans (sum_choose_le_pow a d)
++
+ /-- **Theorem C, dimension half**: sign-rank is capped by the matrix
+ dimensions, `signRank ≤ 2 ^ min a b`.  Together with the degree half this
+ bounds the additive gap any sign-rank argument can certify by `≈ n / 2`. -/

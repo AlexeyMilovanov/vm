@@ -1,0 +1,177 @@
+diff --git a/HeadComplexity/Separations/DistanceThreshold.lean b/HeadComplexity/Separations/DistanceThreshold.lean
+index c50469a..7937fb6 100644
+--- a/HeadComplexity/Separations/DistanceThreshold.lean
++++ b/HeadComplexity/Separations/DistanceThreshold.lean
+@@ -284,6 +284,17 @@ theorem charFn_xor {m : ℕ} (S : Finset (Fin m)) (x y : Fin m → Bool) :
+   rw [← Finset.prod_mul_distrib]
+   exact Finset.prod_congr rfl fun i _ => key (x i) (y i)
+ 
++private def charFactor {m : ℕ} (S T : Finset (Fin m)) (i : Fin m) (b : Bool) : ℝ :=
++  (if i ∈ S then (if b then -1 else 1) else 1) * (if i ∈ T then (if b then -1 else 1) else 1)
++
++private theorem prod_extend {m : ℕ} (f : Fin m → ℝ) (U : Finset (Fin m)) :
++    (∏ i ∈ U, f i) = ∏ i : Fin m, (if i ∈ U then f i else 1) := by
++  rw [← Finset.prod_subset (Finset.subset_univ U)]
++  · refine Finset.prod_congr rfl (fun i hi => ?_)
++    rw [if_pos hi]
++  · intro i _ hi
++    rw [if_neg hi]
++
+ /-- **Character orthogonality** (PROOFS.md P4.3): the `2^m` characters are
+ pairwise orthogonal with squared norm `2^m`, i.e.
+ `∑_x χ_S(x) χ_T(x) = if S = T then 2^m else 0`.  Proof: write the summand as
+@@ -292,7 +303,41 @@ cube); each coordinate factor `∑_b cᵢ(b)` is `2` off `S △ T` and `0` on it
+ the whole product vanishes unless `S = T`. -/
+ theorem charFn_orthogonal {m : ℕ} (S T : Finset (Fin m)) :
+     ∑ x : Fin m → Bool, charFn S x * charFn T x = if S = T then (2 : ℝ) ^ m else 0 := by
+-  sorry
++  have h1 : ∀ x : Fin m → Bool, charFn S x * charFn T x = ∏ i : Fin m, charFactor S T i (x i) := by
++    intro x
++    unfold charFn charFactor
++    rw [prod_extend (fun i => if x i then -1 else 1) S]
++    rw [prod_extend (fun i => if x i then -1 else 1) T]
++    rw [← Finset.prod_mul_distrib]
++  have h1' : (∑ x : Fin m → Bool, charFn S x * charFn T x) = ∑ x : Fin m → Bool, ∏ i : Fin m, charFactor S T i (x i) := Finset.sum_congr rfl (fun x _ => h1 x)
++  rw [h1']
++  have h2 := Finset.prod_univ_sum (fun _ => Finset.univ) (charFactor S T)
++  simp only [Fintype.piFinset_univ] at h2
++  rw [← h2]
++  have h_factor : ∀ i : Fin m, ∑ x ∈ Finset.univ, charFactor S T i x = if i ∈ symmDiff S T then 0 else 2 := by
++    intro i
++    rw [Fintype.sum_bool]
++    dsimp [charFactor]
++    by_cases hS : i ∈ S <;> by_cases hT : i ∈ T <;> simp [hS, hT, symmDiff] <;> norm_num
++  have h3 : (∏ i : Fin m, ∑ x ∈ Finset.univ, charFactor S T i x) = ∏ i : Fin m, (if i ∈ symmDiff S T then 0 else 2) := Finset.prod_congr rfl (fun i _ => h_factor i)
++  rw [h3]
++  by_cases hST : S = T
++  · subst hST
++    simp [Finset.prod_const, Fintype.card_fin]
++  · have hne : (symmDiff S T).Nonempty := by
++      rw [Finset.nonempty_iff_ne_empty]
++      intro h
++      have hST_eq : S = T := by
++        ext i
++        have h_empty : i ∉ symmDiff S T := by intro hi; rw [h] at hi; cases hi
++        have h1 : i ∈ S → i ∈ T := by intro hS; by_contra hT; exact h_empty (Finset.mem_symmDiff.mpr (Or.inl ⟨hS, hT⟩))
++        have h2 : i ∈ T → i ∈ S := by intro hT; by_contra hS; exact h_empty (Finset.mem_symmDiff.mpr (Or.inr ⟨hT, hS⟩))
++        exact ⟨h1, h2⟩
++      exact hST hST_eq
++    obtain ⟨i, hi⟩ := hne
++    rw [if_neg hST]
++    refine Finset.prod_eq_zero (Finset.mem_univ i) ?_
++    rw [if_pos hi]
+ 
+ /-- The two-block sign matrix of `F_m` is the majority sign of the XOR
+ (PROOFS.md P4.1): `signMatrix m m (distThreshold m) x y = s(x ⊕ y)`.  Unfold
+@@ -300,7 +345,21 @@ theorem charFn_orthogonal {m : ℕ} (S T : Finset (Fin m)) :
+ (both count `{i : x i ≠ y i}`). -/
+ theorem signMatrix_distThreshold_apply {m : ℕ} (x y : Fin m → Bool) :
+     signMatrix m m (distThreshold m) x y = distSign m (fun i => xor (x i) (y i)) := by
+-  sorry
++  unfold signMatrix distThreshold distSign
++  simp only [leftBits_blockJoin, rightBits_blockJoin, decide_eq_true_eq]
++  congr 1
++  congr 1
++  unfold hammingDist
++  congr 1
++  ext i
++  simp only [Finset.mem_filter, Finset.mem_univ, true_and]
++  cases x i <;> cases y i <;> decide
++
++private def xorEquiv {m : ℕ} (x : Fin m → Bool) : (Fin m → Bool) ≃ (Fin m → Bool) where
++  toFun y i := xor (x i) (y i)
++  invFun u i := xor (x i) (u i)
++  left_inv u := by ext i; dsimp; cases x i <;> cases u i <;> rfl
++  right_inv y := by ext i; dsimp; cases x i <;> cases y i <;> rfl
+ 
+ open Matrix in
+ /-- **Character eigen-action** (PROOFS.md P4.1): each character is an
+@@ -311,7 +370,61 @@ eigenvector of the sign matrix, `M χ_S = λ_S χ_S`, with eigenvalue
+ theorem signMatrix_mulVec_charFn {m : ℕ} (S : Finset (Fin m)) :
+     signMatrix m m (distThreshold m) *ᵥ charFn S
+       = (∑ u : Fin m → Bool, distSign m u * charFn S u) • charFn S := by
+-  sorry
++  ext x
++  simp only [mulVec, dotProduct, signMatrix_distThreshold_apply, Pi.smul_apply, smul_eq_mul]
++  rw [← Equiv.sum_comp (xorEquiv x)]
++  have h1 : ∀ u, charFn S (fun i => xor (x i) (u i)) = charFn S x * charFn S u := fun u => charFn_xor S x u
++  have h2 : ∀ u, distSign m (fun i => xor (x i) (xor (x i) (u i))) = distSign m u := by
++    intro u
++    congr 1
++    ext i
++    cases x i <;> cases u i <;> rfl
++  dsimp [xorEquiv]
++  simp_rw [h2, h1]
++  have h3 : ∀ u, distSign m u * (charFn S x * charFn S u) = charFn S x * (distSign m u * charFn S u) := by
++    intro u; ring
++  simp_rw [h3]
++  rw [← Finset.mul_sum]
++  ring
++
++private def notEquiv {m : ℕ} : (Fin m → Bool) ≃ (Fin m → Bool) where
++  toFun u i := !u i
++  invFun u i := !u i
++  left_inv u := by ext i; dsimp; cases u i <;> rfl
++  right_inv u := by ext i; dsimp; cases u i <;> rfl
++
++theorem distSign_not {m : ℕ} (hm : Odd m) (u : Fin m → Bool) :
++    distSign m (fun i => !u i) = - distSign m u := by
++  unfold distSign
++  have hm_eq : m = 2 * ((m - 1) / 2) + 1 := by
++    have hmod := Nat.odd_iff.mp hm
++    omega
++  set k := (m - 1) / 2
++  have hk : (m + 1) / 2 = k + 1 := by omega
++  let A_set : Finset (Fin m) := Finset.univ.filter (fun i => u i = false)
++  let B_set : Finset (Fin m) := Finset.univ.filter (fun i => u i = true)
++  have hA : hammingDist (fun i => !u i) (fun _ => false) = A_set.card := by
++    unfold hammingDist; dsimp [A_set]; congr 1; ext i; simp only [Finset.mem_filter, Finset.mem_univ, true_and]; cases u i <;> decide
++  have hB : hammingDist u (fun _ => false) = B_set.card := by
++    unfold hammingDist; dsimp [B_set]; congr 1; ext i; simp only [Finset.mem_filter, Finset.mem_univ, true_and]; cases u i <;> decide
++  rw [hA, hB]
++  have hd_sum : A_set.card + B_set.card = m := by
++    have h_disj : Disjoint A_set B_set := by
++      rw [Finset.disjoint_filter]
++      intro i _
++      cases u i <;> decide
++    rw [← Finset.card_union_of_disjoint h_disj]
++    have h_eq : A_set ∪ B_set = Finset.univ := by
++      ext i
++      simp [A_set, B_set]
++    rw [h_eq, Finset.card_univ, Fintype.card_fin]
++  rcases le_or_gt ((m + 1) / 2) A_set.card with h1 | h1 <;> rcases le_or_gt ((m + 1) / 2) B_set.card with h2 | h2
++  · exfalso; omega
++  · have h2' : ¬ (m + 1) / 2 ≤ B_set.card := by omega
++    simp [h1, h2']
++  · have h1' : ¬ (m + 1) / 2 ≤ A_set.card := by omega
++    simp [h1', h2]
++  · exfalso; omega
+ 
+ /-- The level-`0` eigenvalue vanishes (PROOFS.md P4.2, consequence 3):
+ `λ_∅ = ∑_u s(u) = 0` for odd `m`.  Proof: the complement involution `u ↦ ū`
+@@ -319,6 +432,25 @@ is fixed-point-free (`m` odd) and flips the sign, `s(ū) = -s(u)` (exactly one o
+ `|u|, m - |u|` reaches `(m+1)/2`), so the sum cancels in pairs. -/
+ theorem distSign_sum_eq_zero {m : ℕ} (hm : Odd m) :
+     ∑ u : Fin m → Bool, distSign m u = 0 := by
++  have h_comp := notEquiv.sum_comp (distSign m)
++  dsimp [notEquiv] at h_comp
++  have h_neg : ∑ u : Fin m → Bool, distSign m (fun i => !u i) = ∑ u : Fin m → Bool, - distSign m u := by
++    congr 1; ext u
++    exact distSign_not hm u
++  rw [h_neg, Finset.sum_neg_distrib] at h_comp
++  linarith
++
++/-- Eigenvalue at Fourier level 1 (PROOFS.md P4.2, consequence 2):
++For a singleton set `S = {i}`, the Fourier eigenvalue `λ_S` equals `2 · C(m-1, (m-1)/2)`. -/
++theorem distEigenvalue_card_one {m : ℕ} (hm : Odd m) (i : Fin m) :
++    ∑ u : Fin m → Bool, distSign m u * charFn {i} u = 2 * ((m - 1).choose ((m - 1) / 2)) := by
++  sorry
++
++/-- Level-1 eigenvalue upper bound (PROOFS.md P4.2, consequence 1):
++For all Fourier sets `S`, the eigenvalue `λ_S` has absolute value at most
++`2 · C(m-1, (m-1)/2)`. -/
++theorem distEigenvalue_le {m : ℕ} (hm : Odd m) (S : Finset (Fin m)) :
++    |∑ u : Fin m → Bool, distSign m u * charFn S u| ≤ 2 * ((m - 1).choose ((m - 1) / 2)) := by
+   sorry
+ 
+ /-- The two-block sign matrix of `F_m` is the XOR-pattern of `MAJ_m`; the

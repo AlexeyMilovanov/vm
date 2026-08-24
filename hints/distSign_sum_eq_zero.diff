@@ -1,0 +1,61 @@
+diff --git a/HeadComplexity/Separations/DistanceThreshold.lean b/HeadComplexity/Separations/DistanceThreshold.lean
+index c50469a..6b8c42e 100644
+--- a/HeadComplexity/Separations/DistanceThreshold.lean
++++ b/HeadComplexity/Separations/DistanceThreshold.lean
+@@ -313,13 +313,55 @@ theorem signMatrix_mulVec_charFn {m : ℕ} (S : Finset (Fin m)) :
+       = (∑ u : Fin m → Bool, distSign m u * charFn S u) • charFn S := by
+   sorry
+ 
++private def compEquiv (m : ℕ) : (Fin m → Bool) ≃ (Fin m → Bool) where
++  toFun u := fun i => !u i
++  invFun u := fun i => !u i
++  left_inv u := by ext i; simp
++  right_inv u := by ext i; simp
++
++private theorem distSign_not (m : ℕ) (hm : Odd m) (u : Fin m → Bool) :
++    distSign m (fun i => !u i) = - distSign m u := by
++  unfold distSign
++  have hm_odd : m % 2 = 1 := Nat.odd_iff.mp hm
++  have h1 : hammingDist (fun i => !u i) (fun _ => false) = m - hammingDist u (fun _ => false) := by
++    unfold hammingDist
++    have h1' : (Finset.univ.filter (fun i => (!u i) ≠ false)).card =
++        (Finset.univ.filter (fun i => u i = false)).card := by
++      congr 1; ext i; simp
++    rw [h1']
++    set A := (Finset.univ.filter (fun i => u i ≠ false)).card
++    set B := (Finset.univ.filter (fun i => u i = false)).card
++    have hsum : A + B = m := by
++      have hsum' : A + B = (Finset.univ : Finset (Fin m)).card := by
++        rw [← Finset.card_union_of_disjoint]
++        · congr 1; ext i; simp
++        · rw [Finset.disjoint_filter]; intro i _ h1 h2; exact h1 h2
++      rw [hsum', Finset.card_univ, Fintype.card_fin]
++    omega
++  rw [h1]
++  set D := hammingDist u (fun _ => false)
++  have hD_le : D ≤ m := by
++    dsimp [D, hammingDist]
++    have hle := Finset.card_le_card (Finset.filter_subset (fun i => u i ≠ false) Finset.univ)
++    rw [Finset.card_univ, Fintype.card_fin] at hle
++    exact hle
++  split_ifs with h2 h3
++  · omega
++  · norm_num
++  · norm_num
++  · omega
++
+ /-- The level-`0` eigenvalue vanishes (PROOFS.md P4.2, consequence 3):
+ `λ_∅ = ∑_u s(u) = 0` for odd `m`.  Proof: the complement involution `u ↦ ū`
+ is fixed-point-free (`m` odd) and flips the sign, `s(ū) = -s(u)` (exactly one of
+ `|u|, m - |u|` reaches `(m+1)/2`), so the sum cancels in pairs. -/
+ theorem distSign_sum_eq_zero {m : ℕ} (hm : Odd m) :
+     ∑ u : Fin m → Bool, distSign m u = 0 := by
+-  sorry
++  have h1 : ∑ u : Fin m → Bool, distSign m u = ∑ u : Fin m → Bool, distSign m (compEquiv m u) := by
++    exact (Equiv.sum_comp (compEquiv m) (fun u => distSign m u)).symm
++  have h2 : ∀ u, distSign m (compEquiv m u) = - distSign m u := fun u => distSign_not m hm u
++  simp_rw [h2, Finset.sum_neg_distrib] at h1
++  linarith
+ 
+ /-- The two-block sign matrix of `F_m` is the XOR-pattern of `MAJ_m`; the
+ characters diagonalize it, the top eigenvalue sits at Fourier level `1`, and

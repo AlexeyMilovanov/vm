@@ -1,0 +1,238 @@
+diff --git a/HeadComplexity/Separations/Tensor.lean b/HeadComplexity/Separations/Tensor.lean
+index 0e0f4b0..5455093 100644
+--- a/HeadComplexity/Separations/Tensor.lean
++++ b/HeadComplexity/Separations/Tensor.lean
+@@ -37,6 +37,128 @@ theorem thresholdDegLE_tensorDistThreshold {m : ℕ} (hm : Odd m) (k : ℕ) :
+     ThresholdDegLE (tensorDistThreshold m k) (2 * k) := by
+   sorry
+ 
++private theorem computableWithHeadsN_comp_equiv_forward {n n' H : ℕ} (e : Fin n' ≃ Fin n)
++    (f : (Fin n → Bool) → Bool)
++    (h : computableWithHeadsN n H f) :
++    computableWithHeadsN n' H (fun z' => f (z' ∘ e.symm)) := by
++  rcases h with ⟨d, Hs, w, τ, hw⟩
++  let Hs' : HeadFamily n' d H := fun h =>
++    { tokenEmbed := (Hs h).tokenEmbed
++      posEmbed   := fun p' => (Hs h).posEmbed (p'.map e)
++      WQ         := (Hs h).WQ
++      WK         := (Hs h).WK
++      WV         := (Hs h).WV }
++  refine ⟨d, Hs', w, τ, ?_⟩
++  intro z'
++  have h_tok : ∀ (h : Fin H) (p' : SeqPos n'),
++      Head.seqTok z' p' = Head.seqTok (z' ∘ e.symm) (p'.map e) := by
++    intro h p'
++    cases p' with
++    | none => rfl
++    | some i' =>
++      simp only [Head.seqTok, Option.map_some, Function.comp_apply, Equiv.symm_apply_apply]
++  have h_x : ∀ (h : Fin H) (p' : SeqPos n'),
++      Head.x (Hs' h) z' p' = Head.x (Hs h) (z' ∘ e.symm) (p'.map e) := by
++    intro h p'
++    simp only [Head.x, h_tok h p']
++    rfl
++  have h_sigma : ∀ (h : Fin H) (p' : SeqPos n'),
++      Head.sigma (Hs' h) z' p' = Head.sigma (Hs h) (z' ∘ e.symm) (p'.map e) := by
++    intro h p'
++    simp only [Head.sigma, h_x h p', h_x h none]
++    rfl
++  have h_val : ∀ (h : Fin H) (p' : SeqPos n'),
++      Head.value (Hs' h) z' p' = Head.value (Hs h) (z' ∘ e.symm) (p'.map e) := by
++    intro h p'
++    simp only [Head.value, h_x h p']
++    rfl
++  have h_denom : ∀ (h : Fin H),
++      Head.denominator (Hs' h) z' = Head.denominator (Hs h) (z' ∘ e.symm) := by
++    intro h
++    unfold Head.denominator
++    simp_rw [h_sigma h]
++    exact Equiv.sum_comp (Equiv.optionCongr e) (fun p => Head.sigma (Hs h) (z' ∘ e.symm) p)
++  have h_num : ∀ (h : Fin H),
++      Head.numerator (Hs' h) z' = Head.numerator (Hs h) (z' ∘ e.symm) := by
++    intro h
++    unfold Head.numerator
++    simp_rw [h_sigma h, h_val h]
++    exact Equiv.sum_comp (Equiv.optionCongr e)
++      (fun p => Head.sigma (Hs h) (z' ∘ e.symm) p • Head.value (Hs h) (z' ∘ e.symm) p)
++  have h_attn : ∀ (h : Fin H),
++      Head.attnUpdate (Hs' h) z' = Head.attnUpdate (Hs h) (z' ∘ e.symm) := by
++    intro h
++    unfold Head.attnUpdate
++    rw [h_denom h, h_num h]
++  have h_sum : headFamilyAttnUpdate Hs' z' = headFamilyAttnUpdate Hs (z' ∘ e.symm) := by
++    unfold headFamilyAttnUpdate
++    simp_rw [h_attn]
++  rw [h_sum]
++  exact hw (z' ∘ e.symm)
++
++/-- Model internals: head-computability is invariant under coordinate reindexing (P1.3). -/
++theorem computableWithHeadsN_comp_equiv {n n' H : ℕ} (e : Fin n' ≃ Fin n)
++    (f : (Fin n → Bool) → Bool) :
++    computableWithHeadsN n H f ↔ computableWithHeadsN n' H (fun z' => f (z' ∘ e.symm)) := by
++  constructor
++  · exact computableWithHeadsN_comp_equiv_forward e f
++  · intro h_comp'
++    have h_fwd := computableWithHeadsN_comp_equiv_forward e.symm (fun z' => f (z' ∘ e.symm)) h_comp'
++    have h_eq : (fun z => (fun z' => f (z' ∘ e.symm)) (z ∘ e.symm.symm)) = f := by
++      ext z
++      dsimp
++      congr 1
++      ext i
++      simp
++    rwa [h_eq] at h_fwd
++
++/-- Model internals: head complexity H* is invariant under coordinate reindexing (P1.3). -/
++theorem HStar_comp_equiv {n n' : ℕ} (e : Fin n' ≃ Fin n)
++    (f : (Fin n → Bool) → Bool) :
++    HStar n' (fun z' => f (z' ∘ e.symm)) = HStar n f := by
++  unfold HStar
++  have h_iff : (∃ k, computableWithHeadsN n' k (fun z' => f (z' ∘ e.symm))) ↔
++      (∃ k, computableWithHeadsN n k f) := by
++    constructor
++    · rintro ⟨k, hk⟩
++      exact ⟨k, (computableWithHeadsN_comp_equiv e f).mpr hk⟩
++    · rintro ⟨k, hk⟩
++      exact ⟨k, (computableWithHeadsN_comp_equiv e f).mp hk⟩
++  by_cases h1 : ∃ k, computableWithHeadsN n' k (fun z' => f (z' ∘ e.symm))
++  · have h2 : ∃ k, computableWithHeadsN n k f := h_iff.mp h1
++    rw [dif_pos h1, dif_pos h2]
++    congr 1
++    ext k
++    exact (computableWithHeadsN_comp_equiv e f).symm
++  · have h2 : ¬ (∃ k, computableWithHeadsN n k f) := fun h => h1 (h_iff.mpr h)
++    rw [dif_neg h1, dif_neg h2]
++
++/-- Standard block-reindexing equivalence mapping `(x_blocks, y_blocks)`
++to interleaved blocks `(x_0, y_0, x_1, y_1, ...)` (P8.1). -/
++def tensorEquiv (m k : ℕ) : Fin (k * m + k * m) ≃ Fin (k * (m + m)) :=
++  finSumFinEquiv.symm.trans
++    ((Equiv.sumCongr finProdFinEquiv.symm finProdFinEquiv.symm).trans
++      ((Equiv.prodSumDistrib (Fin k) (Fin m) (Fin m)).symm.trans
++        ((Equiv.prodCongr (Equiv.refl (Fin k)) finSumFinEquiv).trans
++          finProdFinEquiv)))
++
++/-- Tensored function under the all-left / all-right input partition (P8.1). -/
++def tensorDistThreshold_reindexed (m k : ℕ) : (Fin (k * m + k * m) → Bool) → Bool :=
++  fun z' => tensorDistThreshold m k (z' ∘ (tensorEquiv m k).symm)
++
++/-- Forster ratio lower bound for the k-fold tensored distance majority function under
++the all-left/all-right partition (PROOFS.md P8.1-P8.3). -/
++theorem forsterRatio_pow_le_signRank_tensor {m : ℕ} (hm : Odd m) {k : ℕ} (hk : 1 ≤ k) :
++    forsterRatio m ^ k ≤
++      signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) := by
++  sorry
++
++/-- The signRank bridge for the reindexed tensored function (PROOFS.md P8.3). -/
++theorem signRank_le_pow_HStar_tensor {m k : ℕ} :
++    signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) ≤
++      2 ^ (HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) + 1) - 2 := by
++  sorry
++
+ /-- **Theorem B, lower half**: the Forster ratio tensors, so
+ `γ_m ^ k ≤ 2 ^ (H* + 1) - 2` for the `k`-fold XOR power.  (Route: the sign
+ matrix under the all-left/all-right partition is a reindexed Kronecker power
+@@ -46,7 +168,25 @@ sign-rank bridge.) -/
+ theorem theoremB_HStar {m : ℕ} (hm : Odd m) {k : ℕ} (hk : 1 ≤ k) :
+     forsterRatio m ^ k ≤
+       (2 : ℝ) ^ (HStar (k * (m + m)) (tensorDistThreshold m k) + 1) - 2 := by
+-  sorry
++  have h_eq : HStar (k * (m + m)) (tensorDistThreshold m k) =
++      HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) := by
++    exact (HStar_comp_equiv (tensorEquiv m k) (tensorDistThreshold m k)).symm
++  rw [h_eq]
++  have h1 := forsterRatio_pow_le_signRank_tensor hm hk
++  have h2 := signRank_le_pow_HStar_tensor (m := m) (k := k)
++  have h_two_le : 2 ≤ 2 ^ (HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) + 1) := by
++    calc 2 = 2 ^ 1 := by norm_num
++      _ ≤ 2 ^ (HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) + 1) :=
++        Nat.pow_le_pow_right (by norm_num) (by omega)
++  have h2_R : (signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) : ℝ) ≤
++      (2 : ℝ) ^ (HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) + 1) - 2 := by
++    have h2_cast : ((signRank (signMatrix (k * m) (k * m)
++        (tensorDistThreshold_reindexed m k)) : ℕ) : ℝ) ≤
++        ((2 ^ (HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) + 1) - 2 : ℕ) : ℝ) :=
++      Nat.cast_le.mpr h2
++    rw [Nat.cast_sub h_two_le, Nat.cast_pow, Nat.cast_two] at h2_cast
++    exact h2_cast
++  exact h1.trans h2_R
+ 
+ /-- **XOR sign encoding** (PROOFS.md P8.2): with the `signMatrix` encoding
+ `e(true) = 1`, `e(false) = -1`, the sign of an XOR of `k` bits is
+@@ -58,7 +198,76 @@ product of the `k` block sign polynomials sign-represent the tensored family
+ theorem sign_xor_prod {k : ℕ} (g : Fin k → Bool) :
+     (if (decide (Odd (Finset.univ.filter fun j : Fin k => g j).card)) then (1 : ℝ) else -1)
+       = (-1 : ℝ) ^ (k + 1) * ∏ j : Fin k, (if g j then (1 : ℝ) else -1) := by
+-  sorry
++  have h_split : (∏ j : Fin k, (if g j then (1 : ℝ) else -1)) =
++      (∏ j ∈ Finset.univ.filter (fun j => g j = true), (if g j then (1 : ℝ) else -1)) *
++      (∏ j ∈ Finset.univ.filter (fun j => g j = false), (if g j then (1 : ℝ) else -1)) := by
++    rw [← Finset.prod_union]
++    · congr 1
++      ext x
++      simp only [Finset.mem_univ, Finset.mem_union, Finset.mem_filter, true_and]
++      cases g x <;> decide
++    · rw [Finset.disjoint_filter]
++      intro x _ h1 h2
++      rw [h1] at h2
++      cases h2
++  have h_true : (∏ j ∈ Finset.univ.filter (fun j => g j = true),
++      (if g j then (1 : ℝ) else -1)) = 1 := by
++    have : (∏ j ∈ Finset.univ.filter (fun j => g j = true), (if g j then (1 : ℝ) else -1)) =
++           (∏ j ∈ Finset.univ.filter (fun j => g j = true), (1 : ℝ)) := by
++      refine Finset.prod_congr rfl ?_
++      intro x hx
++      rw [(Finset.mem_filter.mp hx).2]
++      rfl
++    rw [this, Finset.prod_const, one_pow]
++  have h_false : (∏ j ∈ Finset.univ.filter (fun j => g j = false),
++      (if g j then (1 : ℝ) else -1)) =
++      (-1 : ℝ) ^ (Finset.univ.filter (fun j : Fin k => g j = false)).card := by
++    have : (∏ j ∈ Finset.univ.filter (fun j => g j = false), (if g j then (1 : ℝ) else -1)) =
++           (∏ j ∈ Finset.univ.filter (fun j => g j = false), (-1 : ℝ)) := by
++      refine Finset.prod_congr rfl ?_
++      intro x hx
++      rw [(Finset.mem_filter.mp hx).2]
++      rfl
++    rw [this, Finset.prod_const]
++  rw [h_split, h_true, one_mul, h_false]
++  have hT_eq : (Finset.univ.filter fun j : Fin k => g j).card =
++      (Finset.univ.filter fun j : Fin k => g j = true).card := rfl
++  rw [hT_eq]
++  generalize hT : (Finset.univ.filter (fun j : Fin k => g j = true)).card = T
++  generalize hF : (Finset.univ.filter (fun j : Fin k => g j = false)).card = F
++  have h_card_sum : T + F = k := by
++    have h_filter := Finset.card_filter_add_card_filter_not
++      (s := (Finset.univ : Finset (Fin k))) (p := fun j => g j = true)
++    have h_not : (Finset.univ.filter fun j => ¬ (g j = true)) =
++        Finset.univ.filter fun j => g j = false := by
++      ext j
++      simp only [Finset.mem_filter, Finset.mem_univ, true_and, Bool.not_eq_true]
++    rw [h_not] at h_filter
++    rw [hT, hF] at h_filter
++    rw [Finset.card_univ, Fintype.card_fin] at h_filter
++    exact h_filter
++  have h_k : k = T + F := h_card_sum.symm
++  rw [h_k]
++  have h_pow : (-1 : ℝ) ^ (T + F + 1) * (-1 : ℝ) ^ F = (-1 : ℝ) ^ (T + 1) := by
++    rw [← pow_add]
++    have : T + F + 1 + F = T + 1 + 2 * F := by omega
++    rw [this, pow_add, pow_mul]
++    norm_num
++  rw [h_pow]
++  split_ifs with h_odd
++  · simp only [decide_eq_true_eq] at h_odd
++    rcases h_odd with ⟨c, hc⟩
++    rw [hc]
++    have : 2 * c + 1 + 1 = 2 * (c + 1) := by omega
++    rw [this, pow_mul]
++    norm_num
++  · simp only [decide_eq_true_eq] at h_odd
++    have h_even : Even T := Nat.not_odd_iff_even.mp h_odd
++    rcases h_even with ⟨c, hc⟩
++    rw [hc]
++    have : c + c + 1 = 2 * c + 1 := by omega
++    rw [this, pow_add, pow_mul]
++    norm_num
+ 
+ open MvPolynomial in
+ /-- **Per-block strict sign representation** (PROOFS.md P8.4): the block-`j` copy

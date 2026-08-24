@@ -43,6 +43,21 @@ theorem signRank_le_of_thresholdDegLE {a b d : ℕ}
     signRank (signMatrix a b f) ≤ (a + 1) ^ d := by
   sorry
 
+private lemma choose_succ_le_mul (a d : ℕ) : a.choose (d + 1) ≤ a * a.choose d := by
+  have h1 : a.choose (d + 1) ≤ a.choose (d + 1) * (d + 1) := by
+    conv_lhs => rw [← Nat.mul_one (a.choose (d + 1))]
+    apply Nat.mul_le_mul_left
+    omega
+  have h2 : a.choose (d + 1) * (d + 1) = a.choose d * (a - d) := Nat.choose_succ_right_eq a d
+  have h3 : a.choose d * (a - d) ≤ a.choose d * a := by
+    apply Nat.mul_le_mul_left
+    omega
+  calc a.choose (d + 1)
+    _ ≤ a.choose (d + 1) * (d + 1) := h1
+    _ = a.choose d * (a - d) := h2
+    _ ≤ a.choose d * a := h3
+    _ = a * a.choose d := Nat.mul_comm _ _
+
 /-- Counting bound for `signRank_le_of_thresholdDegLE` (PROOFS.md P3.3): the
 number of left sub-monomials of degree `≤ d` in `a` variables, `∑_{i ≤ d}
 C(a, i)`, is at most `(a + 1) ^ d`.  Induction on `d`: the step uses
@@ -51,7 +66,20 @@ together with `C(a, d) ≤ ∑_{i ≤ d} C(a, i) ≤ (a + 1) ^ d` (a term is `�
 which is `≤` the inductive bound). -/
 theorem sum_choose_le_pow (a d : ℕ) :
     ∑ i ∈ Finset.range (d + 1), a.choose i ≤ (a + 1) ^ d := by
-  sorry
+  induction d with
+  | zero =>
+    simp
+  | succ d ih =>
+    rw [Finset.sum_range_succ]
+    have h_term_le_sum : a.choose d ≤ ∑ i ∈ Finset.range (d + 1), a.choose i :=
+      Finset.single_le_sum (fun _ _ => Nat.zero_le _) (Finset.mem_range.mpr (Nat.lt_succ_self d))
+    have h_choose_le : a.choose (d + 1) ≤ a * (a + 1) ^ d := calc
+      a.choose (d + 1) ≤ a * a.choose d := choose_succ_le_mul a d
+      _ ≤ a * (a + 1) ^ d := Nat.mul_le_mul_left a (h_term_le_sum.trans ih)
+    calc ∑ i ∈ Finset.range (d + 1), a.choose i + a.choose (d + 1)
+      _ ≤ (a + 1) ^ d + a * (a + 1) ^ d := Nat.add_le_add ih h_choose_le
+      _ = (1 + a) * (a + 1) ^ d := by ring
+      _ = (a + 1) ^ (d + 1) := by ring
 
 /-- **Theorem C, dimension half**: sign-rank is capped by the matrix
 dimensions, `signRank ≤ 2 ^ min a b`.  Together with the degree half this
