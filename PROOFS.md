@@ -606,8 +606,10 @@ separators for the distinct perturbed roots span the whole function space,
 so the number of selected roots is at most `(e+1)^m`.  With `e=2D+4` this is
 `(2D+5)^m ≤ (8(D+1))^m`, proving the frozen statement.
 
-The general H* theorem is a Lean 4.31 restatement of this 4.28 endpoint; it is
-upgraded/imported only after the producer is complete.
+The producer was migrated to Lean 4.31 and is now vendored as the `Warren`
+library.  The frozen `HeadComplexity.warren_sign_patterns_weak` theorem is a
+definitionally exact bridge to `_root_.warren_sign_patterns_weak`; therefore
+the full NDISJ dependency chain is kernel-checked in one project.
 
 ---
 

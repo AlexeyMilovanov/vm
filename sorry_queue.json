@@ -1,11 +1,3 @@
 {
-  "entries": [
-    {
-      "name": "warren_sign_patterns_weak",
-      "file": "HeadComplexity/Separations/Warren.lean",
-      "status": "external",
-      "pref": "P9",
-      "note": "Cite-level monument; DO NOT ATTEMPT (real algebraic geometry: Milnor/Warren component bounds, weak constant (8(dk+1))^m). Being proven by the parallel warren-lean-28 pipeline. This is now the SOLE remaining sorry in HeadComplexity/Separations/: every own leaf is closed, including the full Forster external monument (`forster`) and its P5.3a-M5a..d spectral sub-leaves, proved in iter_002 s1."
-    }
-  ]
+  "entries": []
 }

@@ -20,7 +20,7 @@ Any genuinely false statement is a blocker to report, not to repair silently.
 | `signRank_le_pow_HStar` | SignRankBridge.lean | bridge at the optimum | **proved** modulo bridge |
 | `signRank_le_of_thresholdDegLE` | SignRankBridge.lean | **Theorem C, degree half**: ceiling `(a+1)^d` | **proved** (iter_002; factor through monomials) |
 | `signRank_le_two_pow_min` | SignRankBridge.lean | **Theorem C, dimension half**: ceiling `2^min(a,b)` | **proved** (via signRank_le_rank + rank_le_card) |
-| `warren_sign_patterns_weak` | Warren.lean | **Warren 1968** (weak constant `(8(dk+1))^m`) | **sorry — EXTERNAL** (SOLE remaining sorry; real algebraic geometry: Milnor/Warren component bounds; parallel `warren-lean-28` pipeline; never attempt/queue) |
+| `warren_sign_patterns_weak` | Warren.lean + integrated `Warren/` | **Warren 1968** (weak constant `(8(dk+1))^m`) | **proved** (Lean 4.31 producer integrated; frozen H* endpoint is a definitional bridge) |
 | `forster` | Forster.lean | **Forster 2002** `N ≤ srank·‖M‖₂` | **proved** (iter_002 s1; isotropic-position / eigendecomposition argument, P5.3) |
 | `specNorm_reindex` | Forster.lean | spectral norm reindex invariance | **proved** (P6.1; piLpCongrLeft conjugation) |
 | `specNorm_kronecker` | Forster.lean | spectral norm Kronecker multiplicativity | **proved** (P6.2; both halves `specNorm_kronecker_le` / `le_specNorm_kronecker` closed) |
@@ -34,11 +34,11 @@ Any genuinely false statement is a blocker to report, not to repair silently.
 | `thresholdDegLE_tensorDistThreshold` | Tensor.lean | `deg±(G_{m,k}) ≤ 2k` | **proved** (product of block quadratics) |
 | `theoremB_HStar` | Tensor.lean | **Theorem B** lower `γ^k` | **proved** (Kronecker route) |
 | `theoremB_gap` | Tensor.lean | **Theorem B** additive gap | **proved** (P8.5, modulo theoremB_HStar + P8.4) |
-| `pow_le_of_leftShatters` | NDISJ.lean | shattering bound via Warren | **proved** modulo external `warren_sign_patterns` (P10.1 `pow_le_ncard_signPatterns` closed: η-shift + strict-sign-pattern injection) |
+| `pow_le_of_leftShatters` | NDISJ.lean | shattering bound via Warren | **proved** end-to-end (P10.1 plus integrated Warren) |
 | `ndisj_leftShatters` | NDISJ.lean | `NDISJ` shatters `m` points | **proved** |
 | `HStar_ndisj_le` | NDISJ.lean | `H*(NDISJ_m) ≤ m` | **proved** (P10.2; explicit smoothed `FracAtom` family) |
 | `thresholdDeg_ndisj` | NDISJ.lean | `deg±(NDISJ_m) = 2` | **proved** (P10.3; `thresholdDegLE_ndisj` + `not_thresholdDegLE_one_ndisj`) |
-| `ndisj_separation` | NDISJ.lean | **NDISJ separation** | **proved** modulo the two sorries it cites |
+| `ndisj_separation` | NDISJ.lean | **NDISJ separation** | **proved** end-to-end; axiom audit clean |
 | `SharpShatteringUpperBound` | NDISJ.lean | upper half of the `VC = 2H` conjecture (`k ≤ 2H`) | `Prop` only, deliberately unasserted |
 | `ndisj_of_sharpShatteringUpperBound` | NDISJ.lean | conjecture ⇒ `H* ≥ m/2` | **proved** |
 

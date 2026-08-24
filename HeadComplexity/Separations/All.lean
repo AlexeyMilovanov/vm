@@ -14,12 +14,11 @@ set_option linter.style.header false
 # Separations layer: table of contents
 
 Asymptotic separations between head complexity `H*` and threshold degree
-`deg±`, from `audit/sources/EXPLICIT_GAP.md` and `audit/sources/STRENGTHENING.md`.  Unlike
-`Results/All.lean`, this layer is **work in progress**: statements are final
-(treat them as frozen; see `SEPARATIONS.md`), proofs may contain `sorry`.
+`deg±`, from `audit/sources/EXPLICIT_GAP.md` and `audit/sources/STRENGTHENING.md`.
+The frozen statements and all their dependencies are now kernel-checked.
 
-External inputs stated as targets:
-* `warren_sign_patterns_weak` — the Lean 4.28 weak Warren-type sign-pattern bound;
+Former external inputs, now proved in-tree:
+* `warren_sign_patterns_weak` — the integrated Lean 4.31 weak Warren bound;
 * `forster` — Forster 2002 sign-rank lower bound;
 * `specNorm_kronecker` — spectral norm multiplicativity.
 

@@ -1015,3 +1015,18 @@ axiom audit clean (only the external-Warren cone carries `sorryAx`).
 `sorry_queue.json` matches the single project-wide sorry exactly. The
 Separations layer's own-proof content is **complete**; the only remaining gap is
 the external Warren bound, handled by the parallel `warren-lean-28` pipeline.
+
+## Warren integration — 2026-08-24
+
+Integrated the completed Warren producer after its Lean 4.31 migration
+(`warren-lean-31` commit `2a6f82f`).  The producer modules now form the in-tree
+`Warren` Lake library.  The frozen `HeadComplexity.warren_sign_patterns_weak`
+statement is unchanged and is proved by a definitional bridge to
+`_root_.warren_sign_patterns_weak`; consequently `warren_sign_patterns_diag`,
+`pow_le_of_leftShatters`, and `ndisj_separation` are axiom-clean end-to-end.
+
+Verification: full `lake build` completed successfully (8616 jobs),
+`scripts/smoke/FrozenStatements.lean` passed, and a comment-aware census found
+zero proof placeholders in all 59 H* and Warren Lean sources.  `#print axioms`
+for both Warren endpoints and `HeadComplexity.ndisj_separation` reports exactly
+`[propext, Classical.choice, Quot.sound]`.  `sorry_queue.json` is empty.

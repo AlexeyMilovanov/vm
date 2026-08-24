@@ -1,4 +1,5 @@
 import HeadComplexity.Polynomial.ThresholdDegree
+import Warren.Statements
 import Mathlib.Analysis.SpecialFunctions.Exp
 import Mathlib.Data.Set.Card
 
@@ -7,11 +8,12 @@ set_option linter.style.header false
 /-!
 # A weak Warren-type bound on sign patterns of real polynomials
 
-The standalone Lean 4.28 project `warren-lean-28` proves the deliberately
+The integrated Lean 4.31 `Warren` library proves the deliberately
 generous, hypothesis-free bound `(8 * (d*k + 1))^m`.  This is weaker than
 Warren's sharp `(4 e d k / m)^m`, but it is sufficient for the downstream
 split-shattering lower bound after replacing the numerical endpoint by
-`(8k)^(4H)`.  The theorem is restated here as the Lean 4.31 migration target.
+`(8k)^(4H)`.  The theorem below preserves the frozen `HeadComplexity`
+interface and transports the integrated producer theorem definitionally.
 -/
 
 namespace HeadComplexity
@@ -31,7 +33,8 @@ theorem warren_sign_patterns_weak {m k d : ℕ}
     (P : Fin k → MvPolynomial (Fin m) ℝ)
     (hdeg : ∀ i, (P i).totalDegree ≤ d) :
     ((signPatterns P).ncard : ℝ) ≤ (8 * ((d : ℝ) * k + 1)) ^ m := by
-  sorry
+  simpa only [HeadComplexity.signPatterns, _root_.signPatterns] using
+    (_root_.warren_sign_patterns_weak P hdeg)
 
 /-- Diagonal consumer bridge used by the H*/NDISJ argument. -/
 theorem warren_sign_patterns_diag {H k : ℕ}

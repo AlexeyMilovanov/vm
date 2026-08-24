@@ -12,6 +12,10 @@ Lean axioms `[propext, Classical.choice, Quot.sound]` (the full build runs a
 The explicit counterexample in `theorems/02_separations_and_counterexamples/` is
 machine-checked as Theorem 13.
 
+The separations layer is also complete: the Lean 4.31 Warren producer is
+integrated in-tree, so the Warren-to-NDISJ chain has no proof placeholders and
+depends only on `[propext, Classical.choice, Quot.sound]`.
+
 | # | Theorem | Headline Lean result | File |
 |---|-------|----------------------|------|
 | 1 | 2-coordinate numerator additive split | `restricted_numerator_additive_split` | `Results/RestrictionLowerBounds.lean` |
