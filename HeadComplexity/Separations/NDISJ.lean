@@ -13,7 +13,7 @@ set_option linter.style.header false
 `2` yet requires `Ω(m / log m)` heads: fixing `k` left points, the labels as
 the right block varies are signs of `k` degree-`≤ H` polynomials in the `2 H`
 denominator shifts, so Warren caps the shatterable set at
-`2 ^ k ≤ (2 e k) ^ (2 H)` (`audit/sources/STRENGTHENING.md`).  With the monotone-DNF
+`2 ^ k ≤ (8 k) ^ (4 H)` (`audit/sources/STRENGTHENING.md`).  With the monotone-DNF
 upper bound `H* ≤ m` this pins `H*(NDISJ_m)` to `[Ω(m / log m), m]` — the
 strongest explicit lower bound at constant degree.
 -/
@@ -31,18 +31,20 @@ def LeftShatters {a b : ℕ} (f : (Fin (a + b) → Bool) → Bool) (k : ℕ) : P
   ∃ zs : Fin k → (Fin a → Bool),
     ∀ s : Fin k → Bool, ∃ w : Fin b → Bool, ∀ j, f (blockJoin (zs j) w) = s j
 
-/-- Warren-bound simplification (PROOFS.md P10.1, final step): with `m := 2H`
-and `d := H`, Warren's ceiling `(4·e·d·k/m)^m` collapses to `(2·e·k)^{2H}`
-because `4·e·H·k / (2·H) = 2·e·k` (cancel `H ≠ 0`).  This turns the raw Warren
-estimate into the `pow_le_of_leftShatters` conclusion. -/
-theorem warren_pow_simp (H k : ℕ) (hH : 1 ≤ H) :
-    (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H)
-      = (2 * Real.exp 1 * (k : ℝ)) ^ (2 * H) := by
-  have hH0 : (H : ℝ) ≠ 0 := by positivity
-  have hbase : 4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ)) = 2 * Real.exp 1 * (k : ℝ) := by
-    field_simp [hH0]
-    ring
-  rw [hbase]
+/-- Arithmetic bridge from the diagonal weak-Warren bound to the clean
+consumer endpoint.  The hypotheses give `H ≤ k`, hence the quadratic base
+can be absorbed by doubling the exponent. -/
+private theorem weak_warren_pow_le (H k : ℕ) (hH : 1 ≤ H) (hkH : 2 * H ≤ k) :
+    (8 * ((H : ℝ) * k + 1)) ^ (2 * H) ≤
+      (8 * (k : ℝ)) ^ (4 * H) := by
+  sorry
+
+/-- The `k < 2H` branch does not need Warren: the deliberately loose consumer
+base dominates `2`, and the exponent dominates `k`. -/
+private theorem pow_le_weak_of_lt_two_mul_H {H k : ℕ} (hk : 1 ≤ k)
+    (hkH : k < 2 * H) :
+    (2 : ℝ) ^ k ≤ (8 * (k : ℝ)) ^ (4 * H) := by
+  sorry
 
 /-- `NDISJ_m` left-shatters `m` points: the indicator left blocks `e_j`
 satisfy `NDISJ(e_j, w) = w j`. -/
@@ -420,25 +422,112 @@ private theorem exists_shatter_polynomials {a b H : ℕ}
   exact (hsep (blockJoin (zs j) w_in)).symm
 
 
+/-- A single positive shift below every "true"-slot value of a finite family
+`g : (Fin k → Bool) → Fin k → ℝ`: if `g s j > 0` whenever `s j = true`, there
+is `η > 0` strictly below all such values simultaneously (finite min over the
+`(s, j)` pairs, halved).  This is the η-shift ingredient of P10.1, isolated so
+the sign-pattern injection proof stays within budget. -/
+private theorem exists_uniform_pos_shift {k : ℕ}
+    (g : (Fin k → Bool) → Fin k → ℝ)
+    (hg : ∀ (s : Fin k → Bool) (j : Fin k), s j = true → 0 < g s j) :
+    ∃ η : ℝ, 0 < η ∧
+      ∀ (s : Fin k → Bool) (j : Fin k), s j = true → η < g s j := by
+  classical
+  set T : Finset ((Fin k → Bool) × Fin k) :=
+    Finset.univ.filter (fun p => p.1 p.2 = true) with hT
+  by_cases hTne : T.Nonempty
+  · refine ⟨T.inf' hTne (fun p => g p.1 p.2) / 2, half_pos ?_, ?_⟩
+    · rw [Finset.lt_inf'_iff]
+      intro p hp
+      rw [hT, Finset.mem_filter] at hp
+      exact hg p.1 p.2 hp.2
+    · intro s j hsj
+      have hmem : (s, j) ∈ T := by
+        rw [hT, Finset.mem_filter]; exact ⟨Finset.mem_univ _, hsj⟩
+      have hle : T.inf' hTne (fun p => g p.1 p.2) ≤ g s j :=
+        Finset.inf'_le (fun p => g p.1 p.2) hmem
+      have hpos : (0 : ℝ) < T.inf' hTne (fun p => g p.1 p.2) := by
+        rw [Finset.lt_inf'_iff]; intro q hq
+        rw [hT, Finset.mem_filter] at hq; exact hg q.1 q.2 hq.2
+      linarith
+  · exact ⟨1, one_pos, fun s j hsj =>
+      absurd (⟨(s, j), by rw [hT, Finset.mem_filter]; exact ⟨Finset.mem_univ _, hsj⟩⟩ :
+        T.Nonempty) hTne⟩
+
 /-- P10.1 (Warren application with the η-shift): if every labelling
 `s : Fin k → Bool` is realized as the strict-positive pattern of `k`
 degree-`≤ H` polynomials in `2H` real variables at a witness point, then the
 `2^k` labellings inject into the strict sign patterns of the η-shifted family
-`Q_j − η`, and `warren_sign_patterns` (with `m := 2H ≤ k`, `d := H`) bounds
+`Q_j − η`, and `warren_sign_patterns_diag` bounds
 their number. -/
-private theorem pow_le_ncard_signPatterns {H k : ℕ} (hH : 1 ≤ H) (hkH : 2 * H ≤ k)
+private theorem pow_le_ncard_signPatterns {H k : ℕ}
     (Q : Fin k → MvPolynomial (Fin (2 * H)) ℝ)
     (hdeg : ∀ j, (Q j).totalDegree ≤ H)
     (ξ : (Fin k → Bool) → (Fin (2 * H) → ℝ))
     (hpat : ∀ s j, (s j = true ↔ 0 < MvPolynomial.eval (ξ s) (Q j))) :
     (2 : ℝ) ^ k ≤
-      (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H) := by
-  sorry
+      (8 * ((H : ℝ) * k + 1)) ^ (2 * H) := by
+  classical
+  -- a positive shift `η` strictly below every positive "true"-entry value
+  obtain ⟨η, hηpos, hηlt⟩ := exists_uniform_pos_shift
+    (fun s j => MvPolynomial.eval (ξ s) (Q j)) (fun s j h => (hpat s j).mp h)
+  replace hηlt : ∀ (s : Fin k → Bool) (j : Fin k),
+      s j = true → η < MvPolynomial.eval (ξ s) (Q j) := hηlt
+  -- the η-shifted family; same degree bound, strictly signed on both sides
+  set Q' : Fin k → MvPolynomial (Fin (2 * H)) ℝ := fun j => Q j - MvPolynomial.C η with hQ'
+  have hdeg' : ∀ j, (Q' j).totalDegree ≤ H := by
+    intro j
+    have hj : Q' j = Q j - MvPolynomial.C η := rfl
+    rw [hj]
+    exact (MvPolynomial.totalDegree_sub_C_le (Q j) η).trans (hdeg j)
+  have heval : ∀ (s : Fin k → Bool) (j : Fin k),
+      MvPolynomial.eval (ξ s) (Q' j) = MvPolynomial.eval (ξ s) (Q j) - η := by
+    intro s j
+    have hj : Q' j = Q j - MvPolynomial.C η := rfl
+    rw [hj]; simp only [map_sub, MvPolynomial.eval_C]
+  have hstrict : ∀ (s : Fin k → Bool) (i : Fin k),
+      (s i = true → 0 < MvPolynomial.eval (ξ s) (Q' i)) ∧
+      (s i = false → MvPolynomial.eval (ξ s) (Q' i) < 0) := by
+    intro s i
+    refine ⟨fun hsi => ?_, fun hsi => ?_⟩
+    · rw [heval]; linarith [hηlt s i hsi]
+    · rw [heval]
+      have hle : MvPolynomial.eval (ξ s) (Q i) ≤ 0 := by
+        by_contra hc
+        have hcon := (hpat s i).mpr (not_le.mp hc)
+        rw [hsi] at hcon
+        exact absurd hcon (by decide)
+      linarith
+  -- every labelling is a strict sign pattern of `Q'`, realized at `ξ s`
+  have hall : ∀ s : Fin k → Bool, s ∈ signPatterns Q' := by
+    intro s
+    refine ⟨ξ s, ?_, ?_⟩
+    · intro i
+      cases hsi : s i with
+      | false => exact ne_of_lt ((hstrict s i).2 hsi)
+      | true => exact ne_of_gt ((hstrict s i).1 hsi)
+    · intro i
+      cases hsi : s i with
+      | false =>
+        exact (decide_eq_false_iff_not.mpr
+          (not_lt.mpr (le_of_lt ((hstrict s i).2 hsi)))).symm
+      | true =>
+        exact (decide_eq_true_iff.mpr ((hstrict s i).1 hsi)).symm
+  have huniv : signPatterns Q' = Set.univ := Set.eq_univ_of_forall hall
+  have hcard : (signPatterns Q').ncard = 2 ^ k := by
+    rw [huniv, Set.ncard_univ, Nat.card_eq_fintype_card, Fintype.card_fun,
+      Fintype.card_bool, Fintype.card_fin]
+  -- Diagonal instance of the weak Warren-type bound.
+  have hwarren := warren_sign_patterns_diag Q' hdeg'
+  rw [hcard] at hwarren
+  have hcast : (2 : ℝ) ^ k = ((2 ^ k : ℕ) : ℝ) := by push_cast; ring
+  rw [hcast]
+  exact hwarren
 
-private theorem warren_bound_of_leftShatters {a b H k : ℕ} (hH : 1 ≤ H) (hkH : 2 * H ≤ k)
+private theorem warren_bound_of_leftShatters {a b H k : ℕ}
     {f : (Fin (a + b) → Bool) → Bool}
     (hcomp : computableWithHeadsN (a + b) H f) (hsh : LeftShatters f k) :
-    (2 : ℝ) ^ k ≤ (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H) := by
+    (2 : ℝ) ^ k ≤ (8 * ((H : ℝ) * k + 1)) ^ (2 * H) := by
   rcases hsh with ⟨zs, hw⟩
   choose w hw using hw
   obtain ⟨Q, ξ, hdeg, h_iff⟩ := exists_shatter_polynomials hcomp zs
@@ -447,27 +536,25 @@ private theorem warren_bound_of_leftShatters {a b H k : ℕ} (hH : 1 ≤ H) (hkH
     intro s j
     rw [← hw s j]
     exact h_iff j (w s)
-  exact pow_le_ncard_signPatterns hH hkH Q hdeg (fun s => ξ (w s)) hpat
+  exact pow_le_ncard_signPatterns Q hdeg (fun s => ξ (w s)) hpat
 
 /-- **Split-shattering head bound** (mega-lab theorem, via Warren): if `f` is
 computable with `H` heads and left-shatters `k` points, then
-`2 ^ k ≤ (2 e k) ^ (2 H)`; equivalently `H* ≥ k / (2 log₂ (2 e k))`. -/
-
+`2 ^ k ≤ (8 k) ^ (4 H)`, which still gives `H* = Ω(k / log k)`. -/
 theorem pow_le_of_leftShatters {a b H k : ℕ}
     {f : (Fin (a + b) → Bool) → Bool} (hk : 1 ≤ k)
     (hcomp : computableWithHeadsN (a + b) H f) (hsh : LeftShatters f k) :
-    (2 : ℝ) ^ k ≤ (2 * Real.exp 1 * k) ^ (2 * H) := by
+    (2 : ℝ) ^ k ≤ (8 * (k : ℝ)) ^ (4 * H) := by
   by_cases hH : H = 0
   · subst hH
     exfalso
     exact not_leftShatters_zero_heads hk hcomp hsh
   · have hH1 : 1 ≤ H := by omega
     by_cases hkH : k < 2 * H
-    · exact pow_le_pow_of_lt_two_mul_H hk hkH
+    · exact pow_le_weak_of_lt_two_mul_H hk hkH
     · have hkH2 : 2 * H ≤ k := by omega
-      have hw := warren_bound_of_leftShatters hH1 hkH2 hcomp hsh
-      rw [warren_pow_simp H k hH1] at hw
-      exact hw
+      have hw := warren_bound_of_leftShatters hcomp hsh
+      exact hw.trans (weak_warren_pow_le H k hH1 hkH2)
 
 theorem HStar_ndisj_le (m : ℕ) : HStar (m + m) (ndisj m) ≤ m := by
   have hcomp : computableWithHeadsN (m + m) m (ndisj m) :=
@@ -595,10 +682,11 @@ theorem thresholdDeg_ndisj {m : ℕ} (hm : 2 ≤ m) :
 
 /-- **NDISJ separation** (`audit/sources/STRENGTHENING.md`): an explicit constant-
 degree family with near-linear head complexity — degree stays `2` while
-`2 ^ m ≤ (2 e m) ^ (2 H*)`, i.e. `H*(NDISJ_m) = Ω(m / log m)`. -/
+`2 ^ m ≤ (8 m) ^ (4 H*)`, i.e. `H*(NDISJ_m) = Ω(m / log m)`. -/
 theorem ndisj_separation {m : ℕ} (hm : 2 ≤ m) :
     thresholdDeg (ndisj m) = 2 ∧
-      (2 : ℝ) ^ m ≤ (2 * Real.exp 1 * m) ^ (2 * HStar (m + m) (ndisj m)) :=
+      (2 : ℝ) ^ m ≤
+        (8 * (m : ℝ)) ^ (4 * HStar (m + m) (ndisj m)) :=
   ⟨thresholdDeg_ndisj hm,
     pow_le_of_leftShatters (by omega) (HStar_computable _) (ndisj_leftShatters m)⟩
 

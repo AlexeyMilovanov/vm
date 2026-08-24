@@ -5,10 +5,12 @@
 Split the variables `z | w`. Every head is `(<alpha_h,z> + p_h(w)) / (<beta_h,z> + q_h(w))`.
 Fix `k` points `z^(1)..z^(k)`. As `w` varies, `alpha_h, beta_h` are FROZEN; only the `2H`
 scalars `p_h(w), q_h(w)` move. Clearing the positive denominators, the label at `z^(j)` is the
-sign of a polynomial of degree <= H in those `2H` reals. Warren's bound on sign patterns of
-`k` degree-`H` polynomials in `2H` variables gives `2^k <= (2ek)^{2H}`, hence
+sign of a polynomial of degree <= H in those `2H` reals. The Lean 4.28 producer uses the
+hypothesis-free weak Warren bound `(8(dk+1))^m`.  After the finite eta-shift it gives
+`2^k <= (8(Hk+1))^{2H}`; splitting at `k < 2H` and absorbing the quadratic base gives the
+clean uniform endpoint `2^k <= (8k)^{4H}`, hence
 
-    H*(f) >= sigma(f) / (2 log2(2e sigma(f))),
+    H*(f) >= sigma(f) / (4 log2(8 sigma(f))),
 
 where `sigma(f)` is the split-shattering dimension. Checked: the Warren application, the
 NDISJ example (`deg_pm = 2` via `sum x_i y_i - 1/2`, not an LTF; `sigma >= m` since
@@ -22,7 +24,8 @@ Shattering `k` points requires `2^k` DISTINCT settings of `w`, so `k <= n_2 <= n
 
     sigma(f) <= n   for every f,
 
-and split-shattering can never certify more than `n / (2 log2(2en)) = O(n/log n)`.
+and this weak-Warren instantiation can never certify more than
+`n / (4 log2(8n)) = O(n/log n)`.
 NDISJ saturates this up to constants: with the balanced split `sigma = m = n/2`, which is the
 maximum available. So there is no point hunting for a better function for this method — NDISJ
 is essentially the extremal one.

@@ -431,6 +431,72 @@ theorem signRank_le_card_of_signRepr_sum {a b : ℕ} {f : (Fin (a + b) → Bool)
   refine le_trans ?_ hrank
   exact Nat.sInf_le ⟨Amat, hmatch, rfl⟩
 
+/-! The four functions below are the left/right factors in the P2.3
+head-subset expansion.  For a subset `T` of heads, `T` records the denominator
+factors taken from the left block.  The two "derivative" sums record whether
+the distinguished numerator term is also taken from the left or right block. -/
+
+def headSubsetLeftProd {a H : ℕ} (A : Fin H → (Fin a → Bool) → ℝ)
+    (T : Finset (Fin H)) (x : Fin a → Bool) : ℝ :=
+  ∏ h ∈ T, A h x
+
+def headSubsetRightProd {b H : ℕ} (B : Fin H → (Fin b → Bool) → ℝ)
+    (T : Finset (Fin H)) (y : Fin b → Bool) : ℝ :=
+  ∏ h ∈ Finset.univ \ T, B h y
+
+def headSubsetLeftDeriv {a H : ℕ} (A A' : Fin H → (Fin a → Bool) → ℝ)
+    (T : Finset (Fin H)) (x : Fin a → Bool) : ℝ :=
+  ∑ h ∈ T, A' h x * ∏ h' ∈ T.erase h, A h' x
+
+def headSubsetRightDeriv {b H : ℕ} (B B' : Fin H → (Fin b → Bool) → ℝ)
+    (T : Finset (Fin H)) (y : Fin b → Bool) : ℝ :=
+  ∑ h ∈ Finset.univ \ T,
+    B' h y * ∏ h' ∈ (Finset.univ \ T).erase h, B h' y
+
+def headSubsetExpansionTerm {a b H : ℕ} (τ : ℝ)
+    (A : Fin H → (Fin a → Bool) → ℝ) (B : Fin H → (Fin b → Bool) → ℝ)
+    (A' : Fin H → (Fin a → Bool) → ℝ) (B' : Fin H → (Fin b → Bool) → ℝ)
+    (T : Finset (Fin H)) (x : Fin a → Bool) (y : Fin b → Bool) : ℝ :=
+  headSubsetLeftDeriv A A' T x * headSubsetRightProd B T y +
+    headSubsetLeftProd A T x *
+      (headSubsetRightDeriv B B' T y - τ * headSubsetRightProd B T y)
+
+/-- **P2.3a (head-subset expansion).** Expanding every denominator factor
+`A_h(x) + B_h(y)` and grouping by the subset `T` of factors taken from the
+left gives the exact two-outer-product expression indexed by all head subsets.
+This is the algebraic expansion half of `exists_clearedForm_outerProduct_decomp`;
+the boundary merging and count are isolated in
+`exists_headSubsetExpansion_outerProduct_decomp`. -/
+theorem clearedForm_eq_headSubsetExpansion {a b H : ℕ} (τ : ℝ)
+    (A : Fin H → (Fin a → Bool) → ℝ) (B : Fin H → (Fin b → Bool) → ℝ)
+    (A' : Fin H → (Fin a → Bool) → ℝ) (B' : Fin H → (Fin b → Bool) → ℝ)
+    (x : Fin a → Bool) (y : Fin b → Bool) :
+    (∑ h, (A' h x + B' h y) *
+        ∏ h' ∈ Finset.univ.erase h, (A h' x + B h' y))
+        - τ * ∏ h, (A h x + B h y) =
+      ∑ T ∈ (Finset.univ : Finset (Fin H)).powerset,
+        headSubsetExpansionTerm τ A B A' B' T x y := by
+  sorry
+
+/-- **P2.3b (boundary merge and rank-one count).** Package the head-subset
+expansion into outer products.  The zero left-derivative term at `T = ∅` is
+omitted, the right term at `T = univ` is folded into its left term, and all
+interior subsets retain two terms.  Thus there are at most
+`2 * (2^H - 2) + 2 = 2^(H+1) - 2` pieces, including the `T = ∅` piece whose
+left factor is constantly one. -/
+theorem exists_headSubsetExpansion_outerProduct_decomp {a b H : ℕ}
+    (hH : 1 ≤ H) (τ : ℝ)
+    (A : Fin H → (Fin a → Bool) → ℝ) (B : Fin H → (Fin b → Bool) → ℝ)
+    (A' : Fin H → (Fin a → Bool) → ℝ) (B' : Fin H → (Fin b → Bool) → ℝ) :
+    ∃ (ι : Type) (s : Finset ι) (u : ι → (Fin a → Bool) → ℝ)
+      (v : ι → (Fin b → Bool) → ℝ) (i₀ : ι),
+      i₀ ∈ s ∧ u i₀ = (fun _ => 1) ∧ s.card ≤ 2 ^ (H + 1) - 2 ∧
+      ∀ x y,
+        (∑ T ∈ (Finset.univ : Finset (Fin H)).powerset,
+          headSubsetExpansionTerm τ A B A' B' T x y) =
+          ∑ i ∈ s, u i x * v i y := by
+  sorry
+
 /-- **P2.3 subset regrouping (the head-subset rank decomposition).** The cleared
 head-form score `Q(x,y) = ∑ₕ (A'ₕx+B'ₕy)·∏_{h'≠h}(Aₕ'x+Bₕ'y) − τ·∏ₕ(Aₕx+Bₕy)`
 expands, by `Finset.prod_add` over the choice of A-side/B-side per factor, into a
@@ -446,7 +512,12 @@ theorem exists_clearedForm_outerProduct_decomp {a b H : ℕ} (hH : 1 ≤ H) (τ 
       i₀ ∈ s ∧ u i₀ = (fun _ => 1) ∧ s.card ≤ 2 ^ (H + 1) - 2 ∧
       ∀ x y, (∑ h, (A' h x + B' h y) * ∏ h' ∈ Finset.univ.erase h, (A h' x + B h' y))
           - τ * ∏ h, (A h x + B h y) = ∑ i ∈ s, u i x * v i y := by
-  sorry
+  obtain ⟨ι, s, u, v, i₀, hi₀, hu₀, hcard, hsum⟩ :=
+    exists_headSubsetExpansion_outerProduct_decomp hH τ A B A' B'
+  refine ⟨ι, s, u, v, i₀, hi₀, hu₀, hcard, ?_⟩
+  intro x y
+  rw [clearedForm_eq_headSubsetExpansion τ A B A' B' x y]
+  exact hsum x y
 
 /-- P2.3+P2.4 (linear-algebra core of the bridge): any function whose strict
 sign is realized by a two-block head-form score has sign-rank at most

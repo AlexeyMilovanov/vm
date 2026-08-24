@@ -590,12 +590,146 @@ theorem exists_unit_sign_factorization {ι : Type*} [Fintype ι] [DecidableEq ι
     ∃ u v : ι → EuclideanSpace ℝ (Fin (signRank M)),
       (∀ x, ‖u x‖ = 1) ∧ (∀ y, ‖v y‖ = 1) ∧
       ∀ x y, 0 < M x y * ⟪u x, v y⟫_ℝ := by
+  classical
+  have h_nonempty :
+      {q | ∃ A : Matrix ι ι ℝ, SignMatches M A ∧ A.rank = q}.Nonempty := by
+    refine ⟨M.rank, M, ?_, rfl⟩
+    intro i j
+    rcases hM i j with h | h <;> rw [h] <;> norm_num
+  have h_min : signRank M ∈
+      {q | ∃ A : Matrix ι ι ℝ, SignMatches M A ∧ A.rank = q} := by
+    unfold signRank
+    exact Nat.sInf_mem h_nonempty
+  obtain ⟨A, hA, hArank⟩ := h_min
+  have hcard : 1 ≤ Fintype.card ι := by
+    calc
+      1 ≤ signRank M := hr
+      _ = A.rank := hArank.symm
+      _ ≤ Fintype.card ι := A.rank_le_card_width
+  let b₀ := Module.finBasis ℝ (LinearMap.range A.mulVecLin)
+  have hbcard : Module.finrank ℝ (LinearMap.range A.mulVecLin) = signRank M := by
+    simpa [Matrix.rank] using hArank
+  let b : Module.Basis (Fin (signRank M)) ℝ (LinearMap.range A.mulVecLin) :=
+    b₀.reindex (finCongr hbcard)
+  let c : ι → LinearMap.range A.mulVecLin := fun y =>
+    ⟨A *ᵥ Pi.single y 1, ⟨Pi.single y 1, by rw [Matrix.mulVecLin_apply]⟩⟩
+  let u₀ : ι → EuclideanSpace ℝ (Fin (signRank M)) := fun x =>
+    (WithLp.equiv 2 _).symm
+      (fun i => ((b i : LinearMap.range A.mulVecLin) : ι → ℝ) x)
+  let v₀ : ι → EuclideanSpace ℝ (Fin (signRank M)) := fun y =>
+    (WithLp.equiv 2 _).symm (fun i => b.repr (c y) i)
+  have huv : ∀ x y, ⟪u₀ x, v₀ y⟫_ℝ = A x y := by
+    intro x y
+    have hsum := congrArg Subtype.val (b.sum_repr (c y))
+    have hsumxy := congrFun hsum x
+    rw [PiLp.inner_apply]
+    simp only [Real.inner_apply]
+    change ∑ i, ((b i : LinearMap.range A.mulVecLin) : ι → ℝ) x *
+      b.repr (c y) i = A x y
+    calc
+      ∑ i, ((b i : LinearMap.range A.mulVecLin) : ι → ℝ) x * b.repr (c y) i =
+          ∑ i, b.repr (c y) i *
+            ((b i : LinearMap.range A.mulVecLin) : ι → ℝ) x := by
+            apply Finset.sum_congr rfl
+            intro i _
+            ring
+      _ = ((c y : LinearMap.range A.mulVecLin) : ι → ℝ) x := by
+        simpa only [Finset.sum_apply, Submodule.coe_sum,
+          Submodule.coe_smul_of_tower, Pi.smul_apply, smul_eq_mul] using hsumxy
+      _ = A x y := by simp [c, Matrix.mulVec_single]
+  haveI : Nonempty ι := Fintype.card_pos_iff.mp (by omega)
+  have hu₀ : ∀ x, u₀ x ≠ 0 := by
+    intro x hx
+    obtain ⟨y⟩ := (inferInstance : Nonempty ι)
+    have hpos := hA x y
+    rw [← huv x y, hx] at hpos
+    simp at hpos
+  have hv₀ : ∀ y, v₀ y ≠ 0 := by
+    intro y hy
+    obtain ⟨x⟩ := (inferInstance : Nonempty ι)
+    have hpos := hA x y
+    rw [← huv x y, hy] at hpos
+    simp at hpos
+  let u : ι → EuclideanSpace ℝ (Fin (signRank M)) :=
+    fun x => ‖u₀ x‖⁻¹ • u₀ x
+  let v : ι → EuclideanSpace ℝ (Fin (signRank M)) :=
+    fun y => ‖v₀ y‖⁻¹ • v₀ y
+  refine ⟨u, v, ?_, ?_, ?_⟩
+  · intro x
+    change ‖‖u₀ x‖⁻¹ • u₀ x‖ = 1
+    rw [norm_smul, Real.norm_eq_abs, abs_inv, abs_norm, inv_mul_cancel₀]
+    exact norm_ne_zero_iff.mpr (hu₀ x)
+  · intro y
+    change ‖‖v₀ y‖⁻¹ • v₀ y‖ = 1
+    rw [norm_smul, Real.norm_eq_abs, abs_inv, abs_norm, inv_mul_cancel₀]
+    exact norm_ne_zero_iff.mpr (hv₀ y)
+  · intro x y
+    have hux : 0 < ‖u₀ x‖⁻¹ := inv_pos.mpr (norm_pos_iff.mpr (hu₀ x))
+    have hvy : 0 < ‖v₀ y‖⁻¹ := inv_pos.mpr (norm_pos_iff.mpr (hv₀ y))
+    calc
+      0 < (‖u₀ x‖⁻¹ * ‖v₀ y‖⁻¹) * (M x y * A x y) :=
+        mul_pos (mul_pos hux hvy) (hA x y)
+      _ = M x y * ⟪u x, v y⟫_ℝ := by
+        change (‖u₀ x‖⁻¹ * ‖v₀ y‖⁻¹) * (M x y * A x y) =
+          M x y * ⟪‖u₀ x‖⁻¹ • u₀ x, ‖v₀ y‖⁻¹ • v₀ y⟫_ℝ
+        rw [inner_smul_left, inner_smul_right, huv]
+        simp only [conj_trivial]
+        ring
+
+/-- A finite family of vectors in `ℝ^r` is in **general position** when every
+`r` of them (selected by an injective index map) are linearly independent.  This
+is the genericity output of Forster's perturbation step (PROOFS.md P5.2) and the
+hypothesis consumed by the isotropic-position argument (P5.3): it forces every
+proper subspace `W` to contain at most `dim W` of the vectors, which is what
+makes the log-det potential `Φ` coercive. -/
+def InGeneralPosition {r : ℕ} {ι : Type*}
+    (u : ι → EuclideanSpace ℝ (Fin r)) : Prop :=
+  ∀ g : Fin r → ι, Function.Injective g → LinearIndependent ℝ (fun i => u (g i))
+
+/-- **P5.2 (general position).**  Unit vectors `u` with a strict sign margin
+against `v` can be perturbed by an arbitrarily small amount into unit vectors
+`u₁` that are in general position, without changing any of the (finitely many,
+strict) inner-product signs.  The excluded configurations — some `r` of the
+perturbed vectors linearly dependent — form a finite union of measure-zero sets,
+so a suitable perturbation exists strictly inside the sign-margin ball. -/
+theorem exists_generalPosition_reposition {r : ℕ} {ι : Type*} [Fintype ι]
+    (hr : 0 < r) (u v : ι → EuclideanSpace ℝ (Fin r))
+    (hu : ∀ x, ‖u x‖ = 1) (s : ι → ι → ℝ)
+    (hs : ∀ x y, 0 < s x y * ⟪u x, v y⟫_ℝ) :
+    ∃ u₁ : ι → EuclideanSpace ℝ (Fin r),
+      (∀ x, ‖u₁ x‖ = 1) ∧ (∀ x y, 0 < s x y * ⟪u₁ x, v y⟫_ℝ) ∧
+      InGeneralPosition u₁ := by
+  sorry
+
+/-- **P5.3 (isotropic position — the analytic kernel).**  Unit vectors `u` in
+general position, with a strict sign margin against unit vectors `v`, can be
+brought to isotropic position: there are unit vectors `u'`, `v'` preserving every
+sign with `∑_x u'_x u'_xᵀ = (N/r)·I` (stated as the quadratic-form identity
+`∑_x ⟪u'_x, w⟫² = (N/r)‖w‖²`).  Proof: minimize `Φ(P) = ∑_x log(u_xᵀ P u_x)` over
+`{P ≻ 0, det P = 1}`; general position and `r < N` give coercivity (every
+degenerating subspace loses fewer than its share of vectors), so a minimizer
+`P* = B²` exists, and its first-order/Lagrange condition is exactly the isotropy
+of `û_x = B u_x/‖B u_x‖`, with `v'_y` the matching `(B⁻¹)`-adjoint image. -/
+theorem exists_isotropic_of_generalPosition {r : ℕ} {ι : Type*} [Fintype ι]
+    (hr : 0 < r) (hcard : r < Fintype.card ι)
+    (u v : ι → EuclideanSpace ℝ (Fin r))
+    (hu : ∀ x, ‖u x‖ = 1) (hv : ∀ y, ‖v y‖ = 1)
+    (s : ι → ι → ℝ) (hs : ∀ x y, 0 < s x y * ⟪u x, v y⟫_ℝ)
+    (hgen : InGeneralPosition u) :
+    ∃ u' v' : ι → EuclideanSpace ℝ (Fin r),
+      (∀ x, ‖u' x‖ = 1) ∧ (∀ y, ‖v' y‖ = 1) ∧
+      (∀ x y, 0 < s x y * ⟪u' x, v' y⟫_ℝ) ∧
+      ∀ w : EuclideanSpace ℝ (Fin r),
+        ∑ x, ⟪u' x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
   sorry
 
 /-- P5.2 + P5.3 (the analytic kernel): unit vectors with a strict sign margin
 can be perturbed into general position and then brought to isotropic position
 by an invertible transformation, without changing any sign.  Isotropy is
-stated as the quadratic-form identity `∑_x ⟪u'_x, w⟫² = (N/r)·‖w‖²`. -/
+stated as the quadratic-form identity `∑_x ⟪u'_x, w⟫² = (N/r)·‖w‖²`.  **Assembly**
+(PROOFS.md P5.2–P5.3): `exists_generalPosition_reposition` perturbs `u` into
+general position preserving signs, then `exists_isotropic_of_generalPosition`
+runs the log-det minimization to isotropy. -/
 theorem exists_isotropic_reposition {r : ℕ} {ι : Type*} [Fintype ι]
     (hr : 0 < r) (hcard : r < Fintype.card ι)
     (u v : ι → EuclideanSpace ℝ (Fin r))
@@ -606,11 +740,176 @@ theorem exists_isotropic_reposition {r : ℕ} {ι : Type*} [Fintype ι]
       (∀ x y, 0 < s x y * ⟪u' x, v' y⟫_ℝ) ∧
       ∀ w : EuclideanSpace ℝ (Fin r),
         ∑ x, ⟪u' x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
-  sorry
+  obtain ⟨u₁, hu₁, hs₁, hgen⟩ := exists_generalPosition_reposition hr u v hu s hs
+  exact exists_isotropic_of_generalPosition hr hcard u₁ v hu₁ hv s hs₁ hgen
+
+/-- **P5.4a (isotropy lower bound).**  With unit vectors, sign match, and
+isotropy, the correlation `∑_{x,y} M_{xy}⟪u_x,v_y⟫` is at least `N²/r`: each
+term equals `|⟪u_x,v_y⟫|` (sign match, `|M_{xy}| = 1`), which dominates its
+square (`|t| ≤ ‖u_x‖‖v_y‖ = 1`), and `∑_{x,y} ⟪u_x,v_y⟫² = ∑_y (N/r)‖v_y‖² =
+N²/r` by isotropy applied to each `v_y`. -/
+theorem forster_isotropy_lower {r : ℕ} {ι : Type*} [Fintype ι]
+    (_hr : 0 < r) (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
+    (u v : ι → EuclideanSpace ℝ (Fin r))
+    (hu : ∀ x, ‖u x‖ = 1) (hv : ∀ y, ‖v y‖ = 1)
+    (hsign : ∀ x y, 0 < M x y * ⟪u x, v y⟫_ℝ)
+    (hiso : ∀ w : EuclideanSpace ℝ (Fin r),
+      ∑ x, ⟪u x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2) :
+    (Fintype.card ι : ℝ) ^ 2 / (r : ℝ) ≤ ∑ x, ∑ y, M x y * ⟪u x, v y⟫_ℝ := by
+  -- each summand dominates the square of the inner product
+  have hterm : ∀ x y, ⟪u x, v y⟫_ℝ ^ 2 ≤ M x y * ⟪u x, v y⟫_ℝ := by
+    intro x y
+    have habs : M x y * ⟪u x, v y⟫_ℝ = |⟪u x, v y⟫_ℝ| := by
+      rw [(abs_of_pos (hsign x y)).symm, abs_mul]
+      rcases hM x y with h | h <;> rw [h] <;> simp
+    rw [habs, ← sq_abs (⟪u x, v y⟫_ℝ)]
+    have hle1 : |⟪u x, v y⟫_ℝ| ≤ 1 := by
+      have hcs := abs_real_inner_le_norm (u x) (v y)
+      rw [hu x, hv y, mul_one] at hcs
+      exact hcs
+    nlinarith [abs_nonneg (⟪u x, v y⟫_ℝ), hle1]
+  -- the square-sum equals `N²/r`
+  have hsumsq : ∑ x, ∑ y, ⟪u x, v y⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) ^ 2 / (r : ℝ) := by
+    rw [Finset.sum_comm]
+    have hcol : ∀ y, ∑ x, ⟪u x, v y⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r := by
+      intro y; rw [hiso (v y), hv y]; ring
+    rw [Finset.sum_congr rfl (fun y _ => hcol y), Finset.sum_const, Finset.card_univ,
+      nsmul_eq_mul]
+    ring
+  calc (Fintype.card ι : ℝ) ^ 2 / (r : ℝ)
+      = ∑ x, ∑ y, ⟪u x, v y⟫_ℝ ^ 2 := hsumsq.symm
+    _ ≤ ∑ x, ∑ y, M x y * ⟪u x, v y⟫_ℝ := by
+        refine Finset.sum_le_sum (fun x _ => Finset.sum_le_sum (fun y _ => hterm x y))
+
+/-- **P5.4b (spectral upper bound — Cauchy–Schwarz over columns).**  Writing the
+correlation as `∑_{j<r} (U^{(j)})ᵀ M V^{(j)}` for the coordinate columns
+`U^{(j)}(x) = u_x(j)`, `V^{(j)}(y) = v_y(j)`, each term is at most
+`‖U^{(j)}‖·specNorm·‖V^{(j)}‖`, and column Cauchy–Schwarz with
+`∑_j ‖U^{(j)}‖² = ∑_x ‖u_x‖² = N` (and likewise for `V`) bounds the whole sum by
+`specNorm·N`. -/
+theorem forster_specNorm_upper {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (M : Matrix ι ι ℝ)
+    (u v : ι → EuclideanSpace ℝ (Fin r))
+    (hu : ∀ x, ‖u x‖ = 1) (hv : ∀ y, ‖v y‖ = 1) :
+    ∑ x, ∑ y, M x y * ⟪u x, v y⟫_ℝ ≤ specNorm M * (Fintype.card ι : ℝ) := by
+  let U : Fin r → EuclideanSpace ℝ ι := fun j => (WithLp.equiv 2 _).symm (fun x => (u x).ofLp j)
+  let V : Fin r → EuclideanSpace ℝ ι := fun j => (WithLp.equiv 2 _).symm (fun y => (v y).ofLp j)
+  have H1 : ∀ x y, ⟪u x, v y⟫_ℝ = ∑ j : Fin r, (U j).ofLp x * (V j).ofLp y := by
+    intro x y
+    rw [PiLp.inner_apply]
+    apply Finset.sum_congr rfl
+    intro j _
+    exact Real.inner_apply _ _
+  have H2 : ∀ j, ∑ x, (U j).ofLp x * (M *ᵥ (V j).ofLp) x = ⟪U j, (WithLp.equiv 2 _).symm (M *ᵥ (V j).ofLp)⟫_ℝ := by
+    intro j
+    rw [PiLp.inner_apply]
+    apply Finset.sum_congr rfl
+    intro x _
+    exact (Real.inner_apply _ _).symm
+  have H3 : ∀ j : Fin r, ‖(WithLp.equiv 2 _).symm (M *ᵥ (V j).ofLp)‖ ≤ specNorm M * ‖V j‖ := by
+    intro j
+    have : (WithLp.equiv 2 _).symm (M *ᵥ (V j).ofLp) = Matrix.toEuclideanCLM (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm (V j).ofLp) := rfl
+    rw [this]
+    have H_norm : specNorm M = ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M‖ := rfl
+    rw [H_norm]
+    have := ContinuousLinearMap.le_opNorm (Matrix.toEuclideanCLM (𝕜 := ℝ) M) ((WithLp.equiv 2 (ι → ℝ)).symm (V j).ofLp)
+    have h_symm : (WithLp.equiv 2 (ι → ℝ)).symm (V j).ofLp = V j := (Equiv.symm_apply_apply _ _).symm
+    rw [h_symm] at this
+    exact this
+  calc
+    ∑ x, ∑ y, M x y * ⟪u x, v y⟫_ℝ
+      = ∑ x, ∑ y, M x y * ∑ j : Fin r, (U j).ofLp x * (V j).ofLp y := by simp_rw [H1]
+    _ = ∑ x, ∑ y, ∑ j : Fin r, M x y * (U j).ofLp x * (V j).ofLp y := by
+        apply Finset.sum_congr rfl; intro x _
+        apply Finset.sum_congr rfl; intro y _
+        have : M x y * ∑ j : Fin r, (U j).ofLp x * (V j).ofLp y = ∑ j : Fin r, M x y * ((U j).ofLp x * (V j).ofLp y) := by rw [Finset.mul_sum]
+        rw [this]
+        apply Finset.sum_congr rfl; intro j _
+        ring
+    _ = ∑ j : Fin r, ∑ x, ∑ y, M x y * (U j).ofLp x * (V j).ofLp y := by
+        have h1 : ∑ x, ∑ y, ∑ j : Fin r, M x y * (U j).ofLp x * (V j).ofLp y = ∑ x, ∑ j : Fin r, ∑ y, M x y * (U j).ofLp x * (V j).ofLp y := by
+          apply Finset.sum_congr rfl; intro x _
+          exact Finset.sum_comm
+        rw [h1, Finset.sum_comm]
+    _ = ∑ j : Fin r, ∑ x, (U j).ofLp x * ∑ y, M x y * (V j).ofLp y := by
+        apply Finset.sum_congr rfl; intro j _
+        apply Finset.sum_congr rfl; intro x _
+        have : ∑ y, M x y * (U j).ofLp x * (V j).ofLp y = ∑ y, (U j).ofLp x * (M x y * (V j).ofLp y) := by
+          apply Finset.sum_congr rfl; intro y _
+          ring
+        rw [this, ← Finset.mul_sum]
+    _ = ∑ j : Fin r, ⟪U j, (WithLp.equiv 2 _).symm (M *ᵥ (V j).ofLp)⟫_ℝ := by
+        apply Finset.sum_congr rfl; intro j _
+        have h_mulvec : ∀ x, ∑ y, M x y * (V j).ofLp y = (M *ᵥ (V j).ofLp) x := fun x => rfl
+        simp_rw [h_mulvec]
+        exact H2 j
+    _ ≤ ∑ j : Fin r, ‖U j‖ * ‖(WithLp.equiv 2 _).symm (M *ᵥ (V j).ofLp)‖ := by
+        apply Finset.sum_le_sum; intro j _
+        exact real_inner_le_norm _ _
+    _ ≤ ∑ j : Fin r, ‖U j‖ * (specNorm M * ‖V j‖) := by
+        apply Finset.sum_le_sum; intro j _
+        apply mul_le_mul_of_nonneg_left (H3 j) (norm_nonneg _)
+    _ = specNorm M * ∑ j : Fin r, ‖U j‖ * ‖V j‖ := by
+        have : ∑ j : Fin r, ‖U j‖ * (specNorm M * ‖V j‖) = ∑ j : Fin r, specNorm M * (‖U j‖ * ‖V j‖) := by
+          apply Finset.sum_congr rfl; intro j _
+          ring
+        rw [this, ← Finset.mul_sum]
+    _ ≤ specNorm M * (Real.sqrt (∑ j : Fin r, ‖U j‖^2) * Real.sqrt (∑ j : Fin r, ‖V j‖^2)) := by
+        have h_cs : ∑ j, ‖U j‖ * ‖V j‖ ≤ Real.sqrt (∑ j, ‖U j‖^2) * Real.sqrt (∑ j, ‖V j‖^2) := by
+          let U' : EuclideanSpace ℝ (Fin r) := (WithLp.equiv 2 _).symm (fun j => ‖U j‖)
+          let V' : EuclideanSpace ℝ (Fin r) := (WithLp.equiv 2 _).symm (fun j => ‖V j‖)
+          have h1 : ⟪U', V'⟫_ℝ = ∑ j, ‖U j‖ * ‖V j‖ := by
+            rw [PiLp.inner_apply]
+            apply Finset.sum_congr rfl
+            intro j _
+            exact Real.inner_apply _ _
+          have h2 : ‖U'‖ = Real.sqrt (∑ j, ‖U j‖^2) := by
+            have h_sq : ‖U'‖^2 = ∑ j, ‖U j‖^2 := norm_sq_eq (fun j => ‖U j‖)
+            rw [← h_sq]
+            exact (Real.sqrt_sq (norm_nonneg _)).symm
+          have h3 : ‖V'‖ = Real.sqrt (∑ j, ‖V j‖^2) := by
+            have h_sq : ‖V'‖^2 = ∑ j, ‖V j‖^2 := norm_sq_eq (fun j => ‖V j‖)
+            rw [← h_sq]
+            exact (Real.sqrt_sq (norm_nonneg _)).symm
+          have := real_inner_le_norm U' V'
+          rw [h1, h2, h3] at this
+          exact this
+        apply mul_le_mul_of_nonneg_left h_cs (norm_nonneg _)
+    _ = specNorm M * (Real.sqrt (Fintype.card ι : ℝ) * Real.sqrt (Fintype.card ι : ℝ)) := by
+        have h_sumU : ∑ j : Fin r, ‖U j‖^2 = (Fintype.card ι : ℝ) := by
+          have h_sq : ∑ j : Fin r, ‖U j‖^2 = ∑ j : Fin r, ∑ x : ι, ((u x).ofLp j)^2 := by
+            apply Finset.sum_congr rfl; intro j _
+            exact norm_sq_eq _
+          rw [h_sq]
+          rw [Finset.sum_comm]
+          have h_ux : ∀ x, ∑ j : Fin r, ((u x).ofLp j)^2 = 1 := by
+            intro x
+            have hx := hu x
+            have h_sq2 : ‖u x‖^2 = ∑ j : Fin r, ((u x).ofLp j)^2 := norm_sq_eq (u x).ofLp
+            rw [← h_sq2, hx, one_pow]
+          simp_rw [h_ux, Finset.sum_const, Finset.card_univ, nsmul_eq_mul, mul_one]
+        have h_sumV : ∑ j : Fin r, ‖V j‖^2 = (Fintype.card ι : ℝ) := by
+          have h_sq : ∑ j : Fin r, ‖V j‖^2 = ∑ j : Fin r, ∑ y : ι, ((v y).ofLp j)^2 := by
+            apply Finset.sum_congr rfl; intro j _
+            exact norm_sq_eq _
+          rw [h_sq]
+          rw [Finset.sum_comm]
+          have h_vy : ∀ y, ∑ j : Fin r, ((v y).ofLp j)^2 = 1 := by
+            intro y
+            have hy := hv y
+            have h_sq2 : ‖v y‖^2 = ∑ j : Fin r, ((v y).ofLp j)^2 := norm_sq_eq (v y).ofLp
+            rw [← h_sq2, hy, one_pow]
+          simp_rw [h_vy, Finset.sum_const, Finset.card_univ, nsmul_eq_mul, mul_one]
+        rw [h_sumU, h_sumV]
+    _ = specNorm M * (Fintype.card ι : ℝ) := by
+        congr 1
+        exact Real.mul_self_sqrt (Nat.cast_nonneg _)
 
 /-- P5.4: the main chain.  `∑_{x,y} M_{xy}⟪u_x,v_y⟫ = ∑ |⟪u_x,v_y⟫| ≥
-∑ ⟪u_x,v_y⟫² = N²/r` by isotropy, while the same sum is at most
-`specNorm·N` by the column decomposition and Cauchy–Schwarz. -/
+∑ ⟪u_x,v_y⟫² = N²/r` by isotropy (`forster_isotropy_lower`), while the same sum
+is at most `specNorm·N` by the column decomposition and Cauchy–Schwarz
+(`forster_specNorm_upper`); dividing `N²/r ≤ specNorm·N` by `N` gives the
+result. -/
 theorem forster_main_chain {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
     (hr : 0 < r) (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
     (u v : ι → EuclideanSpace ℝ (Fin r))
@@ -619,7 +918,17 @@ theorem forster_main_chain {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
     (hiso : ∀ w : EuclideanSpace ℝ (Fin r),
       ∑ x, ⟪u x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2) :
     (Fintype.card ι : ℝ) ≤ (r : ℝ) * specNorm M := by
-  sorry
+  have hrpos : (0 : ℝ) < r := by exact_mod_cast hr
+  have hspec : 0 ≤ specNorm M := norm_nonneg _
+  have hNpos : (0 : ℝ) ≤ (Fintype.card ι : ℝ) := Nat.cast_nonneg _
+  have hchain : (Fintype.card ι : ℝ) ^ 2 / (r : ℝ) ≤ specNorm M * (Fintype.card ι : ℝ) :=
+    (forster_isotropy_lower hr M hM u v hu hv hsign hiso).trans
+      (forster_specNorm_upper M u v hu hv)
+  have hchain2 : (Fintype.card ι : ℝ) ^ 2 ≤ specNorm M * (Fintype.card ι : ℝ) * r :=
+    (div_le_iff₀ hrpos).mp hchain
+  rcases eq_or_lt_of_le hNpos with h0 | hpos
+  · rw [← h0]; positivity
+  · nlinarith [hchain2, hpos, hspec, hrpos]
 
 /-- **Forster's theorem, large-rank regime** (Forster 2002; PROOFS.md P5.1–P5.4).
 Assembly: `one_le_signRank` gives `1 ≤ r := signRank M`; `exists_unit_sign_factorization`

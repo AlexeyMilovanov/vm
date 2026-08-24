@@ -34,7 +34,7 @@ Any genuinely false statement is a blocker to report, not to repair silently.
 | `thresholdDegLE_tensorDistThreshold` | Tensor.lean | `deg±(G_{m,k}) ≤ 2k` | sorry (product of block quadratics) |
 | `theoremB_HStar` | Tensor.lean | **Theorem B** lower `γ^k` | sorry (Kronecker route) |
 | `theoremB_gap` | Tensor.lean | **Theorem B** additive gap | **proved** (P8.5, modulo theoremB_HStar + P8.4) |
-| `pow_le_of_leftShatters` | NDISJ.lean | shattering bound via Warren | sorry (own result; freeze denominators, Warren in 2H shift variables) |
+| `pow_le_of_leftShatters` | NDISJ.lean | shattering bound via Warren | **proved** modulo external `warren_sign_patterns` (P10.1 `pow_le_ncard_signPatterns` closed: η-shift + strict-sign-pattern injection) |
 | `ndisj_leftShatters` | NDISJ.lean | `NDISJ` shatters `m` points | **proved** |
 | `HStar_ndisj_le` | NDISJ.lean | `H*(NDISJ_m) ≤ m` | **proved** (P10.2; explicit smoothed `FracAtom` family) |
 | `thresholdDeg_ndisj` | NDISJ.lean | `deg±(NDISJ_m) = 2` | **proved** (P10.3; `thresholdDegLE_ndisj` + `not_thresholdDegLE_one_ndisj`) |

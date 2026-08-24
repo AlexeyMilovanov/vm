@@ -1,60 +1,46 @@
 {
- "entries": [
-  {
-   "name": "warren_sign_patterns",
-   "file": "HeadComplexity/Separations/Warren.lean",
-   "status": "external",
-   "pref": "P9",
-   "note": "Cite-level monument; DO NOT ATTEMPT (real algebraic geometry: components plus Milnor/Warren bounds)."
-  },
-  {
-   "name": "exists_clearedForm_outerProduct_decomp",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "hard",
-   "pref": "P2.3",
-   "note": "SOLE residual debt of the now-PROVED 028 bridge (signRank_le_of_computableWithHeadsN) and signRank_le_of_headForm. Expand the cleared score Q via Finset.prod_add over the A-side/B-side choice per factor and group by the A-side set T \u2286 [H]; the boundary sets T=\u2205 (constant left factor 1) and T=[H] merge their two pieces, giving 2(2^H\u22122)+2 = 2^(H+1)\u22122 outer products with the \u2205-piece constant. Output feeds signRank_le_card_of_signRepr_sum (PROVED)."
-  },
-  {
-   "name": "signRank_le_of_multilinear_signRepr",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "hard",
-   "pref": "P3.2-P3.3",
-   "note": "Factor eval(cubePoint(blockJoin x y)) P\u0303 = \u2211_{\u03bc\u2286Fin a, |\u03bc|\u2264d} (\u220f_{i\u2208\u03bc} x_i)\u00b7c_\u03bc(y) (sum of outer products, \u03bc=\u2205 the constant piece), then apply signRank_le_card_of_signRepr_sum (PROVED reusable strictification) + card_subsets_card_le (proved, #{\u03bc:|\u03bc|\u2264d}=\u2211_{i\u2264d}C(a,i)). Note signRank_le_card_of_signRepr_sum currently sits after this decl; move it up or restate."
-  },
-  {
-   "name": "exists_unit_sign_factorization",
-   "file": "HeadComplexity/Separations/Forster.lean",
-   "status": "hard",
-   "pref": "P5.1",
-   "note": "Rank factorization of a rank-(signRank M) sign-matching matrix into r columns (u_x, v_y \u2208 \u211d^r with \u27e8u_x,v_y\u27e9 = A_xy \u2260 0); normalize each to a unit vector (positive scaling preserves the strict signs)."
-  },
-  {
-   "name": "exists_isotropic_reposition",
-   "file": "HeadComplexity/Separations/Forster.lean",
-   "status": "hard",
-   "pref": "P5.2-P5.3",
-   "note": "Forster's isotropic-position kernel (deepest analytic leaf): general-position perturbation under the sign margin, then minimize \u03a6(P)=\u2211_x log(u_x\u1d40 P u_x) over {P\u227b0, det P=1} (coercivity via (\u2605) count + compactness), and read the isotropy \u2211_x \u00fb_x \u00fb_x\u1d40 = (N/r)I from the first-order/Lagrange condition."
-  },
-  {
-   "name": "forster_main_chain",
-   "file": "HeadComplexity/Separations/Forster.lean",
-   "status": "hard",
-   "pref": "P5.4",
-   "note": "Lower bound: \u2211_{x,y} M_xy\u27e8u_x,v_y\u27e9 = \u2211|\u27e8u_x,v_y\u27e9| \u2265 \u2211\u27e8u_x,v_y\u27e9\u00b2 = N\u00b2/r (unit vecs give |t|\u2265t\u00b2; isotropy hiso applied to each v_y with \u2016v_y\u2016=1). Upper bound: same sum = tr(U\u1d40 M V) \u2264 specNorm\u00b7N by column Cauchy\u2013Schwarz. Combine N\u00b2/r \u2264 specNorm\u00b7N."
-  },
-  {
-   "name": "exists_shatter_polynomials",
-   "file": "HeadComplexity/Separations/NDISJ.lean",
-   "status": "closed_manual",
-   "pref": "P10.1",
-   "note": "recovered from FAILED Jules session 12276953153585817114 (platform failed AFTER agent completed; diff pulled and merged manually)"
-  },
-  {
-   "name": "pow_le_ncard_signPatterns",
-   "file": "HeadComplexity/Separations/NDISJ.lean",
-   "status": "hard",
-   "pref": "P10.1",
-   "note": "\u03b7-shift the family (Q_j \u2212 \u03b7) as in signRank_le_card_of_signRepr_sum (PROVED template), inject the 2^k strict labellings into the strict signPatterns of (Q_1,\u2026,Q_k), and apply warren_sign_patterns (external) + warren_pow_simp (proved) for the (2ek)^{2H} ceiling."
-  }
- ]
+  "entries": [
+    {
+      "name": "warren_sign_patterns",
+      "file": "HeadComplexity/Separations/Warren.lean",
+      "status": "external",
+      "pref": "P9",
+      "note": "Cite-level monument; DO NOT ATTEMPT (real algebraic geometry: components plus Milnor/Warren bounds). pow_le_of_leftShatters is fully proved modulo only this leaf."
+    },
+    {
+      "name": "clearedForm_eq_headSubsetExpansion",
+      "file": "HeadComplexity/Separations/SignRankBridge.lean",
+      "status": "jules_ready",
+      "pref": "P2.3a",
+      "note": "Exact Finset.powerset expansion of the cleared head score. Expand each product of A_h(x)+B_h(y) with Finset.prod_add, group by the A-side subset T, and separate numerator choices into headSubsetLeftDeriv and headSubsetRightDeriv. Parent assembly: exists_clearedForm_outerProduct_decomp first rewrites by this identity, then applies exists_headSubsetExpansion_outerProduct_decomp."
+    },
+    {
+      "name": "exists_headSubsetExpansion_outerProduct_decomp",
+      "file": "HeadComplexity/Separations/SignRankBridge.lean",
+      "status": "jules_ready",
+      "pref": "P2.3b",
+      "note": "Boundary merge/count for the P2.3 subset expansion. Use two tagged copies of powerset univ; omit the zero left term at T=empty, fold the right term at T=univ into the left term, and keep two terms for interior T. The empty-set right piece has constant left factor. Count with card_powerset and two_mul_two_pow_sub. Consumed by the sorry-free exists_clearedForm_outerProduct_decomp parent."
+    },
+    {
+      "name": "signRank_le_of_multilinear_signRepr",
+      "file": "HeadComplexity/Separations/SignRankBridge.lean",
+      "status": "hard",
+      "pref": "P3.2-P3.3",
+      "note": "Factor eval(cubePoint(blockJoin x y)) P as a sum over left supports mu with |mu|<=d, then apply signRank_le_card_of_signRepr_sum and card_subsets_card_le. Multilinearity must be used to identify each monomial with its squarefree support; the empty support supplies the constant factor."
+    },
+    {
+      "name": "exists_generalPosition_reposition",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "hard",
+      "pref": "P5.2",
+      "note": "Perturb the finite unit family inside its strict sign-margin neighborhood so every injective Fin r selection is linearly independent. The excluded dependent configurations form a finite union of measure-zero subsets of the product of spheres. Consumed by exists_isotropic_reposition."
+    },
+    {
+      "name": "exists_isotropic_of_generalPosition",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "hard",
+      "pref": "P5.3",
+      "note": "Deepest analytic kernel. From general position and r<card, minimize the log quadratic-form potential over positive-definite determinant-one matrices; prove coercivity, obtain a minimizer, and derive the isotropy identity from the first-order condition. Consumed by exists_isotropic_reposition."
+    }
+  ]
 }

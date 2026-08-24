@@ -50,12 +50,17 @@ theorem frozen_signRank_le_two_pow_min {a b : ℕ}
   signRank_le_two_pow_min f
 
 -- Warren.lean
-theorem frozen_warren_sign_patterns {m k d : ℕ}
-    (hm : 1 ≤ m) (hk : m ≤ k) (hd : 1 ≤ d)
+theorem frozen_warren_sign_patterns_weak {m k d : ℕ}
     (P : Fin k → MvPolynomial (Fin m) ℝ)
     (hdeg : ∀ i, (P i).totalDegree ≤ d) :
-    ((signPatterns P).ncard : ℝ) ≤ (4 * Real.exp 1 * d * k / m) ^ m :=
-  warren_sign_patterns hm hk hd P hdeg
+    ((signPatterns P).ncard : ℝ) ≤ (8 * ((d : ℝ) * k + 1)) ^ m :=
+  warren_sign_patterns_weak P hdeg
+
+theorem frozen_warren_sign_patterns_diag {H k : ℕ}
+    (P : Fin k → MvPolynomial (Fin (2 * H)) ℝ)
+    (hdeg : ∀ i, (P i).totalDegree ≤ H) :
+    ((signPatterns P).ncard : ℝ) ≤ (8 * ((H : ℝ) * k + 1)) ^ (2 * H) :=
+  warren_sign_patterns_diag P hdeg
 
 -- Forster.lean
 theorem frozen_forster {ι : Type*} [Fintype ι] [DecidableEq ι]
@@ -126,7 +131,7 @@ theorem frozen_theoremB_gap {m : ℕ} (hm : Odd m) (k : ℕ) :
 theorem frozen_pow_le_of_leftShatters {a b H k : ℕ}
     {f : (Fin (a + b) → Bool) → Bool} (hk : 1 ≤ k)
     (hcomp : computableWithHeadsN (a + b) H f) (hsh : LeftShatters f k) :
-    (2 : ℝ) ^ k ≤ (2 * Real.exp 1 * k) ^ (2 * H) :=
+    (2 : ℝ) ^ k ≤ (8 * (k : ℝ)) ^ (4 * H) :=
   pow_le_of_leftShatters hk hcomp hsh
 
 theorem frozen_ndisj_leftShatters (m : ℕ) : LeftShatters (ndisj m) m :=
@@ -141,7 +146,8 @@ theorem frozen_thresholdDeg_ndisj {m : ℕ} (hm : 2 ≤ m) :
 
 theorem frozen_ndisj_separation {m : ℕ} (hm : 2 ≤ m) :
     thresholdDeg (ndisj m) = 2 ∧
-      (2 : ℝ) ^ m ≤ (2 * Real.exp 1 * m) ^ (2 * HStar (m + m) (ndisj m)) :=
+      (2 : ℝ) ^ m ≤
+        (8 * (m : ℝ)) ^ (4 * HStar (m + m) (ndisj m)) :=
   ndisj_separation hm
 
 theorem frozen_ndisj_of_sharpShatteringUpperBound

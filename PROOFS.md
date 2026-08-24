@@ -567,55 +567,47 @@ denominator are positive), so taking `logb 2`:
 
 ---
 
-## §9 Warren's theorem — `warren_sign_patterns` (P9)
+## §9 Weak Warren-type bound — `warren_sign_patterns_weak` (P9)
 
-**Statement (frozen).** `1 ≤ m ≤ k`, `1 ≤ d`, polynomials
-`P i : MvPolynomial (Fin m) ℝ` with `totalDegree ≤ d`:
-`(signPatterns P).ncard ≤ (4·e·d·k/m)^m`, where `signPatterns` is the set
-of Boolean vectors `s` realized as `s i = decide (0 < eval x (P i))` at
-points `x` where no `P i` vanishes.
+**Statement (frozen).** For arbitrary `m k d` and polynomials
+`P i : MvPolynomial (Fin m) ℝ` of total degree at most `d`:
+`(signPatterns P).ncard ≤ (8·(d·k+1))^m`.  This is the exact Lean 4.28
+producer interface.  It is hypothesis-free and deliberately weaker than
+Warren's sharp `(4edk/m)^m` estimate.
 
-### P9.1 Patterns are separated by components (fully detailed)
+The producer proof uses a finite-witness `Nat`-valued core.  The subtype of
+realized Boolean patterns is finite automatically; choose one witness per
+pattern and charge different strict patterns to different connected
+components of `{x | ∏ i, P_i(x) ≠ 0}`.
 
-Let `U := {x ∈ ℝ^m : ∀ i, eval x (P i) ≠ 0}` (open: finite intersection of
-preimages of `ℝ∖{0}` under the continuous `eval · (P i)`).  On each
-connected component of `U`, every `eval · (P i)` has constant sign
-(a continuous nonvanishing function on a connected set cannot change sign:
-the preimages of `(0,∞)` and `(−∞,0)` are open, disjoint, cover).  Hence
-the map {components} → {patterns} is well-defined and **surjective** onto
-`signPatterns P`, so `ncard (signPatterns P) ≤ #components(U)`.
+Put `D := d*k`, `W := ∏ i, P_i`, and
 
-### P9.2 Component bound (Warren 1968, Theorems 1–2; cited)
+    φ(x) := W(x)^2 / (1 + Σ_i x_i^2)^(D+1).
 
-`#components(ℝ^m ∖ ∪_i Z(P_i)) ≤ Σ_{j=0}^{m} 2^j·C(k,j)·binom-terms ≤
-(4edk/m)^m` for `k ≥ m ≥ 1`, `d ≥ 1`.  Proof architecture (for the Lean
-decomposition; the bookkeeping is Warren's):
+Positive superlevel sets of `φ` are compact.  On one selected component at a
+time, a sufficiently small generic linear perturbation has an interior
+maximum.  Sard applied to `grad φ` makes these critical points nondegenerate.
+Clearing the positive denominator yields `m` polynomial equations of degree
+at most `e := 2D+4` and one distinct nondegenerate solution per selected
+component.  For the perturbation estimate on `Fin m → ℝ`, remember that the
+Pi norm is the sup norm: use `|Σ v_i x_i| ≤ m*‖v‖*‖x‖`.
 
-1. *Perturbation.*  For small generic `ε > 0`, each component of `U`
-   contains a component of `U_ε := {∀ i, |P_i| > ε}`, and the boundary
-   varieties `{P_i = ±ε}` are smooth hypersurfaces meeting transversally
-   (Sard's theorem — in mathlib — applied to the polynomial maps; generic
-   regular values `±ε`).
-2. *Charging.*  Each bounded component of `U_ε` is charged to a critical
-   point of a generic linear functional on an intersection of ≤ m of the
-   `2k` hypersurfaces; unbounded components are handled by intersecting
-   with a large sphere (adds the `+1`-type terms).
-3. *Counting.*  Critical points of a generic linear functional on a smooth
-   complete intersection of `j` hypersurfaces of degree ≤ d in `ℝ^m` are
-   solutions of a polynomial system of `m` equations of degrees
-   ≤ d, d−1, …; Bézout-type counting bounds them by `d^j (d−1)^{m−j} ≤
-   d(2d)^{m−1}`-order terms (Milnor 1964 / Oleinik–Petrovsky).
-4. *Assembly.*  Summing `Σ_j 2^j C(k,j)·(deg-bound)` and estimating
-   binomials by `C(k,j) ≤ (ek/j)^j` yields `(4edk/m)^m` for `k ≥ m`.
+The root-count kernel deliberately avoids global Bézout.  Given equations
+`F_i` of degree at most `e` and selected nondegenerate roots, perturb them to
 
-References: H. E. Warren, *Lower bounds for approximation by nonlinear
-manifolds*, Trans. AMS 133 (1968), Thm 2–3; J. Milnor, *On the Betti
-numbers of real varieties* (1964); Matoušek, *Lectures on Discrete
-Geometry*, §6.2.  **Audit scope note:** the layer freezes only the
-*statement*; the internal constants are taken from the literature.  The
-deep kernel for a future Lean proof is step 3 (no multivariate Bézout in
-mathlib); steps 1–2 need real-analytic infrastructure (Sard exists).  This
-is the hardest leaf of the layer and is flagged as such in SEPARATIONS.md.
+    G_i(t,x) := F_i(x) + t*x_i^(e+1).
+
+The parametric implicit-function theorem preserves all selected roots for a
+common small `t ≠ 0`.  At the perturbed roots,
+`x_i^(e+1) = -t⁻¹ F_i(x)`.  Strong induction on total degree therefore puts
+the evaluation vector of every monomial in the span of the box monomials
+`α_i ≤ e`, of which there are `(e+1)^m`.  Coordinate-product Lagrange
+separators for the distinct perturbed roots span the whole function space,
+so the number of selected roots is at most `(e+1)^m`.  With `e=2D+4` this is
+`(2D+5)^m ≤ (8(D+1))^m`, proving the frozen statement.
+
+The general H* theorem is a Lean 4.31 restatement of this 4.28 endpoint; it is
+upgraded/imported only after the producer is complete.
 
 ---
 
@@ -624,7 +616,7 @@ is the hardest leaf of the layer and is flagged as such in SEPARATIONS.md.
 ### P10.1 `pow_le_of_leftShatters`
 
 **Claim.** `1 ≤ k`, `computableWithHeadsN (a+b) H f`, `LeftShatters f k` ⟹
-`2^k ≤ (2·e·k)^{2H}`.
+`2^k ≤ (8k)^{4H}`.
 
 **Proof.**  Fix heads, `w`, `τ`, and the shattered left points
 `z_1, …, z_k`.  By P2.1, for input `blockJoin z_j w'`:
@@ -652,8 +644,8 @@ requires realizing two different labels at `z_1` — contradiction, the
 hypotheses are void.  (If one prefers: the conclusion `2^k ≤ 1` is
 unreachable, but the case never occurs.)
 
-*Case `1 ≤ H`, `k < 2H`.*  `2^k ≤ 2^{2H} ≤ (2ek)^{2H}` since
-`2ek ≥ 2e ≥ 2` for `k ≥ 1`.
+*Case `1 ≤ H`, `k < 2H`.*  Since `2 ≤ 8k` and `k < 2H ≤ 4H`, monotonicity
+of powers gives `2^k ≤ (8k)^{4H}`.
 
 *Case `1 ≤ H`, `k ≥ 2H`.*  Shattering supplies, for every
 `s : Fin k → Bool`, a witness `w_s` with labels `s`; let
@@ -666,10 +658,12 @@ polynomials `Q̃_j := Q_j − η` (same degrees) satisfy, at every witness:
 `s j = true ⇒ Q̃_j(ξ_s) > 0`; `s j = false ⇒ Q̃_j(ξ_s) ≤ −η < 0`.  Thus each
 of the `2^k` label vectors `s` is a *strict* sign pattern of
 `(Q̃_1, …, Q̃_k)` realized at `ξ_s`, where no `Q̃_j` vanishes; distinct `s`
-are distinct patterns.  Warren (`m := 2H ≥ 2·1`, `d := H`, `k` polynomials;
-hypotheses `1 ≤ 2H ≤ k`, `1 ≤ H` hold in this case):
+are distinct patterns.  The diagonal weak-Warren endpoint gives
 
-    2^k ≤ (4·e·H·k/(2H))^{2H} = (2ek)^{2H}.  ∎
+    2^k ≤ (8(Hk+1))^{2H}.
+
+Here `2H ≤ k` implies `H ≤ k`; the deliberately loose constants absorb the
+quadratic base, yielding `(8(Hk+1))^{2H} ≤ (8k)^{4H}`.  ∎
 
 ### P10.2 `HStar_ndisj_le` (`H*(NDISJ_m) ≤ m`)
 
@@ -866,9 +860,10 @@ verified to elaborate and to be TRUE; the endpoints they close are noted):
 29. `exists_clearedForm_outerProduct_decomp` (P2.3, SignRankBridge) — the
     head-subset regrouping: the cleared score `Q(x,y)` decomposes as
     `2^(H+1)−2` outer products with the `T=∅` piece constant (`Finset.prod_add`
-    over the A-side/B-side choice, boundary sets `∅,[H]` merging).  The **sole
-    residual debt** of the now-PROVED frozen bridge `signRank_le_of_computableWithHeadsN`
-    and of `signRank_le_of_headForm`.  hard.
+    over the A-side/B-side choice, boundary sets `∅,[H]` merging).  Now a PROVED
+    assembly of items 34 and 35 below; those two leaves are the residual debt of
+    the frozen bridge `signRank_le_of_computableWithHeadsN` and
+    `signRank_le_of_headForm`.
 
 Endpoints CLOSED this pass (each now proved modulo the residual hard leaves above):
 
@@ -884,3 +879,61 @@ Endpoints CLOSED this pass (each now proved modulo the residual hard leaves abov
   `forster_main_chain`), which remain the residual hard leaves.
 * Leaves proved directly: `exists_multilinear_signRepr` (P3.1, via `toMultilinear`),
   `kroneckerPow_mem_pm_one` (P8.3), `signRank_tensorReindexed_eq_kroneckerPow` (P8.2).
+
+**Decomposition leaves surfaced by the s1_opus_audit pass, run 20260824T101002Z**
+(statements verified to elaborate and to be TRUE; parents that now assemble from
+them are noted):
+
+30. `exists_generalPosition_reposition` (P5.2, Forster) — perturb unit `u` (sign
+    margin vs `v`) into unit `u₁` in **general position** (new `def
+    InGeneralPosition u := ∀ injective g : Fin r → ι, LinearIndependent ℝ (u ∘ g)`)
+    preserving every strict inner-product sign.  Genericity (finite union of
+    measure-zero degenerate configs).  hard.
+31. `exists_isotropic_of_generalPosition` (P5.3, Forster) — the deepest analytic
+    kernel: `InGeneralPosition u` (+ unit `u,v`; sign margin; `r < N`) ⟹ isotropic
+    reposition `u',v'` with `∑_x ⟪u'_x,w⟫² = (N/r)‖w‖²`.  Minimize
+    `Φ(P)=∑ log(u_xᵀ P u_x)` over `{P≻0, det P=1}`; coercivity from general position
+    + `r < N`; Lagrange condition = isotropy.  hard (multi-hour; mathlib
+    compactness/log-det).  Together 30+31 **assemble the frozen-adjacent parent
+    `exists_isotropic_reposition`** (P5.2–P5.3), which is now a compiling assembly.
+32. `forster_isotropy_lower` (P5.4a, Forster) — **PROVED**: `N²/r ≤
+    ∑_{x,y} M_xy⟪u_x,v_y⟫` via `M_xy⟪u_x,v_y⟫ = |⟪u_x,v_y⟫| ≥ ⟪u_x,v_y⟫²`
+    (`|t| ≤ ‖u_x‖‖v_y‖ = 1`) and `∑ ⟪⟫² = N²/r` (isotropy on each `v_y`).
+33. `forster_specNorm_upper` (P5.4b, Forster) — the column Cauchy–Schwarz upper
+    bound `∑_{x,y} M_xy⟪u_x,v_y⟫ ≤ specNorm M · N` (expand `⟨u_x,v_y⟩=∑_j`, swap to
+    `∑_j ⟨U^j, toEuclideanCLM M · V^j⟩`, `le_opNorm` + two CS with
+    `∑_j‖U^j‖²=N`).  **PROVED** by direct `EuclideanSpace` coordinate expansion
+    and two Cauchy–Schwarz bounds.  Items 32+33 assemble the now-PROVED parent
+    `forster_main_chain` (P5.4).
+
+**Decomposition leaves surfaced by the s4_codex_audit pass, run
+20260824T101002Z** (both statements elaborate and are the two substantive
+halves of P2.3):
+
+34. `clearedForm_eq_headSubsetExpansion` (P2.3a, SignRankBridge) — expand the
+    cleared score exactly over `T ∈ powerset univ`.  The summand is
+    `α_T(x)ψ_T(y) + φ_T(x)(β_T(y) − τψ_T(y))`, expressed by the reusable
+    `headSubset*` factor definitions.  This is the pure `Finset.prod_add` and
+    regrouping step, independent of rank counting.  `jules_ready`.
+35. `exists_headSubsetExpansion_outerProduct_decomp` (P2.3b, SignRankBridge) —
+    package the expansion from item 34 into outer products: omit the zero
+    `T=∅` left-derivative term, fold the `T=univ` right term into its left term,
+    retain two terms for each interior subset, and use `two_mul_two_pow_sub` for
+    the bound `2^(H+1)−2`.  It also exposes the constant-left `T=∅` term needed
+    by the proved η-shift helper.  `jules_ready`.
+36. `exists_unit_sign_factorization` (P5.1, Forster) — **PROVED**.  Realize the
+    minimum in the natural-number `sInf`, choose a basis of the resulting
+    matrix's column space indexed by `Fin (signRank M)`, and use basis values
+    and column coordinates as an exact inner-product factorization.  Strict
+    sign matching makes every factor vector nonzero; normalization by inverse
+    norms preserves all signs and produces unit vectors.
+
+Endpoints CLOSED this pass:
+
+* **`pow_le_ncard_signPatterns`** (P10.1) — PROVED via the η-shift + strict-sign-
+  pattern injection + `warren_sign_patterns` (`m:=2H, d:=H`; reusable helper
+  `exists_uniform_pos_shift`).  So **`pow_le_of_leftShatters`** (the split-shattering
+  head lower bound) is fully proved modulo only the external `warren_sign_patterns`.
+* **`exists_isotropic_reposition`** (P5.2–P5.3) and **`forster_main_chain`** (P5.4) —
+  now compiling assemblies of items 30–33; the only residual debts in this chain
+  are items 30 and 31.

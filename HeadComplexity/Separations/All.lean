@@ -19,7 +19,7 @@ Asymptotic separations between head complexity `H*` and threshold degree
 (treat them as frozen; see `SEPARATIONS.md`), proofs may contain `sorry`.
 
 External inputs stated as targets:
-* `warren_sign_patterns` — Warren 1968 on sign patterns of polynomials;
+* `warren_sign_patterns_weak` — the Lean 4.28 weak Warren-type sign-pattern bound;
 * `forster` — Forster 2002 sign-rank lower bound;
 * `specNorm_kronecker` — spectral norm multiplicativity.
 

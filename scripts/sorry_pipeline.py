@@ -842,8 +842,12 @@ def jules_phase(ready, base_sha, iter_dir: Path):
             if state == "COMPLETED":
                 review(sid, info, "completed")
             elif state == "FAILED":
-                info["reviewed"] = True
-                log(f"jules {info['entry']['name']}: FAILED")
+                # the platform can flag FAILED right after the agent finished
+                # (seen 2026-08-24: complete proof delivered, then
+                # sessionFailed 2s later) — always pull and review the diff
+                log(f"jules {info['entry']['name']}: FAILED — pulling diff "
+                    f"anyway")
+                review(sid, info, "failed")
             elif age > JULES_SESSION_BUDGET:
                 log(f"jules {info['entry']['name']}: 2h budget over, "
                     f"pulling partial (state={state})")

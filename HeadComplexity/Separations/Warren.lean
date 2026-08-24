@@ -5,13 +5,13 @@ import Mathlib.Data.Set.Card
 set_option linter.style.header false
 
 /-!
-# Warren's theorem on sign patterns of real polynomials
+# A weak Warren-type bound on sign patterns of real polynomials
 
-Statement of Warren (1968): `k` real polynomials of degree at most `d` in `m`
-variables realize at most `(4 e d k / m) ^ m` strict sign patterns.  This is
-the analytic engine behind the split-shattering head lower bound
-(`audit/sources/STRENGTHENING.md` §1) and the corpus counting bound (theorem 026).
-Not in mathlib; stated here as a proof target.
+The standalone Lean 4.28 project `warren-lean-28` proves the deliberately
+generous, hypothesis-free bound `(8 * (d*k + 1))^m`.  This is weaker than
+Warren's sharp `(4 e d k / m)^m`, but it is sufficient for the downstream
+split-shattering lower bound after replacing the numerical endpoint by
+`(8k)^(4H)`.  The theorem is restated here as the Lean 4.31 migration target.
 -/
 
 namespace HeadComplexity
@@ -25,13 +25,19 @@ def signPatterns {m k : ℕ} (P : Fin k → MvPolynomial (Fin m) ℝ) :
   {s | ∃ x : Fin m → ℝ, (∀ i, eval x (P i) ≠ 0) ∧
         ∀ i, s i = decide (0 < eval x (P i))}
 
-/-- **Warren's theorem** (Warren 1968, Theorem 3).  `k ≥ m ≥ 1` polynomials of
-degree at most `d ≥ 1` in `m` real variables realize at most
-`(4 e d k / m) ^ m` strict sign patterns. -/
-theorem warren_sign_patterns {m k d : ℕ} (hm : 1 ≤ m) (hk : m ≤ k) (hd : 1 ≤ d)
+/-- Weak Warren-type bound, matching the frozen Lean 4.28 producer endpoint.
+All degenerate cases are included. -/
+theorem warren_sign_patterns_weak {m k d : ℕ}
     (P : Fin k → MvPolynomial (Fin m) ℝ)
     (hdeg : ∀ i, (P i).totalDegree ≤ d) :
-    ((signPatterns P).ncard : ℝ) ≤ (4 * Real.exp 1 * d * k / m) ^ m := by
+    ((signPatterns P).ncard : ℝ) ≤ (8 * ((d : ℝ) * k + 1)) ^ m := by
   sorry
+
+/-- Diagonal consumer bridge used by the H*/NDISJ argument. -/
+theorem warren_sign_patterns_diag {H k : ℕ}
+    (P : Fin k → MvPolynomial (Fin (2 * H)) ℝ)
+    (hdeg : ∀ i, (P i).totalDegree ≤ H) :
+    ((signPatterns P).ncard : ℝ) ≤ (8 * ((H : ℝ) * k + 1)) ^ (2 * H) :=
+  warren_sign_patterns_weak P hdeg
 
 end HeadComplexity

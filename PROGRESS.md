@@ -412,3 +412,111 @@ sorry-free proof.  Pulled the 139-line diff manually, applied surgically
 normal form is now fully proved.  NDISJ.lean has 1 sorry left
 (pow_le_ncard_signPatterns).  Lesson encoded for the pipeline: FAILED
 sessions should still be pulled and reviewed.
+
+## s1_opus_audit iter_001 (2026-08-24, run 20260824T101002Z)
+
+Entry state: 7 sorried decls (1 external `warren_sign_patterns`, 6 hard, 0
+jules_ready).  `lake build` green (2504 jobs), `lake env lean
+scripts/smoke/FrozenStatements.lean` exit 0, forbidden-construct scan
+(`axiom`/`admit`/`native_decide`/`unsafe`/`maxHeartbeats`/`maxRecDepth`) clean,
+`git diff --check` clean.
+
+**Audit.** Checked every sorried declaration against its PROOFS.md item
+(hypotheses, types, edge cases, provability as stated).  No frozen statement is
+wrong; no non-frozen helper needed repair; no `BLOCKER_*` needed.
+`warren_sign_patterns` remains the sole `external` leaf.  Spot-verified the P2.3
+identity at `H = 1` (LHS = 2 outer products = `2^(1+1) − 2`, one constant piece)
+and the P5.3 isotropy phrasing (`∑_x ⟪u'_x,w⟫² = (N/r)‖w‖²` ⇔ `∑ û û ᵀ = (N/r)I`).
+
+**Proved (no axiom/admit/native_decide/maxHeartbeats):**
+- `pow_le_ncard_signPatterns` (**P10.1**, NDISJ) — the Warren application with the
+  η-shift.  Added the small reusable helper `exists_uniform_pos_shift` (one
+  positive shift below every "true"-slot value of a finite `(Fin k→Bool)→Fin k→ℝ`
+  family; isolated to keep the main proof within budget), then η-shift
+  `Q'_j := Q_j − C η`, show every labelling `s` is a strict sign pattern of `Q'`
+  realized at `ξ s` (so `signPatterns Q' = univ`, `ncard = 2^k` via
+  `Fintype.card_fun`), and apply `warren_sign_patterns` with `m := 2H`, `d := H`
+  (the conclusion `(4 e H k/(2H))^{2H}` matches verbatim).  **This removes the last
+  `sorry` from NDISJ.lean: `pow_le_of_leftShatters` (the split-shattering head
+  lower bound) is now FULLY PROVED modulo only the external Warren monument.**
+- `forster_isotropy_lower` (**P5.4a**, Forster, NEW) — the isotropy lower bound
+  `N²/r ≤ ∑_{x,y} M_xy⟪u_x,v_y⟫`.  Each term `= |⟪u_x,v_y⟫|` (sign match,
+  `|M_xy| = 1`) `≥ ⟪u_x,v_y⟫²` (`|t| ≤ ‖u_x‖‖v_y‖ = 1`), and
+  `∑_{x,y} ⟪u_x,v_y⟫² = ∑_y (N/r)‖v_y‖² = N²/r` by `hiso` on each `v_y`
+  (`Finset.sum_comm` + `abs_real_inner_le_norm`).
+
+**Mandatory decomposition.** Hardest open leaf = `exists_isotropic_reposition`
+(**P5.2–P5.3**, Forster's isotropic-position kernel — the deepest analytic leaf of
+the layer).  Split along the PROOFS.md P5.2/P5.3 boundary into two named helpers
+(new `def InGeneralPosition` = "any `r` of the vectors, chosen injectively, are
+linearly independent"): `exists_generalPosition_reposition` (P5.2 genericity:
+perturb `u` into general position preserving all strict signs) and
+`exists_isotropic_of_generalPosition` (P5.3 the log-det minimization to isotropy);
+the parent now assembles from them (recipe in its docstring).  Both helpers stay
+`hard` — the analytic kernel P5.3 is genuinely multi-hour (compactness +
+first-order condition), so the ~30-min granularity target is inapplicable here;
+the split isolates the pure genericity step (P5.2) from the compactness core (P5.3).
+
+**Extra decomposition (as time permits).** Split `forster_main_chain` (P5.4) into
+`forster_isotropy_lower` (P5.4a, PROVED above) and `forster_specNorm_upper`
+(P5.4b, the column Cauchy–Schwarz / `specNorm` upper bound — isolated `hard`, the
+most tractable remaining Forster leaf); the parent assembles them and does the
+`N²/r ≤ specNorm·N ⇒ N ≤ r·specNorm` arithmetic.
+
+**Queue now:** 7 sorried decls — 1 external (`warren`), 6 hard, 0 jules_ready.
+Two hard parents (`exists_isotropic_reposition`, `forster_main_chain`) closed to
+assemblies this pass; `pow_le_ncard_signPatterns` proved.  `sorry_queue.json`
+rebuilt to match the source inventory exactly.  `lake build` green (2504 jobs);
+`lake env lean scripts/smoke/FrozenStatements.lean` green; forbidden-construct
+scan and `git diff --check` clean.
+
+**Proved `forster_specNorm_upper`.** Used `norm_sq_eq` and `real_inner_le_norm` over the components of the `EuclideanSpace` representations. The column Cauchy-Schwarz upper bound is now fully verified, completing P5.4b.
+
+**Queue now:** 6 sorried decls — 1 external (`warren`), 5 hard, 0 jules_ready. `sorry_queue.json` rebuilt. `lake build` and `scripts/smoke/FrozenStatements.lean` run green.
+
+**Checker Run (s3_gemini_check)**:
+Verified the recent implementation of `forster_specNorm_upper` (P5.4b).
+- The proof honestly follows the PROOFS.md strategy (expanding inner products, swapping sums, using `ContinuousLinearMap.le_opNorm` via `toEuclideanCLM`, and column Cauchy-Schwarz).
+- The frozen statement of `forster_specNorm_upper` was perfectly preserved (no hypothesis smuggling or conclusion weakening).
+- `sorry_queue.json` accurately reflects the 6 remaining sorry leaves (1 external, 5 hard, 0 jules_ready) and correctly removed `forster_specNorm_upper`.
+- The build remains green and no forbidden constructs were used.
+
+## s4_codex_audit iter_001 (2026-08-24, run 20260824T101002Z)
+
+**Audit.** Checked all 6 declarations containing `sorry` at entry against their
+PROOFS.md items and the frozen smoke restatements: P2.3
+`exists_clearedForm_outerProduct_decomp`, P3.2
+`signRank_le_of_multilinear_signRepr`, P5.1 `exists_unit_sign_factorization`,
+P5.2 `exists_generalPosition_reposition`, P5.3
+`exists_isotropic_of_generalPosition`, and external P9
+`warren_sign_patterns`.  Their hypotheses, types, edge cases, and claimed
+conclusions are sound.  No frozen or non-frozen statement needed repair, no
+`BLOCKER_*.md` was needed, and Warren remains the sole external leaf.
+
+**Proved:**
+- `exists_unit_sign_factorization` (P5.1) — realized a minimum-rank
+  sign-matching matrix using `Nat.sInf_mem`, chose a basis of its column space
+  indexed by `Fin (signRank M)`, and represented every entry as the inner
+  product of a row of basis values with the corresponding column-coordinate
+  vector.  Strict sign matching proves both raw factor vectors are nonzero;
+  inverse-norm scaling makes them unit vectors while preserving all strict
+  signs.  This closes the algebraic factorization input to Forster; only the
+  P5.2/P5.3 analytic repositioning leaves remain in that chain.
+
+**Mandatory decomposition.** The deepest open leaf, P5.3 isotropic position,
+was already split earlier in this iteration, so the hardest untouched own leaf
+was P2.3's cleared-score subset regrouping, the central residual debt of the 028
+bridge.  Split it into two substantive named helpers:
+- `clearedForm_eq_headSubsetExpansion` (P2.3a) — the exact powerset expansion
+  and regrouping into the two left/right numerator choices for each head subset.
+- `exists_headSubsetExpansion_outerProduct_decomp` (P2.3b) — the boundary
+  merges at `T = ∅` and `T = univ`, the constant-left witness, and the
+  `2^(H+1)-2` rank-one-piece count.
+The original `exists_clearedForm_outerProduct_decomp` parent is now a compiling,
+sorry-free assembly of these helpers, with its assembly recipe in the docstring
+and queue notes.  Both new leaves are self-contained and marked `jules_ready`.
+
+**Queue now:** 6 sorried declarations — 1 external, 2 `jules_ready`, 3 hard.
+`sorry_queue.json` exactly matches the source inventory.  `lake build` is green
+(2504 jobs); `lake env lean scripts/smoke/FrozenStatements.lean` is green; the
+forbidden-construct scan, JSON validation, and `git diff --check` are clean.
