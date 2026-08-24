@@ -230,16 +230,255 @@ theorem thresholdDegLE_tensorDistThreshold {m : ℕ} (hm : Odd m) (k : ℕ) :
       · intro h
         simp [h, h_pos_prod]
 
+/-- Model internals (PROOFS.md P1.3): a head family computing `f` transports
+along a coordinate reindexing `e : Fin n' ≃ Fin n` to one computing
+`f ∘ (· ∘ e.symm)`, by relabelling each head's `posEmbed` through `e` (all other
+head data unchanged).  Matched positions have equal embeddings, hence equal
+attention weights/values, and the finite sums reindex by `Equiv.optionCongr e`. -/
+private theorem computableWithHeadsN_comp_equiv_forward {n n' H : ℕ} (e : Fin n' ≃ Fin n)
+    (f : (Fin n → Bool) → Bool)
+    (h : computableWithHeadsN n H f) :
+    computableWithHeadsN n' H (fun z' => f (z' ∘ e.symm)) := by
+  rcases h with ⟨d, Hs, w, τ, hw⟩
+  let Hs' : HeadFamily n' d H := fun h =>
+    { tokenEmbed := (Hs h).tokenEmbed
+      posEmbed   := fun p' => (Hs h).posEmbed (p'.map e)
+      WQ         := (Hs h).WQ
+      WK         := (Hs h).WK
+      WV         := (Hs h).WV }
+  refine ⟨d, Hs', w, τ, ?_⟩
+  intro z'
+  have h_tok : ∀ (h : Fin H) (p' : SeqPos n'),
+      Head.seqTok z' p' = Head.seqTok (z' ∘ e.symm) (p'.map e) := by
+    intro h p'
+    cases p' with
+    | none => rfl
+    | some i' =>
+      simp only [Head.seqTok, Option.map_some, Function.comp_apply, Equiv.symm_apply_apply]
+  have h_x : ∀ (h : Fin H) (p' : SeqPos n'),
+      Head.x (Hs' h) z' p' = Head.x (Hs h) (z' ∘ e.symm) (p'.map e) := by
+    intro h p'
+    simp only [Head.x, h_tok h p']
+    rfl
+  have h_sigma : ∀ (h : Fin H) (p' : SeqPos n'),
+      Head.sigma (Hs' h) z' p' = Head.sigma (Hs h) (z' ∘ e.symm) (p'.map e) := by
+    intro h p'
+    simp only [Head.sigma, h_x h p', h_x h none]
+    rfl
+  have h_val : ∀ (h : Fin H) (p' : SeqPos n'),
+      Head.value (Hs' h) z' p' = Head.value (Hs h) (z' ∘ e.symm) (p'.map e) := by
+    intro h p'
+    simp only [Head.value, h_x h p']
+    rfl
+  have h_denom : ∀ (h : Fin H),
+      Head.denominator (Hs' h) z' = Head.denominator (Hs h) (z' ∘ e.symm) := by
+    intro h
+    unfold Head.denominator
+    simp_rw [h_sigma h]
+    exact Equiv.sum_comp (Equiv.optionCongr e) (fun p => Head.sigma (Hs h) (z' ∘ e.symm) p)
+  have h_num : ∀ (h : Fin H),
+      Head.numerator (Hs' h) z' = Head.numerator (Hs h) (z' ∘ e.symm) := by
+    intro h
+    unfold Head.numerator
+    simp_rw [h_sigma h, h_val h]
+    exact Equiv.sum_comp (Equiv.optionCongr e)
+      (fun p => Head.sigma (Hs h) (z' ∘ e.symm) p • Head.value (Hs h) (z' ∘ e.symm) p)
+  have h_attn : ∀ (h : Fin H),
+      Head.attnUpdate (Hs' h) z' = Head.attnUpdate (Hs h) (z' ∘ e.symm) := by
+    intro h
+    unfold Head.attnUpdate
+    rw [h_denom h, h_num h]
+  have h_sum : headFamilyAttnUpdate Hs' z' = headFamilyAttnUpdate Hs (z' ∘ e.symm) := by
+    unfold headFamilyAttnUpdate
+    simp_rw [h_attn]
+  rw [h_sum]
+  exact hw (z' ∘ e.symm)
+
+/-- Model internals (PROOFS.md P1.3): head-computability is invariant under a
+coordinate reindexing `e : Fin n' ≃ Fin n`. -/
+theorem computableWithHeadsN_comp_equiv {n n' H : ℕ} (e : Fin n' ≃ Fin n)
+    (f : (Fin n → Bool) → Bool) :
+    computableWithHeadsN n H f ↔ computableWithHeadsN n' H (fun z' => f (z' ∘ e.symm)) := by
+  constructor
+  · exact computableWithHeadsN_comp_equiv_forward e f
+  · intro h_comp'
+    have h_fwd := computableWithHeadsN_comp_equiv_forward e.symm (fun z' => f (z' ∘ e.symm)) h_comp'
+    have h_eq : (fun z => (fun z' => f (z' ∘ e.symm)) (z ∘ e.symm.symm)) = f := by
+      ext z
+      dsimp
+      congr 1
+      ext i
+      simp
+    rwa [h_eq] at h_fwd
+
+/-- Head complexity `H*` is invariant under a coordinate reindexing
+`e : Fin n' ≃ Fin n` (PROOFS.md P1.3): `HStar n' (f ∘ (· ∘ e.symm)) = HStar n f`.
+This is the permutation-invariance lemma used silently in P8.1 to move to the
+all-left/all-right partition. -/
+theorem HStar_comp_equiv {n n' : ℕ} (e : Fin n' ≃ Fin n)
+    (f : (Fin n → Bool) → Bool) :
+    HStar n' (fun z' => f (z' ∘ e.symm)) = HStar n f := by
+  unfold HStar
+  have h_iff : (∃ k, computableWithHeadsN n' k (fun z' => f (z' ∘ e.symm))) ↔
+      (∃ k, computableWithHeadsN n k f) := by
+    constructor
+    · rintro ⟨k, hk⟩
+      exact ⟨k, (computableWithHeadsN_comp_equiv e f).mpr hk⟩
+    · rintro ⟨k, hk⟩
+      exact ⟨k, (computableWithHeadsN_comp_equiv e f).mp hk⟩
+  by_cases h1 : ∃ k, computableWithHeadsN n' k (fun z' => f (z' ∘ e.symm))
+  · have h2 : ∃ k, computableWithHeadsN n k f := h_iff.mp h1
+    rw [dif_pos h1, dif_pos h2]
+    congr 1
+    ext k
+    exact (computableWithHeadsN_comp_equiv e f).symm
+  · have h2 : ¬ (∃ k, computableWithHeadsN n k f) := fun h => h1 (h_iff.mpr h)
+    rw [dif_neg h1, dif_neg h2]
+
+/-- Standard block-reindexing equivalence mapping the all-`x`-blocks / all-`y`-blocks
+layout `Fin (k·m + k·m)` to the interleaved-blocks layout `Fin (k·(m+m))`
+(PROOFS.md P8.1).  Built from `finSumFinEquiv`, `finProdFinEquiv`,
+`Equiv.prodSumDistrib`. -/
+def tensorEquiv (m k : ℕ) : Fin (k * m + k * m) ≃ Fin (k * (m + m)) :=
+  finSumFinEquiv.symm.trans
+    ((Equiv.sumCongr finProdFinEquiv.symm finProdFinEquiv.symm).trans
+      ((Equiv.prodSumDistrib (Fin k) (Fin m) (Fin m)).symm.trans
+        ((Equiv.prodCongr (Equiv.refl (Fin k)) finSumFinEquiv).trans
+          finProdFinEquiv)))
+
+/-- The tensored family under the all-left / all-right input partition (PROOFS.md
+P8.1): `G̃ z' := G (z' ∘ E.symm)` reads its first `k·m` bits as the `k` x-halves
+and its last `k·m` bits as the `k` y-halves. -/
+def tensorDistThreshold_reindexed (m k : ℕ) : (Fin (k * m + k * m) → Bool) → Bool :=
+  fun z' => tensorDistThreshold m k (z' ∘ (tensorEquiv m k).symm)
+
+/-- Arithmetic tail of the tensored Forster bound (PROOFS.md P8.3): once Forster
+(`forster`) together with `specNorm (⊗^k S₁) = (2C)^k` and the index-type card
+`N = 2^{k·m}` yield `2^{k·m} ≤ r · (2C)^k` (with `C := C(m-1,(m-1)/2)` and
+`r := signRank S_k`), dividing by the positive `(2C)^k` gives
+`forsterRatio m ^ k ≤ r`, using `forsterRatio m = 2^(m-1)/C = 2^m/(2C)` (valid for
+`m ≥ 1`, hence `2^{k·m} = (2^m)^k` and `(2^m/(2C))^k = forsterRatio m ^ k`).  This
+isolates the elementary real-arithmetic tail from the Kronecker spectral core. -/
+theorem forsterRatio_pow_le_of_forster {m k r : ℕ} (hm : 1 ≤ m)
+    (hle : (2 : ℝ) ^ (k * m) ≤ (r : ℝ) * (2 * ((m - 1).choose ((m - 1) / 2) : ℝ)) ^ k) :
+    forsterRatio m ^ k ≤ (r : ℝ) := by
+  sorry
+
+/-- **Kronecker/Forster core** (PROOFS.md P8.1–P8.3): under the all-left/all-right
+partition the sign matrix `S_k := signMatrix (k·m) (k·m) G̃` is `(-1)^(k+1)` times a
+reindexed `k`-fold Kronecker power of the base sign matrix `S₁`, so
+`signRank S_k = signRank (⊗^k S₁)` (`signRank_reindex`, `signRank_neg`) and
+`specNorm (⊗^k S₁) = (2C)^k` (`specNorm_kronecker`); Forster (`forster`) with
+`N = 2^{km}` then gives `forsterRatio m ^ k ≤ signRank S_k`. -/
+theorem forsterRatio_pow_le_signRank_tensor {m : ℕ} (hm : Odd m) {k : ℕ} (hk : 1 ≤ k) :
+    forsterRatio m ^ k ≤
+      (signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) : ℝ) := by
+  sorry
+
+/-- **Sign-rank bridge for the reindexed tensored family** (PROOFS.md P8.3): `G̃`
+is nonconstant for `m ≥ 1`, `k ≥ 1` (set exactly one block to a distance-majority
+input, giving an odd XOR-count `1`, versus the all-false input with count `0`), so
+`1 ≤ H*` and the bridge `signRank_le_pow_HStar` applies.  Both hypotheses are
+essential: at `k = 0` (or `m = 0`) the family is constant, `H* = 0`, and
+`signRank = 1 > 2^1 - 2 = 0`. -/
+theorem signRank_le_pow_HStar_tensor {m k : ℕ} (hm : Odd m) (hk : 1 ≤ k) :
+    signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) ≤
+      2 ^ (HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) + 1) - 2 := by
+  haveI : NeZero k := ⟨by omega⟩
+  apply signRank_le_pow_HStar (k * m) (k * m) (tensorDistThreshold_reindexed m k)
+  have hHeq : HStar (k * m + k * m) (tensorDistThreshold_reindexed m k)
+      = HStar (k * (m + m)) (tensorDistThreshold m k) :=
+    HStar_comp_equiv (tensorEquiv m k) (tensorDistThreshold m k)
+  rw [hHeq]
+  have hm1 : 1 ≤ m := by have := Nat.odd_iff.mp hm; omega
+  -- `distThreshold` on the all-false block is `false`; on the majority pattern `true`.
+  have hdt_false : distThreshold m (fun _ : Fin (m + m) => false) = false := by
+    have hlb : leftBits m m (fun _ : Fin (m + m) => false) = fun _ => false := rfl
+    have hrb : rightBits m m (fun _ : Fin (m + m) => false) = fun _ => false := rfl
+    simp only [distThreshold, hlb, hrb, hammingDist_self]
+    simp only [decide_eq_false_iff_not, not_le]; omega
+  set patt : Fin (m + m) → Bool := blockJoin (fun _ => true) (fun _ => false) with hpatt
+  have hdt_patt : distThreshold m patt = true := by
+    rw [hpatt]
+    simp only [distThreshold, leftBits_blockJoin, rightBits_blockJoin]
+    have hd : hammingDist (fun _ : Fin m => true) (fun _ : Fin m => false) = m := by
+      unfold hammingDist
+      rw [Finset.filter_true_of_mem (fun i _ => by simp)]; simp
+    rw [hd]; simp only [decide_eq_true_eq]; omega
+  -- Witness input `z1`: block `0` is the majority pattern, all other blocks are false.
+  set z1 : Fin (k * (m + m)) → Bool :=
+    fun p => if (finProdFinEquiv.symm p).1 = 0 then patt (finProdFinEquiv.symm p).2 else false
+    with hz1def
+  have hboj_all : ∀ (j : Fin k) (i : Fin (m + m)),
+      blockOf z1 j i = if j = 0 then patt i else false := by
+    intro j i
+    show z1 (finProdFinEquiv (j, i)) = _
+    simp only [hz1def, Equiv.symm_apply_apply]
+  have hbo_false : ∀ j : Fin k,
+      blockOf (fun _ : Fin (k * (m + m)) => false) j = fun _ => false := fun _ => rfl
+  -- XOR-count is `1` at `z1` (only block `0`), hence `G z1 = true`.
+  have hG1 : tensorDistThreshold m k z1 = true := by
+    simp only [tensorDistThreshold, xorPower, decide_eq_true_eq]
+    have hfilter : (Finset.univ.filter fun j : Fin k => distThreshold m (blockOf z1 j)) = {0} := by
+      ext j
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
+      constructor
+      · intro hjt
+        by_contra hj0
+        have hbo : blockOf z1 j = fun _ => false := by
+          funext i; rw [hboj_all j i, if_neg hj0]
+        rw [hbo, hdt_false] at hjt; exact absurd hjt (by simp)
+      · intro hj0; subst hj0
+        have hbo : blockOf z1 (0 : Fin k) = patt := by
+          funext i; rw [hboj_all 0 i, if_pos rfl]
+        rw [hbo]; exact hdt_patt
+    rw [hfilter, Finset.card_singleton]; decide
+  -- XOR-count is `0` at the all-false input, hence `G = false`.
+  have hG0 : tensorDistThreshold m k (fun _ => false) = false := by
+    simp only [tensorDistThreshold, xorPower, decide_eq_false_iff_not]
+    have hfilter : (Finset.univ.filter fun j : Fin k =>
+        distThreshold m (blockOf (fun _ : Fin (k * (m + m)) => false) j)) = ∅ := by
+      apply Finset.filter_eq_empty_iff.mpr
+      intro j _
+      rw [hbo_false j, hdt_false]; simp
+    rw [hfilter]; simp
+  rcases Nat.eq_zero_or_pos (HStar (k * (m + m)) (tensorDistThreshold m k)) with h0 | hpos
+  · exfalso
+    have hconst := (HStar_eq_zero_iff (tensorDistThreshold m k)).mp h0 z1 (fun _ => false)
+    rw [hG1, hG0] at hconst
+    exact absurd hconst (by simp)
+  · exact hpos
+
 /-- **Theorem B, lower half**: the Forster ratio tensors, so
 `γ_m ^ k ≤ 2 ^ (H* + 1) - 2` for the `k`-fold XOR power.  (Route: the sign
 matrix under the all-left/all-right partition is a reindexed Kronecker power
 up to the global sign `(-1)^(k+1)`, which preserves spectral norm and
 sign-rank; apply `specNorm_kronecker`, `signRank_reindex`, `forster`, and the
-sign-rank bridge.) -/
+sign-rank bridge.  Assembled from `HStar_comp_equiv` (P1.3),
+`forsterRatio_pow_le_signRank_tensor` (P8.1–P8.3), and
+`signRank_le_pow_HStar_tensor` (P8.3).) -/
 theorem theoremB_HStar {m : ℕ} (hm : Odd m) {k : ℕ} (hk : 1 ≤ k) :
     forsterRatio m ^ k ≤
       (2 : ℝ) ^ (HStar (k * (m + m)) (tensorDistThreshold m k) + 1) - 2 := by
-  sorry
+  have h_eq : HStar (k * (m + m)) (tensorDistThreshold m k) =
+      HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) :=
+    (HStar_comp_equiv (tensorEquiv m k) (tensorDistThreshold m k)).symm
+  rw [h_eq]
+  have h1 := forsterRatio_pow_le_signRank_tensor hm hk
+  have h2 := signRank_le_pow_HStar_tensor (m := m) (k := k) hm hk
+  have h_two_le : 2 ≤ 2 ^ (HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) + 1) := by
+    calc 2 = 2 ^ 1 := by norm_num
+      _ ≤ 2 ^ (HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) + 1) :=
+        Nat.pow_le_pow_right (by norm_num) (by omega)
+  have h2_R : (signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) : ℝ) ≤
+      (2 : ℝ) ^ (HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) + 1) - 2 := by
+    have h2_cast : ((signRank (signMatrix (k * m) (k * m)
+        (tensorDistThreshold_reindexed m k)) : ℕ) : ℝ) ≤
+        ((2 ^ (HStar (k * m + k * m) (tensorDistThreshold_reindexed m k) + 1) - 2 : ℕ) : ℝ) :=
+      Nat.cast_le.mpr h2
+    rw [Nat.cast_sub h_two_le, Nat.cast_pow, Nat.cast_two] at h2_cast
+    exact h2_cast
+  exact h1.trans h2_R
 
 /-- **XOR sign encoding** (PROOFS.md P8.2): with the `signMatrix` encoding
 `e(true) = 1`, `e(false) = -1`, the sign of an XOR of `k` bits is

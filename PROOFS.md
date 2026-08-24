@@ -764,6 +764,82 @@ core is isolated:
 11. `warren_pow_simp` (P10.1) — `(4 e H k / (2H))^{2H} = (2 e k)^{2H}` for
     `H ≥ 1`, the final Warren-ceiling simplification.
 
+**Decomposition leaves surfaced by the iter_002 audit pass** (each on the
+critical path, statement verified to elaborate and to be TRUE; parents that now
+compile from them are noted):
+
+12. `signRank_le_sum_choose` (P3.1-P3.2) — `signRank ≤ ∑_{i≤d} C(a,i)`, the
+    multilinearization / left-monomial-factorization / η-shift core of the degree
+    half.  The frozen parent `signRank_le_of_thresholdDegLE` is now PROVED as
+    `(signRank_le_sum_choose h).trans (sum_choose_le_pow a d)`.
+13. `HStar_comp_equiv` (P1.3) — PROVED (Model internals): `H*` invariant under a
+    coordinate reindexing `e : Fin n' ≃ Fin n`, via the auxiliary
+    `computableWithHeadsN_comp_equiv(_forward)` (relabel each head's `posEmbed`
+    through `e`, reindex the position sums by `Equiv.optionCongr e`).  This is the
+    permutation-invariance lemma §11-below flags P8.1 as needing.
+14. `distEigenvalue_singleton` (P4.2) — PROVED in the iter_002 Codex audit by
+    identifying Boolean vectors with their support finsets, pairing each subset
+    not containing `i` with its insertion of `i`, and counting the unique
+    threshold-crossing slice with `Finset.card_powersetCard`.  This is the level-1 eigenvalue
+    `λ_{i} = ∑_u s(u) χ_{i}(u) = −(2·C(m-1,(m-1)/2))`.  **Sign note:** this is
+    NEGATIVE (verified `m = 1`: the sum is `−2`); `|λ_{i}| = 2·C` as in P4.2
+    consequence 2.
+15. `distEigenvalue_le` (P4.2) — PROVED in the iter_002 Codex audit by the same
+    support-finset pairing.  For nonempty `S`, inserting a chosen `i ∈ S` flips
+    the character, leaving a signed middle-slice sum; the triangle inequality
+    and `Finset.card_powersetCard` give `|λ_S| ≤ 2·C(m-1,(m-1)/2)`.  For
+    `S = ∅`, use the proved `distSign_sum_eq_zero`.
+16. `forsterRatio_pow_le_signRank_tensor` (P8.1-P8.3) — the reindexed-Kronecker /
+    Forster core, `forsterRatio m ^ k ≤ signRank S_k`.  With the PROVED
+    `signRank_le_pow_HStar_tensor` (P8.3: `G̃` nonconstant for `m ≥ 1, k ≥ 1`, then
+    the bridge) and `HStar_comp_equiv`, the frozen `theoremB_HStar` is now PROVED
+    and this is its sole residual debt.  **Hypothesis note:** the bridge leaf needs
+    both `Odd m` (⇒ `m ≥ 1`) and `1 ≤ k`; at `k = 0` or `m = 0` the family is
+    constant and `signRank = 1 > 2^1 − 2 = 0`.
+17. `specNorm_signMatrix_distThreshold_le` (P4.3) — the remaining Parseval upper
+    bound `‖M‖₂ ≤ 2·C(m-1,(m-1)/2)`.  Expand an arbitrary vector in the proved
+    orthogonal character basis (`charFn_orthogonal`), diagonalize with the proved
+    `signMatrix_mulVec_charFn`, and bound each eigenvalue with the now-proved
+    `distEigenvalue_le`.  The reverse inequality and the frozen parent are PROVED:
+    the nonzero singleton character witnesses the operator-norm lower bound using
+    `distEigenvalue_singleton`.
+
+**Decomposition leaves surfaced by the iter_002 gatekeeper pass (s7)** (each
+carved out of the remaining hard cores; statements verified to elaborate and to
+be TRUE; all `jules_ready`).  A proved reusable helper accompanies them:
+`rank_le_card_of_sum_vecMulVec` (SignRank) — `rank (∑_{i∈s} vecMulVec (u i) (v i))
+≤ s.card`, from `rank_sum_le` and mathlib `Matrix.rank_vecMulVec_le`; the rank
+count for both P2.3 and P3.2.
+
+18. `rank_sum_le` (P2.3/P3.2, SignRank) — `(∑_{i∈s} M i).rank ≤ ∑_{i∈s} (M i).rank`,
+    the Finset generalization of the proved `rank_add_le` (`Finset.induction`,
+    `Matrix.rank_zero` base).
+19. `card_subsets_card_le` (P3.2/P3.3, SignRankBridge) — `#{μ ⊆ Fin a : |μ| ≤ d} =
+    ∑_{i≤d} C(a,i)`, the count of degree-`≤d` left sub-monomials
+    (`Finset.card_powersetCard` over the disjoint cardinality layers).
+20. `exists_numerator_readout_two_block_split` (P2.1, SignRankBridge) — the readout
+    `⟪w, numerator_h (blockJoin x y)⟫` splits as `A'(x) + B'(y)`; the numerator
+    companion to the proved `denominator_eq_headA_add_headB`, via `Head_scoreTerm_single`/
+    `Head_scoreTerm_none_const` and `Fintype.sum_option`/`Fin.sum_univ_add`.
+21. `headA_pos` (P2.1, SignRankBridge) — `0 < A_h(x)` (query term `Head.sigma_pos`,
+    rest `Finset.sum_nonneg`).
+22. `headB_nonneg` (P2.1, SignRankBridge) — `0 ≤ B_h(y)` (`Finset.sum_nonneg` of
+    `Head.sigma_pos`).
+23. `denominator_prod_pos` (P2.2, SignRankBridge) — `0 < ∏_h D_h(z)`
+    (`Finset.prod_pos`, `Head.denominator_pos`), the positive clearing multiplier.
+24. `two_mul_two_pow_sub` (P2.3, SignRankBridge) — `2·(2^H − 2) + 2 = 2^(H+1) − 2`
+    for `H ≥ 1`, the final rank-count identity of the bridge.
+25. `specNorm_kroneckerPow` (P8.3, Forster) — with the new `def kroneckerPow k M`
+    (index `Fin k → ι`, entry `∏_j M (x j)(y j)`), `specNorm (kroneckerPow k M) =
+    (specNorm M)^k`; induction on `k` via `specNorm_kronecker` and `specNorm_reindex`.
+26. `kroneckerPow_mem_pm_one` (P8.3, Forster) — the Kronecker power of a `±1` matrix
+    is `±1` (product of `±1`), so `forster` applies to it.
+27. `forsterRatio_pow_le_of_forster` (P8.3, Tensor) — the arithmetic tail: from
+    `2^{km} ≤ r·(2C)^k` conclude `forsterRatio m ^ k ≤ r` (divide by `(2C)^k`,
+    `forsterRatio m = 2^m/(2C)` for `m ≥ 1`).  This isolates P8's elementary tail
+    from the Kronecker sign-matrix identity, which remains the sole hard core of
+    `forsterRatio_pow_le_signRank_tensor`.
+
 Corrections/upgrades of the informal sources established here:
 
 * P4.2 proves the "Fourier maximum at level 1" claim for **all** odd `m`

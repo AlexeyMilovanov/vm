@@ -116,6 +116,29 @@ theorem rank_add_le {α β : Type*} [Fintype β] (A B : Matrix α β ℝ) :
   have h_sup := Submodule.finrank_add_le_finrank_add_finrank A.mulVecLin.range B.mulVecLin.range
   exact h_mono.trans h_sup
 
+/-- **Finset rank subadditivity** (PROOFS.md P2.3 / P3.2): the rank of a finite
+sum of matrices is at most the sum of the ranks.  Proof: `Finset.induction` on
+`s` — the empty case is `Matrix.rank_zero`, and the insertion step is
+`Matrix.rank_add_le` composed with the inductive hypothesis (monotonicity of
+`+`).  This is the counting engine for the rank-one pieces of both the cleared
+bridge polynomial (P2.3) and the degree-`d` left-monomial factorization (P3.2). -/
+theorem rank_sum_le {α β ι : Type*} [Fintype β] (s : Finset ι)
+    (M : ι → Matrix α β ℝ) :
+    (∑ i ∈ s, M i).rank ≤ ∑ i ∈ s, (M i).rank := by
+  sorry
+
+/-- Rank of a finite sum of outer products is at most the number of summands
+(PROOFS.md P2.3 / P3.2): each `vecMulVec (u i) (v i)` has rank `≤ 1`
+(`Matrix.rank_vecMulVec_le`), so `rank_sum_le` bounds the total by `s.card`.
+This is the ready-to-use tool for the sign-rank counts of P2 and P3. -/
+theorem rank_le_card_of_sum_vecMulVec {α β ι : Type*} [Fintype β]
+    (s : Finset ι) (u : ι → α → ℝ) (v : ι → β → ℝ) :
+    (∑ i ∈ s, Matrix.vecMulVec (u i) (v i)).rank ≤ s.card :=
+  calc (∑ i ∈ s, Matrix.vecMulVec (u i) (v i)).rank
+      ≤ ∑ i ∈ s, (Matrix.vecMulVec (u i) (v i)).rank := rank_sum_le s _
+    _ ≤ ∑ _i ∈ s, 1 := Finset.sum_le_sum (fun i _ => Matrix.rank_vecMulVec_le (u i) (v i))
+    _ = s.card := by simp
+
 /-- Sign-rank is invariant under negation (PROOFS.md P1.2): `A ↦ -A` is a
 rank-preserving bijection carrying sign-matches of `M` onto sign-matches of
 `-M`.  Needed for the global `(-1)^(k+1)` factor in Theorem B. -/

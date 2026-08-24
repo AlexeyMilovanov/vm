@@ -347,7 +347,22 @@ theorem charFn_orthogonal {m : ℕ} (S T : Finset (Fin m)) :
 (both count `{i : x i ≠ y i}`). -/
 theorem signMatrix_distThreshold_apply {m : ℕ} (x y : Fin m → Bool) :
     signMatrix m m (distThreshold m) x y = distSign m (fun i => xor (x i) (y i)) := by
-  sorry
+  have hd : hammingDist x y
+      = hammingDist (fun i => xor (x i) (y i)) (fun _ => false) := by
+    unfold hammingDist
+    congr 1
+    ext i
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, ne_eq]
+    cases x i <;> cases y i <;> simp
+  have hL : distThreshold m (blockJoin x y)
+      = decide ((m + 1) / 2 ≤ hammingDist (fun i => xor (x i) (y i)) (fun _ => false)) := by
+    unfold distThreshold
+    simp only [leftBits_blockJoin, rightBits_blockJoin]
+    rw [hd]
+  rw [signMatrix_apply, hL, distSign]
+  by_cases h : (m + 1) / 2 ≤ hammingDist (fun i => xor (x i) (y i)) (fun _ => false)
+  · simp [h]
+  · simp [h]
 
 open Matrix in
 /-- **Character eigen-action** (PROOFS.md P4.1): each character is an
@@ -387,13 +402,566 @@ theorem signMatrix_mulVec_charFn {m : ℕ} (S : Finset (Fin m)) :
   rw [Finset.sum_congr rfl (fun u _ => h_summand u)]
   rw [← Finset.sum_mul]
 
+/-- The bit-complement involution `u ↦ ū` on the Boolean cube (PROOFS.md P4.2). -/
+private def compEquiv (m : ℕ) : (Fin m → Bool) ≃ (Fin m → Bool) where
+  toFun u := fun i => !u i
+  invFun u := fun i => !u i
+  left_inv u := by ext i; simp
+  right_inv u := by ext i; simp
+
+/-- The complement flips the majority sign for odd `m` (PROOFS.md P4.2): since
+`|ū| = m - |u|` and exactly one of `|u|, m - |u|` reaches `(m+1)/2`, we get
+`s(ū) = -s(u)`. -/
+private theorem distSign_not (m : ℕ) (hm : Odd m) (u : Fin m → Bool) :
+    distSign m (fun i => !u i) = - distSign m u := by
+  unfold distSign
+  have hm_odd : m % 2 = 1 := Nat.odd_iff.mp hm
+  have h1 : hammingDist (fun i => !u i) (fun _ => false)
+      = m - hammingDist u (fun _ => false) := by
+    unfold hammingDist
+    have h1' : (Finset.univ.filter (fun i => (!u i) ≠ false)).card =
+        (Finset.univ.filter (fun i => u i = false)).card := by
+      congr 1; ext i; simp
+    rw [h1']
+    set A := (Finset.univ.filter (fun i => u i ≠ false)).card
+    set B := (Finset.univ.filter (fun i => u i = false)).card
+    have hsum : A + B = m := by
+      have hsum' : A + B = (Finset.univ : Finset (Fin m)).card := by
+        rw [← Finset.card_union_of_disjoint]
+        · congr 1; ext i; simp
+        · rw [Finset.disjoint_filter]; intro i _ h1 h2; exact h1 h2
+      rw [hsum', Finset.card_univ, Fintype.card_fin]
+    omega
+  rw [h1]
+  set D := hammingDist u (fun _ => false)
+  have hD_le : D ≤ m := by
+    dsimp [D, hammingDist]
+    have hle := Finset.card_le_card (Finset.filter_subset (fun i => u i ≠ false) Finset.univ)
+    rw [Finset.card_univ, Fintype.card_fin] at hle
+    exact hle
+  split_ifs with h2 h3
+  · omega
+  · norm_num
+  · norm_num
+  · omega
+
 /-- The level-`0` eigenvalue vanishes (PROOFS.md P4.2, consequence 3):
 `λ_∅ = ∑_u s(u) = 0` for odd `m`.  Proof: the complement involution `u ↦ ū`
 is fixed-point-free (`m` odd) and flips the sign, `s(ū) = -s(u)` (exactly one of
 `|u|, m - |u|` reaches `(m+1)/2`), so the sum cancels in pairs. -/
 theorem distSign_sum_eq_zero {m : ℕ} (hm : Odd m) :
     ∑ u : Fin m → Bool, distSign m u = 0 := by
-  sorry
+  have h1 : ∑ u : Fin m → Bool, distSign m u
+      = ∑ u : Fin m → Bool, distSign m (compEquiv m u) :=
+    (Equiv.sum_comp (compEquiv m) (fun u => distSign m u)).symm
+  have h2 : ∀ u, distSign m (compEquiv m u) = - distSign m u := fun u => distSign_not m hm u
+  simp_rw [h2] at h1
+  rw [Finset.sum_neg_distrib] at h1
+  linarith
+
+/-- **Level-1 eigenvalue** (PROOFS.md P4.2, consequence 2): for a singleton
+`S = {i}` the Fourier eigenvalue `λ_{i} = ∑_u s(u) χ_{i}(u)` equals
+`-2 · C(m-1, (m-1)/2)`.  Proof: pair `u` (with `u_i = 0`) against `u ⊕ e_i`;
+since `χ_{i}` flips, the pair contributes `s(u) - s(u ⊕ e_i)`, which is `0`
+unless the weight crosses the threshold at `|u| = (m-1)/2`, where it is `-2`;
+the crossing points are the `C(m-1, (m-1)/2)` middle-slice vectors with
+`u_i = 0`.  (Sign check `m = 1`: the sum is `-2 = -2·C(0,0)`.) -/
+theorem distEigenvalue_singleton {m : ℕ} (hm : Odd m) (i : Fin m) :
+    ∑ u : Fin m → Bool, distSign m u * charFn {i} u
+      = -(2 * ((m - 1).choose ((m - 1) / 2))) := by
+  let e : (Fin m → Bool) ≃ Finset (Fin m) :=
+    { toFun := fun u => Finset.univ.filter fun j => u j
+      invFun := fun s j => decide (j ∈ s)
+      left_inv := by
+        intro u
+        funext j
+        simp
+      right_inv := by
+        intro s
+        ext j
+        simp }
+  let q := (m - 1) / 2
+  let g : Finset (Fin m) → ℝ := fun s =>
+    (if (m + 1) / 2 ≤ s.card then 1 else -1) * (if i ∈ s then -1 else 1)
+  have hm_odd : m % 2 = 1 := Nat.odd_iff.mp hm
+  have hthreshold : (m + 1) / 2 = q + 1 := by
+    dsimp [q]
+    omega
+  have hdist (u : Fin m → Bool) :
+      distSign m u = if (m + 1) / 2 ≤ (e u).card then 1 else -1 := by
+    unfold distSign
+    congr 2
+    unfold hammingDist
+    change (Finset.univ.filter fun j => u j ≠ false).card = _
+    congr 1
+    ext j
+    simp [e]
+  have hchar (u : Fin m → Bool) :
+      charFn {i} u = if i ∈ e u then -1 else 1 := by
+    simp [charFn, e]
+  have hto_g :
+      (∑ u : Fin m → Bool, distSign m u * charFn {i} u) =
+        ∑ s : Finset (Fin m), g s := by
+    calc
+      (∑ u : Fin m → Bool, distSign m u * charFn {i} u) =
+          ∑ u : Fin m → Bool, g (e u) := by
+            apply Finset.sum_congr rfl
+            intro u _
+            rw [hdist u, hchar u]
+      _ = ∑ s : Finset (Fin m), g s := e.sum_comp g
+  rw [hto_g]
+  rw [← Finset.powerset_univ]
+  rw [← Finset.insert_erase (Finset.mem_univ i)]
+  rw [Finset.sum_powerset_insert (Finset.notMem_erase i Finset.univ)]
+  rw [← Finset.sum_add_distrib]
+  have hpair (s : Finset (Fin m))
+      (hs : s ∈ (Finset.univ.erase i).powerset) :
+      g s + g (insert i s) = if s.card = q then -2 else 0 := by
+    have hsub : s ⊆ Finset.univ.erase i := Finset.mem_powerset.mp hs
+    have hi : i ∉ s := by
+      intro his
+      have := hsub his
+      simp at this
+    have hcard : (insert i s).card = s.card + 1 := Finset.card_insert_of_notMem hi
+    unfold g
+    rw [hcard, if_neg hi, if_pos (Finset.mem_insert_self i s), hthreshold]
+    split_ifs <;> norm_num <;> omega
+  rw [Finset.sum_congr rfl hpair]
+  calc
+    (∑ s ∈ (Finset.univ.erase i).powerset, if s.card = q then (-2 : ℝ) else 0) =
+        (-2 : ℝ) * ∑ s ∈ (Finset.univ.erase i).powerset,
+          if s.card = q then 1 else 0 := by
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro s _
+      split_ifs <;> norm_num
+    _ = (-2 : ℝ) *
+        (((Finset.univ.erase i).powerset.filter fun s => s.card = q).card : ℝ) := by
+      rw [Finset.sum_boole]
+    _ = (-2 : ℝ) * (((Finset.univ.erase i).powersetCard q).card : ℝ) := by
+      rw [Finset.powersetCard_eq_filter]
+    _ = -(2 * ((m - 1).choose ((m - 1) / 2))) := by
+      rw [Finset.card_powersetCard, Finset.card_erase_of_mem (Finset.mem_univ i),
+        Finset.card_univ, Fintype.card_fin]
+      simp [q]
+
+/-- **Level-1 eigenvalue bound** (PROOFS.md P4.2, consequence 1): every Fourier
+eigenvalue `λ_S = ∑_u s(u) χ_S(u)` has `|λ_S| ≤ 2 · C(m-1, (m-1)/2)`.  Proof:
+for `S ≠ ∅` pick `i ∈ S`; the boundary pairing gives
+`λ_S = -2 · ∑_{u' : |u'| = (m-1)/2} χ_{S∖{i}}(u')`, a signed sum of
+`C(m-1, (m-1)/2)` unit terms, so the triangle inequality bounds it; for `S = ∅`,
+`λ_∅ = 0` by `distSign_sum_eq_zero`.  This is the eigenvalue side of the
+spectral-norm computation; combined with `distEigenvalue_singleton` (equality at
+level 1) it pins `max_S |λ_S| = 2·C(m-1,(m-1)/2)`. -/
+theorem distEigenvalue_le {m : ℕ} (hm : Odd m) (S : Finset (Fin m)) :
+    |∑ u : Fin m → Bool, distSign m u * charFn S u|
+      ≤ 2 * ((m - 1).choose ((m - 1) / 2)) := by
+  by_cases hS : S = ∅
+  · subst S
+    simp [charFn, distSign_sum_eq_zero hm]
+  · obtain ⟨i, hiS⟩ := Finset.nonempty_iff_ne_empty.mpr hS
+    let e : (Fin m → Bool) ≃ Finset (Fin m) :=
+      { toFun := fun u => Finset.univ.filter fun j => u j
+        invFun := fun s j => decide (j ∈ s)
+        left_inv := by
+          intro u
+          funext j
+          simp
+        right_inv := by
+          intro s
+          ext j
+          simp }
+    let q := (m - 1) / 2
+    let c : Finset (Fin m) → ℝ := fun s =>
+      ∏ j ∈ S, if j ∈ s then -1 else 1
+    let g : Finset (Fin m) → ℝ := fun s =>
+      (if (m + 1) / 2 ≤ s.card then 1 else -1) * c s
+    have hm_odd : m % 2 = 1 := Nat.odd_iff.mp hm
+    have hthreshold : (m + 1) / 2 = q + 1 := by
+      dsimp [q]
+      omega
+    have hdist (u : Fin m → Bool) :
+        distSign m u = if (m + 1) / 2 ≤ (e u).card then 1 else -1 := by
+      unfold distSign
+      congr 2
+      unfold hammingDist
+      change (Finset.univ.filter fun j => u j ≠ false).card = _
+      congr 1
+      ext j
+      simp [e]
+    have hchar (u : Fin m → Bool) : charFn S u = c (e u) := by
+      unfold charFn c
+      apply Finset.prod_congr rfl
+      intro j _
+      simp [e]
+    have hto_g :
+        (∑ u : Fin m → Bool, distSign m u * charFn S u) =
+          ∑ s : Finset (Fin m), g s := by
+      calc
+        (∑ u : Fin m → Bool, distSign m u * charFn S u) =
+            ∑ u : Fin m → Bool, g (e u) := by
+          apply Finset.sum_congr rfl
+          intro u _
+          rw [hdist u, hchar u]
+        _ = ∑ s : Finset (Fin m), g s := e.sum_comp g
+    rw [hto_g]
+    rw [← Finset.powerset_univ]
+    rw [← Finset.insert_erase (Finset.mem_univ i)]
+    rw [Finset.sum_powerset_insert (Finset.notMem_erase i Finset.univ)]
+    rw [← Finset.sum_add_distrib]
+    have hc_insert (s : Finset (Fin m)) (hi : i ∉ s) :
+        c (insert i s) = -c s := by
+      unfold c
+      rw [← Finset.insert_erase hiS]
+      rw [Finset.prod_insert (Finset.notMem_erase i S),
+        Finset.prod_insert (Finset.notMem_erase i S)]
+      simp only [Finset.mem_insert, true_or, ↓reduceIte, hi]
+      rw [one_mul, neg_mul]
+      simp only [one_mul]
+      congr 1
+      apply Finset.prod_congr rfl
+      intro j hj
+      have hji : j ≠ i := (Finset.mem_erase.mp hj).1
+      simp [hji]
+    have hpair (s : Finset (Fin m))
+        (hs : s ∈ (Finset.univ.erase i).powerset) :
+        g s + g (insert i s) = if s.card = q then -2 * c s else 0 := by
+      have hsub : s ⊆ Finset.univ.erase i := Finset.mem_powerset.mp hs
+      have hi : i ∉ s := by
+        intro his
+        have := hsub his
+        simp at this
+      have hcard : (insert i s).card = s.card + 1 :=
+        Finset.card_insert_of_notMem hi
+      unfold g
+      rw [hcard, hc_insert s hi, hthreshold]
+      split_ifs <;> (first | omega | ring)
+    rw [Finset.sum_congr rfl hpair]
+    calc
+      |∑ s ∈ (Finset.univ.erase i).powerset,
+          if s.card = q then -2 * c s else 0| ≤
+          ∑ s ∈ (Finset.univ.erase i).powerset,
+            |if s.card = q then -2 * c s else 0| := by
+        exact Finset.abs_sum_le_sum_abs _ _
+      _ = ∑ s ∈ (Finset.univ.erase i).powerset,
+          if s.card = q then (2 : ℝ) else 0 := by
+        apply Finset.sum_congr rfl
+        intro s _
+        by_cases hs : s.card = q
+        · rw [if_pos hs, if_pos hs, abs_mul]
+          have hc_abs : |c s| = 1 := by
+            unfold c
+            rw [Finset.abs_prod]
+            apply Finset.prod_eq_one
+            intro j hj
+            split_ifs <;> norm_num
+          rw [hc_abs]
+          norm_num
+        · simp [hs]
+      _ = (2 : ℝ) * ∑ s ∈ (Finset.univ.erase i).powerset,
+          if s.card = q then 1 else 0 := by
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro s _
+        split_ifs <;> norm_num
+      _ = (2 : ℝ) *
+          (((Finset.univ.erase i).powerset.filter fun s => s.card = q).card : ℝ) := by
+        rw [Finset.sum_boole]
+      _ = (2 : ℝ) * (((Finset.univ.erase i).powersetCard q).card : ℝ) := by
+        rw [Finset.powersetCard_eq_filter]
+      _ = 2 * ((m - 1).choose ((m - 1) / 2)) := by
+        rw [Finset.card_powersetCard, Finset.card_erase_of_mem (Finset.mem_univ i),
+          Finset.card_univ, Fintype.card_fin]
+
+/-- **Parseval upper bound** (PROOFS.md P4.3): expand an arbitrary vector in the
+orthogonal character basis (`charFn_orthogonal`), use
+`signMatrix_mulVec_charFn` to diagonalize the distance-threshold matrix, and
+bound every eigenvalue by `distEigenvalue_le`. -/
+lemma sum_charFn {m : ℕ} (u : Fin m → Bool) :
+    ∑ S : Finset (Fin m), charFn S u = if u = (fun _ => false) then (2 : ℝ)^m else 0 := by
+  have h_powerset : (Finset.univ : Finset (Finset (Fin m))) = (Finset.univ : Finset (Fin m)).powerset := by
+    ext x
+    simp
+  have H : ∑ S : Finset (Fin m), charFn S u =
+      ∏ i : Fin m, (1 + if u i then (-1 : ℝ) else 1) := by
+    calc ∑ S : Finset (Fin m), charFn S u
+      _ = ∑ S : Finset (Fin m), ∏ i ∈ S, (if u i then (-1 : ℝ) else 1) := rfl
+      _ = ∑ S ∈ (Finset.univ : Finset (Fin m)).powerset, ∏ i ∈ S, (if u i then (-1 : ℝ) else 1) := by rw [←h_powerset]
+      _ = ∏ i ∈ (Finset.univ : Finset (Fin m)), (1 + if u i then (-1 : ℝ) else 1) := (Finset.prod_one_add Finset.univ).symm
+      _ = ∏ i : Fin m, (1 + if u i then (-1 : ℝ) else 1) := rfl
+  rw [H]
+  by_cases h : u = fun _ => false
+  · rw [if_pos h]
+    have : ∀ i, (1 + if u i then (-1 : ℝ) else 1) = 2 := by
+      intro i
+      have hi : u i = false := congr_fun h i
+      rw [hi, if_neg (by decide)]
+      ring
+    rw [Finset.prod_congr rfl (fun i _ => this i)]
+    simp
+  · rw [if_neg h]
+    have : ∃ i, u i = true := by
+      by_contra hc
+      push Not at hc
+      apply h
+      ext i
+      simp [hc i]
+    rcases this with ⟨i, hi⟩
+    apply Finset.prod_eq_zero (i := i) (by simp)
+    rw [hi]
+    simp
+
+lemma sum_charFn_charFn {m : ℕ} (x y : Fin m → Bool) :
+    ∑ S : Finset (Fin m), charFn S x * charFn S y = if x = y then (2 : ℝ)^m else 0 := by
+  have : ∀ S, charFn S x * charFn S y = charFn S (fun i => xor (x i) (y i)) := by
+    intro S
+    rw [charFn_xor]
+  simp_rw [this]
+  have H := sum_charFn (fun i => xor (x i) (y i))
+  have H2 : (fun i => xor (x i) (y i)) = (fun _ => false) ↔ x = y := by
+    constructor
+    · intro h
+      ext i
+      have hi := congr_fun h i
+      cases hx : x i <;> cases hy : y i <;> simp_all
+    · intro h
+      subst h
+      ext i
+      simp
+  by_cases hxy : x = y
+  · rw [if_pos hxy]
+    rw [if_pos (H2.mpr hxy)] at H
+    exact H
+  · rw [if_neg hxy]
+    have hn : ¬((fun i => x i ^^ y i) = fun x => false) := by
+      intro hc; exact hxy (H2.mp hc)
+    rw [if_neg hn] at H
+    exact H
+
+lemma M_symm {m : ℕ} (x y : Fin m → Bool) :
+    signMatrix m m (distThreshold m) x y = signMatrix m m (distThreshold m) y x := by
+  rw [signMatrix_distThreshold_apply, signMatrix_distThreshold_apply]
+  have : (fun i => xor (x i) (y i)) = (fun i => xor (y i) (x i)) := by
+    ext i
+    rw [Bool.xor_comm]
+  rw [this]
+
+lemma L2_ident {m : ℕ} (w : (Fin m → Bool) → ℝ) :
+    ∑ S : Finset (Fin m), (∑ x, w x * charFn S x)^2 = (2:ℝ)^m * ∑ x, (w x)^2 := by
+  have H1 : ∑ S : Finset (Fin m), (∑ x, w x * charFn S x)^2 =
+      ∑ S : Finset (Fin m), ∑ x, ∑ y, w x * w y * charFn S x * charFn S y := by
+    apply Finset.sum_congr rfl
+    intro S _
+    rw [pow_two]
+    have : (∑ x, w x * charFn S x) * (∑ y, w y * charFn S y) =
+        ∑ x, ∑ y, w x * charFn S x * (w y * charFn S y) := by
+      rw [Finset.sum_mul]
+      apply Finset.sum_congr rfl
+      intro x _
+      rw [Finset.mul_sum]
+    rw [this]
+    apply Finset.sum_congr rfl
+    intro x _
+    apply Finset.sum_congr rfl
+    intro y _
+    ring
+  rw [H1]
+  have H2 : (∑ S : Finset (Fin m), ∑ x, ∑ y, w x * w y * charFn S x * charFn S y) =
+      ∑ x, ∑ y, ∑ S : Finset (Fin m), w x * w y * charFn S x * charFn S y := by
+    rw [Finset.sum_comm]
+    apply Finset.sum_congr rfl
+    intro x _
+    rw [Finset.sum_comm]
+  rw [H2]
+  have H3 : (∑ x, ∑ y, ∑ S : Finset (Fin m), w x * w y * charFn S x * charFn S y) =
+      ∑ x, ∑ y, w x * w y * ∑ S : Finset (Fin m), charFn S x * charFn S y := by
+    apply Finset.sum_congr rfl
+    intro x _
+    apply Finset.sum_congr rfl
+    intro y _
+    have h_assoc : ∀ S, w x * w y * charFn S x * charFn S y =
+        (w x * w y) * (charFn S x * charFn S y) := by intro S; ring
+    simp_rw [h_assoc]
+    rw [←Finset.mul_sum]
+  rw [H3]
+  simp_rw [sum_charFn_charFn]
+  have H4 : (∑ x, ∑ y, w x * w y * if x = y then (2:ℝ)^m else 0) =
+      ∑ x, w x * w x * (2:ℝ)^m := by
+    apply Finset.sum_congr rfl
+    intro x _
+    have eq1 : (∑ y, w x * w y * if x = y then (2:ℝ)^m else 0) =
+        w x * w x * (2:ℝ)^m := by
+      have : (∑ y, w x * w y * if x = y then (2:ℝ)^m else 0) =
+          ∑ y, if y = x then w x * w x * (2:ℝ)^m else 0 := by
+        apply Finset.sum_congr rfl
+        intro y _
+        have hyx : x = y ↔ y = x := eq_comm
+        by_cases h : y = x
+        · rw [if_pos h, if_pos (hyx.mpr h)]
+          have : y = x := h
+          subst this
+          rfl
+        · rw [if_neg h, if_neg (hyx.not.mpr h)]
+          ring
+      rw [this]
+      rw [Finset.sum_eq_single x]
+      · simp
+      · intro y _ hy
+        simp [hy]
+      · intro hx
+        exfalso
+        apply hx
+        simp
+    rw [eq1]
+  rw [H4]
+  have H5 : (∑ x, w x * w x * (2:ℝ)^m) = (2:ℝ)^m * ∑ x, (w x)^2 := by
+    have eq2 : (∑ x, w x * w x * (2:ℝ)^m) = ∑ x, (2:ℝ)^m * (w x)^2 := by
+      apply Finset.sum_congr rfl
+      intro x _
+      ring
+    rw [eq2, ←Finset.mul_sum]
+  rw [H5]
+
+theorem specNorm_signMatrix_distThreshold_le {m : ℕ} (hm : Odd m) :
+    specNorm (signMatrix m m (distThreshold m)) ≤
+      2 * ((m - 1).choose ((m - 1) / 2)) := by
+  let C : ℝ := 2 * ((m - 1).choose ((m - 1) / 2))
+  have hC : 0 ≤ C := by positivity
+  let M := signMatrix m m (distThreshold m)
+  apply ContinuousLinearMap.opNorm_le_bound _ hC
+  intro v
+  let w : (Fin m → Bool) → ℝ := fun x => v x
+  have hv : ‖v‖^2 = ∑ x, (w x)^2 := EuclideanSpace.real_norm_sq_eq v
+  let Mv : (Fin m → Bool) → ℝ := fun x => (Matrix.mulVec M w) x
+  have hMv : ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M v‖^2 = ∑ x, (Mv x)^2 := by
+    have : ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M v‖^2 =
+        ∑ x, ((Matrix.toEuclideanCLM (𝕜 := ℝ) M v) x)^2 :=
+      EuclideanSpace.real_norm_sq_eq _
+    rw [this]
+    rfl
+
+  have hMv_S : ∀ S : Finset (Fin m), ∑ x, Mv x * charFn S x =
+      (∑ u, distSign m u * charFn S u) * ∑ y, w y * charFn S y := by
+    intro S
+    have eq1 : ∑ x, Mv x * charFn S x = ∑ x, (∑ y, M x y * w y) * charFn S x := rfl
+    rw [eq1]
+    have eq2 : (∑ x, (∑ y, M x y * w y) * charFn S x) =
+        ∑ x, ∑ y, M y x * w y * charFn S x := by
+      apply Finset.sum_congr rfl
+      intro x _
+      rw [Finset.sum_mul]
+      apply Finset.sum_congr rfl
+      intro y _
+      have : M x y = M y x := M_symm x y
+      rw [this]
+    rw [eq2]
+    have eq3 : (∑ x, ∑ y, M y x * w y * charFn S x) =
+        ∑ y, ∑ x, M y x * w y * charFn S x := Finset.sum_comm
+    rw [eq3]
+    have eq4 : (∑ y, ∑ x, M y x * w y * charFn S x) =
+        ∑ y, w y * ∑ x, M y x * charFn S x := by
+      apply Finset.sum_congr rfl
+      intro y _
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro x _
+      ring
+    rw [eq4]
+    have eq5 : (∑ y, w y * ∑ x, M y x * charFn S x) =
+        ∑ y, w y * ((∑ u, distSign m u * charFn S u) * charFn S y) := by
+      apply Finset.sum_congr rfl
+      intro y _
+      have : ∑ x, M y x * charFn S x = (Matrix.mulVec M (charFn S)) y := rfl
+      rw [this, signMatrix_mulVec_charFn]
+      rfl
+    rw [eq5]
+    have eq6 : (∑ y, w y * ((∑ u, distSign m u * charFn S u) * charFn S y)) =
+        (∑ u, distSign m u * charFn S u) * ∑ y, w y * charFn S y := by
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro y _
+      ring
+    rw [eq6]
+  have h_bound : ∑ S : Finset (Fin m), (∑ x, Mv x * charFn S x)^2 ≤
+      C^2 * ∑ S : Finset (Fin m), (∑ y, w y * charFn S y)^2 := by
+    calc ∑ S : Finset (Fin m), (∑ x, Mv x * charFn S x)^2
+      _ = ∑ S : Finset (Fin m), ((∑ u, distSign m u * charFn S u) * ∑ y, w y * charFn S y)^2
+        := by
+        apply Finset.sum_congr rfl
+        intro S _
+        rw [hMv_S]
+      _ = ∑ S : Finset (Fin m), (∑ u, distSign m u * charFn S u)^2 * (∑ y, w y * charFn S y)^2
+        := by
+        apply Finset.sum_congr rfl
+        intro S _
+        ring
+      _ ≤ ∑ S : Finset (Fin m), C^2 * (∑ y, w y * charFn S y)^2 := by
+        apply Finset.sum_le_sum
+        intro S _
+        apply mul_le_mul_of_nonneg_right
+        · have hle := distEigenvalue_le hm S
+          have hs1 : |∑ u, distSign m u * charFn S u| ≤ |C| := by
+            rw [abs_of_nonneg hC]
+            exact hle
+          exact sq_le_sq.mpr hs1
+        · positivity
+      _ = C^2 * ∑ S : Finset (Fin m), (∑ y, w y * charFn S y)^2 := by
+        rw [←Finset.mul_sum]
+  have H_Mv_L2 := L2_ident Mv
+  have H_w_L2 := L2_ident w
+  rw [H_Mv_L2, H_w_L2] at h_bound
+  have h2m : 0 < (2:ℝ)^m := by positivity
+  have h_bound2 : (2:ℝ)^m * ∑ x, (Mv x)^2 ≤ (2:ℝ)^m * (C^2 * ∑ x, (w x)^2) := by
+    calc (2:ℝ)^m * ∑ x, (Mv x)^2
+      _ ≤ C^2 * ((2:ℝ)^m * ∑ x, (w x)^2) := h_bound
+      _ = (2:ℝ)^m * (C^2 * ∑ x, (w x)^2) := by ring
+  have h_bound3 : ∑ x, (Mv x)^2 ≤ C^2 * ∑ x, (w x)^2 :=
+    le_of_mul_le_mul_left h_bound2 h2m
+  rw [←hMv, ←hv] at h_bound3
+  have h_bound4 : ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M v‖^2 ≤ (C * ‖v‖)^2 := by
+    calc ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M v‖^2
+      _ ≤ C^2 * ‖v‖^2 := h_bound3
+      _ = (C * ‖v‖)^2 := by ring
+  have h_nonneg : 0 ≤ C * ‖v‖ := by positivity
+  have hs1 : Real.sqrt (‖Matrix.toEuclideanCLM (𝕜 := ℝ) M v‖^2) ≤
+      Real.sqrt ((C * ‖v‖)^2) := Real.sqrt_le_sqrt h_bound4
+  rw [Real.sqrt_sq (norm_nonneg _), Real.sqrt_sq h_nonneg] at hs1
+  exact hs1
+
+
+/-- **Level-1 spectral witness** (PROOFS.md P4.3): the singleton character is
+a nonzero eigenvector with eigenvalue `-2 · C(m-1,(m-1)/2)`, so its norm ratio
+gives the matching lower bound on the operator norm. -/
+private theorem le_specNorm_signMatrix_distThreshold {m : ℕ} (hm : Odd m) :
+    (2 : ℝ) * ((m - 1).choose ((m - 1) / 2)) ≤
+      specNorm (signMatrix m m (distThreshold m)) := by
+  have hm1 : 1 ≤ m := by
+    have := Nat.odd_iff.mp hm
+    omega
+  let i : Fin m := ⟨0, hm1⟩
+  let M := signMatrix m m (distThreshold m)
+  let C : ℝ := 2 * ((m - 1).choose ((m - 1) / 2))
+  let v : EuclideanSpace ℝ (Fin m → Bool) :=
+    (WithLp.equiv 2 _).symm (charFn {i})
+  have hv_ne : v ≠ 0 := by
+    intro hv
+    have hvf := congrArg (WithLp.equiv 2 ((Fin m → Bool) → ℝ)) hv
+    have hv0 := congrFun hvf (fun _ => false)
+    simp [v, charFn] at hv0
+  have hv_pos : 0 < ‖v‖ := norm_pos_iff.mpr hv_ne
+  have h_action : Matrix.toEuclideanCLM (𝕜 := ℝ) M v = (-C) • v := by
+    dsimp [M, C]
+    change (WithLp.equiv 2 _).symm
+        (Matrix.mulVec (signMatrix m m (distThreshold m)) (charFn {i})) =
+      (-((2 : ℝ) * ((m - 1).choose ((m - 1) / 2)))) •
+        (WithLp.equiv 2 _).symm (charFn {i})
+    rw [signMatrix_mulVec_charFn, distEigenvalue_singleton hm i]
+    rfl
+  have hop := ContinuousLinearMap.le_opNorm (Matrix.toEuclideanCLM (𝕜 := ℝ) M) v
+  rw [h_action, norm_smul, Real.norm_eq_abs, abs_neg,
+    abs_of_nonneg (by positivity : 0 ≤ C)] at hop
+  change C * ‖v‖ ≤ specNorm M * ‖v‖ at hop
+  exact le_of_mul_le_mul_right hop hv_pos
 
 /-- The two-block sign matrix of `F_m` is the XOR-pattern of `MAJ_m`; the
 characters diagonalize it, the top eigenvalue sits at Fourier level `1`, and
@@ -401,7 +969,8 @@ equals `2 · C(m-1, (m-1)/2)`. -/
 theorem specNorm_signMatrix_distThreshold {m : ℕ} (hm : Odd m) :
     specNorm (signMatrix m m (distThreshold m)) =
       2 * ((m - 1).choose ((m - 1) / 2)) := by
-  sorry
+  exact le_antisymm (specNorm_signMatrix_distThreshold_le hm)
+    (le_specNorm_signMatrix_distThreshold hm)
 
 /-- Forster's lower bound instantiated on the family: `γ_m ≤ signRank`
 (PROOFS.md P7.3).  Compose Forster's theorem `N ≤ signRank · specNorm` with the

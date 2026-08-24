@@ -18,6 +18,74 @@ certify (ratio `≲ log n`, additive gap `≲ n / 2`).
 
 namespace HeadComplexity
 
+/-- Helper lemma: two-block decomposition of head attention denominator.
+`D_h(x, y) = A_h(x) + B_h(y)`. -/
+noncomputable def headA {n d : ℕ} {a b : ℕ} (hab : n = a + b)
+    (H : Head n d) (x : Fin a → Bool) : ℝ :=
+  H.sigma (hab ▸ blockJoin x (fun _ => false)) none +
+  ∑ i : Fin a, H.sigma (hab ▸ blockJoin x (fun _ => false)) (some (hab ▸ Fin.castAdd b i))
+
+noncomputable def headB {n d : ℕ} {a b : ℕ} (hab : n = a + b)
+    (H : Head n d) (y : Fin b → Bool) : ℝ :=
+  ∑ j : Fin b, H.sigma (hab ▸ blockJoin (fun _ => false) y) (some (hab ▸ Fin.natAdd a j))
+
+
+/-- Helper lemma for PROOFS.md P2.1: two-block decomposition of a head's
+attention denominator, `D_h(x, y) = A_h(x) + B_h(y)`. -/
+theorem denominator_eq_headA_add_headB {n d : ℕ} {a b : ℕ} (hab : n = a + b)
+    (H : Head n d) (x : Fin a → Bool) (y : Fin b → Bool) :
+    H.denominator (hab ▸ blockJoin x y) = headA hab H x + headB hab H y := by
+  subst n
+  simp only [Head.denominator, Fintype.sum_option, headA, headB]
+  rw [Fin.sum_univ_add]
+  simp [Head.sigma, Head.x, Head.seqTok]
+  ring
+
+/-- Positivity of the left denominator block (PROOFS.md P2.1): `A_h(x) > 0`, since
+its query term `σ_none` is a positive exponential (`Head.sigma_pos`) and every
+remaining left term is nonnegative (`Finset.sum_nonneg`). -/
+theorem headA_pos {n d a b : ℕ} (hab : n = a + b) (H : Head n d) (x : Fin a → Bool) :
+    0 < headA hab H x := by
+  sorry
+
+/-- Nonnegativity of the right denominator block (PROOFS.md P2.1): `B_h(y) ≥ 0`,
+a finite sum of positive exponentials (`Head.sigma_pos`, `Finset.sum_nonneg`). -/
+theorem headB_nonneg {n d a b : ℕ} (hab : n = a + b) (H : Head n d) (y : Fin b → Bool) :
+    0 ≤ headB hab H y := by
+  sorry
+
+/-- Positivity of the cleared multiplier (PROOFS.md P2.2): the product of the `H`
+head denominators is positive (`Head.denominator_pos`, `Finset.prod_pos`), so
+multiplying the softmax score by it preserves signs entrywise. -/
+theorem denominator_prod_pos {n d H : ℕ} (Hs : HeadFamily n d H) (z : Fin n → Bool) :
+    0 < ∏ h : Fin H, (Hs h).denominator z := by
+  sorry
+
+/-- Rank-count arithmetic of the bridge (PROOFS.md P2.3): the two boundary head
+subsets (`∅` and the full set) contribute one rank-one piece each, and each of the
+`2^H − 2` interior subsets contributes two, for a total
+`2·(2^H − 2) + 2 = 2^(H+1) − 2` (using `2 ≤ 2^H` from `H ≥ 1` and
+`2^(H+1) = 2·2^H`). -/
+theorem two_mul_two_pow_sub (H : ℕ) (hH : 1 ≤ H) :
+    2 * (2 ^ H - 2) + 2 = 2 ^ (H + 1) - 2 := by
+  sorry
+
+open scoped InnerProductSpace in
+/-- Two-block split of a head's numerator readout (PROOFS.md P2.1): the readout
+`u_h(x, y) = ⟪w, numerator_h (blockJoin x y)⟫` splits additively as `A'(x) + B'(y)`,
+because each position's contribution `σ_p · ⟪w, value_p⟫` depends only on the
+single input bit at position `p` (`Head_scoreTerm_single`, `Head_scoreTerm_none_const`
+in `ModelToPolynomial`).  Peel the query term with `Fintype.sum_option`, then split
+the `some` positions into the left (`Fin.castAdd`) and right (`Fin.natAdd`) blocks
+with `Fin.sum_univ_add`; `real_inner_sum`/`inner_smul_right` distribute the readout
+over the position sum.  The proved companion is `denominator_eq_headA_add_headB`. -/
+theorem exists_numerator_readout_two_block_split {a b d : ℕ}
+    (H : Head (a + b) d) (w : Vec d) :
+    ∃ (A' : (Fin a → Bool) → ℝ) (B' : (Fin b → Bool) → ℝ),
+      ∀ (x : Fin a → Bool) (y : Fin b → Bool),
+        ⟪w, H.numerator (blockJoin x y)⟫_ℝ = A' x + B' y := by
+  sorry
+
 /-- **Sign-rank bridge** (theorem 028 of the corpus): `H ≥ 1` heads give
 sign-rank at most `2 ^ (H + 1) - 2` under the left/right block partition.
 (`H = 0` is genuinely excluded: a constant function has sign-rank `1 > 0`.) -/
@@ -33,15 +101,6 @@ theorem signRank_le_pow_HStar (a b : ℕ) (f : (Fin (a + b) → Bool) → Bool)
     (hH : 1 ≤ HStar (a + b) f) :
     signRank (signMatrix a b f) ≤ 2 ^ (HStar (a + b) f + 1) - 2 :=
   signRank_le_of_computableWithHeadsN hH (HStar_computable f)
-
-/-- **Theorem C, degree half** (ceiling of the sign-rank route): a degree-`d`
-sign representation factors the sign matrix through its monomials in the
-left-block variables, so sign-rank is at most `(a + 1) ^ d`.  Hence sign-rank
-can never certify more than `H* ≳ d · log₂ a` for a degree-`d` function. -/
-theorem signRank_le_of_thresholdDegLE {a b d : ℕ}
-    {f : (Fin (a + b) → Bool) → Bool} (h : ThresholdDegLE f d) :
-    signRank (signMatrix a b f) ≤ (a + 1) ^ d := by
-  sorry
 
 private lemma choose_succ_le_mul (a d : ℕ) : a.choose (d + 1) ≤ a * a.choose d := by
   have h1 : a.choose (d + 1) ≤ a.choose (d + 1) * (d + 1) := by
@@ -80,6 +139,40 @@ theorem sum_choose_le_pow (a d : ℕ) :
       _ ≤ (a + 1) ^ d + a * (a + 1) ^ d := Nat.add_le_add ih h_choose_le
       _ = (1 + a) * (a + 1) ^ d := by ring
       _ = (a + 1) ^ (d + 1) := by ring
+
+/-- Count of left sub-monomials of degree `≤ d` (PROOFS.md P3.2/P3.3): the number
+of subsets of `Fin a` of size at most `d` is `∑_{i ≤ d} C(a, i)`.  Partition the
+size-`≤ d` subsets by their cardinality: `Finset.powersetCard i univ` has exactly
+`C(a, i)` elements (`Finset.card_powersetCard` with `Finset.card_fin`), and the
+size-`≤ d` subsets are the disjoint union of these over `i ∈ range (d+1)`
+(`Finset.card_biUnion` on the pairwise-disjoint `powersetCard` layers). -/
+theorem card_subsets_card_le (a d : ℕ) :
+    ((Finset.univ : Finset (Fin a)).powerset.filter (fun μ => μ.card ≤ d)).card
+      = ∑ i ∈ Finset.range (d + 1), a.choose i := by
+  sorry
+
+/-- Multilinearization & left-monomial factorization core of the degree half
+(PROOFS.md P3.1–P3.2): a degree-`d` sign representation `P` multilinearizes on
+the cube to `P̃` of the same total degree, which groups by its left sub-monomial
+`x^μ` (`|μ| ≤ d`) as `M = ∑_{|μ| ≤ d} (x^μ)·c_μ(y)`, a sum of
+`#{μ : |μ| ≤ d} = ∑_{i ≤ d} C(a, i)` rank-one outer products; the η-shift
+(P2.4/P3.3) strictifies the sign match, so `signRank ≤ ∑_{i ≤ d} C(a, i)`.  The
+arithmetic tail `∑_{i ≤ d} C(a, i) ≤ (a + 1) ^ d` is `sum_choose_le_pow`. -/
+private theorem signRank_le_sum_choose {a b d : ℕ}
+    {f : (Fin (a + b) → Bool) → Bool} (h : ThresholdDegLE f d) :
+    signRank (signMatrix a b f) ≤ ∑ i ∈ Finset.range (d + 1), a.choose i := by
+  sorry
+
+/-- **Theorem C, degree half** (ceiling of the sign-rank route): a degree-`d`
+sign representation factors the sign matrix through its monomials in the
+left-block variables, so sign-rank is at most `(a + 1) ^ d`.  Hence sign-rank
+can never certify more than `H* ≳ d · log₂ a` for a degree-`d` function.
+(PROOFS.md P3: the linear-algebra core is `signRank_le_sum_choose`, the count
+`sum_choose_le_pow`.) -/
+theorem signRank_le_of_thresholdDegLE {a b d : ℕ}
+    {f : (Fin (a + b) → Bool) → Bool} (h : ThresholdDegLE f d) :
+    signRank (signMatrix a b f) ≤ (a + 1) ^ d :=
+  (signRank_le_sum_choose h).trans (sum_choose_le_pow a d)
 
 /-- **Theorem C, dimension half**: sign-rank is capped by the matrix
 dimensions, `signRank ≤ 2 ^ min a b`.  Together with the degree half this

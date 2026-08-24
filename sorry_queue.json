@@ -5,126 +5,112 @@
       "file": "HeadComplexity/Separations/Warren.lean",
       "status": "external",
       "pref": "P9",
-      "note": "cite-level monument; DO NOT ATTEMPT (real algebraic geometry: components + Milnor/Warren bounds)"
+      "note": "Cite-level monument; DO NOT ATTEMPT (real algebraic geometry: components plus Milnor/Warren bounds)."
     },
     {
       "name": "signRank_le_of_computableWithHeadsN",
       "file": "HeadComplexity/Separations/SignRankBridge.lean",
       "status": "hard",
-      "pref": "P2",
-      "note": "T-grouping of cleared softmax score; decompose per P2.1-P2.4 (per-head A/B split, clearing, rank-by-subset, eta-shift). Needs Model/Head internals; rank subadditivity is now available as `rank_add_le` (P2.3) and outer-product rank via mathlib `rank_vecMulVec_le`."
+      "pref": "P2.2-P2.4",
+      "note": "Core 028 bridge: clear denominators, expand the product over A/B sides, group by head subset T (P2.3), count the <=2 rank-one pieces per T. Available: denominator_eq_headA_add_headB, exists_numerator_readout_two_block_split, headA_pos/headB_nonneg, denominator_prod_pos, two_mul_two_pow_sub, rank_le_card_of_sum_vecMulVec."
     },
     {
-      "name": "signRank_le_of_thresholdDegLE",
+      "name": "signRank_le_sum_choose",
       "file": "HeadComplexity/Separations/SignRankBridge.lean",
       "status": "hard",
-      "pref": "P3",
-      "note": "multilinearize on cube, group by left monomials into <= sum_{i<=d} C(a,i) rank-one pieces, eta-shift; the count sum_{i<=d} C(a,i) <= (a+1)^d is now the `sum_choose_le_pow` leaf (P3.3)."
+      "pref": "P3.1-P3.2",
+      "note": "Take a strict sign rep (exists_strictSignRep_of_ThresholdDegLE), evaluate on the cube via UnivariateReduction.eval_cube_eq_subset_sum, group the support by its left-variable projection into <= card_subsets_card_le outer products, bound the rank with rank_le_card_of_sum_vecMulVec."
     },
     {
-      "name": "forster",
+      "name": "forster_large_rank",
       "file": "HeadComplexity/Separations/Forster.lean",
       "status": "hard",
-      "pref": "P5",
-      "note": "decompose: r<N regime (P5.1, base estimate is the `card_le_specNorm_sq` leaf), general position (P5.2), isotropic position kernel (P5.3, compactness+first-order), main chain (P5.4). P5.3 is the deep analytic kernel."
+      "pref": "P5.2-P5.4",
+      "note": "Forster large-rank regime: general position (P5.2), isotropic position via Phi-minimization (P5.3 analytic kernel), then the trace/Cauchy-Schwarz chain (P5.4). The small-rank regime forster_small_rank is proved (uses card_le_specNorm_sq)."
     },
     {
-      "name": "specNorm_signMatrix_distThreshold",
-      "file": "HeadComplexity/Separations/DistanceThreshold.lean",
-      "status": "hard",
-      "pref": "P4",
-      "note": "character eigenbasis diagonalizes M=s(x xor y): now scaffolded by `charFn`/`distSign` (proved `charFn_xor`) plus the leaves `signMatrix_distThreshold_apply`, `signMatrix_mulVec_charFn`, `charFn_orthogonal`, `distSign_sum_eq_zero`. Remaining core: level-1 eigenvalue bound (P4.2) + Parseval assembly (P4.3)."
-    },
-    {
-      "name": "thresholdDegLE_tensorDistThreshold",
+      "name": "forsterRatio_pow_le_signRank_tensor",
       "file": "HeadComplexity/Separations/Tensor.lean",
       "status": "hard",
-      "pref": "P8.4",
-      "note": "product Q=(-1)^(k+1) prod_j P_j of block quadratics; degree<=2k via totalDegree_finsetProd; sign via the `sign_xor_prod` leaf (P8.2) and the per-block `blockSignRep_distThreshold` leaf (P8.4); k=0 gives Q=-1, G const false."
+      "pref": "P8.1-P8.3",
+      "note": "Remaining hard core is the sign-matrix Kronecker identity signRank (signMatrix (k*m)(k*m) G-tilde) = signRank (kroneckerPow k S1) (P8.2, via tensorEquiv + sign_xor_prod + signRank_reindex/signRank_neg); then kroneckerPow_mem_pm_one + specNorm_kroneckerPow + specNorm_signMatrix_distThreshold + forster + forsterRatio_pow_le_of_forster close it."
     },
     {
-      "name": "theoremB_HStar",
-      "file": "HeadComplexity/Separations/Tensor.lean",
-      "status": "hard",
-      "pref": "P8.3",
-      "note": "needs HStar_comp_equiv (P1.3, new, Model internals) + sign-matrix Kronecker identity (P8.2) + signRank_reindex + signRank_neg + specNorm_kronecker (proved) + forster. Decompose per P8.1-P8.3."
-    },
-    {
-      "name": "pow_le_of_leftShatters",
+      "name": "warren_bound_of_leftShatters",
       "file": "HeadComplexity/Separations/NDISJ.lean",
       "status": "hard",
       "pref": "P10.1",
-      "note": "freeze left points, clear to Q_j in 2H shift vars (degree<=H, Model internals as in P2.1), eta-shift to strict sign patterns, Warren with m=2H,d=H,k polys; final algebra is the `warren_pow_simp` leaf (P10.1); case split H=0 (void), k<2H (trivial), k>=2H."
+      "note": "Construct the 2H-variable cleared-score polynomials Q_j (totalDegree <= H), strictify all shattered labels by a common eta, and apply warren_sign_patterns; the final ceiling simplification warren_pow_simp is proved."
     },
     {
-      "name": "rank_add_le",
+      "name": "rank_sum_le",
       "file": "HeadComplexity/Separations/SignRank.lean",
       "status": "jules_ready",
-      "pref": "P2.3",
-      "note": "Matrix.rank subadditivity (A+B).rank <= A.rank + B.rank; derive from (A+B).mulVecLin = A.mulVecLin + B.mulVecLin, range(f+g) <= range f sup range g, and finrank sup subadditivity (LinearMap.rank_add_le / Submodule.finrank_add_le_finrank_add_finrank). §11 inventory item 4."
+      "pref": "P2.3/P3.2",
+      "note": "Finset.induction on s: empty case is Matrix.rank_zero, insertion step is the proved rank_add_le composed with the inductive hypothesis."
     },
     {
-      "name": "sum_choose_le_pow",
+      "name": "headA_pos",
       "file": "HeadComplexity/Separations/SignRankBridge.lean",
       "status": "jules_ready",
-      "pref": "P3.3",
-      "note": "sum_{i in range(d+1)} C(a,i) <= (a+1)^d. Induction on d; step uses C(a,d+1) <= a*C(a,d) (Nat.choose_succ_right_eq) and C(a,d) <= sum <= (a+1)^d (term <= sum <= IH)."
+      "pref": "P2.1",
+      "note": "unfold headA; the query term is Head.sigma_pos (> 0) and the finite left sum is Finset.sum_nonneg of Head.sigma_pos."
     },
     {
-      "name": "card_le_specNorm_sq",
+      "name": "headB_nonneg",
+      "file": "HeadComplexity/Separations/SignRankBridge.lean",
+      "status": "jules_ready",
+      "pref": "P2.1",
+      "note": "unfold headB; Finset.sum_nonneg with each term Head.sigma_pos.le."
+    },
+    {
+      "name": "denominator_prod_pos",
+      "file": "HeadComplexity/Separations/SignRankBridge.lean",
+      "status": "jules_ready",
+      "pref": "P2.2",
+      "note": "Finset.prod_pos with each factor (Hs h).denominator_pos."
+    },
+    {
+      "name": "two_mul_two_pow_sub",
+      "file": "HeadComplexity/Separations/SignRankBridge.lean",
+      "status": "jules_ready",
+      "pref": "P2.3",
+      "note": "Nat identity; `have : 2 <= 2^H := Nat.one_lt_two_pow ...`; rw [pow_succ]; omega."
+    },
+    {
+      "name": "exists_numerator_readout_two_block_split",
+      "file": "HeadComplexity/Separations/SignRankBridge.lean",
+      "status": "jules_ready",
+      "pref": "P2.1",
+      "note": "Mirror denominator_eq_headA_add_headB with the readout: real_inner_sum over Head.numerator, then Fintype.sum_option and Fin.sum_univ_add; each some-term depends on one bit (Head_scoreTerm_single, Head_scoreTerm_none_const in ModelToPolynomial). Take A' = query + left sum, B' = right sum."
+    },
+    {
+      "name": "card_subsets_card_le",
+      "file": "HeadComplexity/Separations/SignRankBridge.lean",
+      "status": "jules_ready",
+      "pref": "P3.2/P3.3",
+      "note": "Partition the size-<=d subsets of Fin a by cardinality; (powersetCard i univ).card = C(a,i) by Finset.card_powersetCard + Finset.card_fin; sum over i in range (d+1) via Finset.card_biUnion of the disjoint layers."
+    },
+    {
+      "name": "specNorm_kroneckerPow",
       "file": "HeadComplexity/Separations/Forster.lean",
       "status": "jules_ready",
-      "pref": "P5.1",
-      "note": "±1 matrix ⇒ card ι <= (specNorm M)^2. specNorm M = ‖toEuclideanCLM M‖ >= ‖toEuclideanCLM M (EuclideanSpace.single j 1)‖; ‖M *ᵥ e_j‖^2 = sum_i (M i j)^2 = card. Empty ι via norm_eq_zero_of_isEmpty."
+      "pref": "P8.3",
+      "note": "Induction on k; base is the 1x1 matrix [1] (empty product); step writes kroneckerPow (k+1) M = reindex e e (M kron kroneckerPow k M) for e : (Fin (k+1) -> i) ~ i x (Fin k -> i) (Fin.prod_univ_succ for entries), then specNorm_reindex + specNorm_kronecker."
     },
     {
-      "name": "sign_xor_prod",
+      "name": "kroneckerPow_mem_pm_one",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P8.3",
+      "note": "Each entry is a finite product of +/-1; Finset.prod induction (or rcases on each factor) shows a product of +/-1 values is +/-1."
+    },
+    {
+      "name": "forsterRatio_pow_le_of_forster",
       "file": "HeadComplexity/Separations/Tensor.lean",
       "status": "jules_ready",
-      "pref": "P8.2",
-      "note": "XOR sign encoding e(XOR g) = (-1)^(k+1) * prod_j e(g_j), e(b)=if b then 1 else -1. Induction on k (or prod_j e(g_j) = (-1)^(#false) with #true+#false=k, and parity of #true = Odd(filter card)); k=0 both sides -1."
-    },
-    {
-      "name": "blockSignRep_distThreshold",
-      "file": "HeadComplexity/Separations/Tensor.lean",
-      "status": "jules_ready",
-      "pref": "P8.4",
-      "note": "strict degree-<=2 sign rep of z ↦ distThreshold m (blockOf z j) with nonzero cube values. Take the explicit Δ-m/2 polynomial from thresholdDegLE_distThreshold, apply MvPolynomial.rename (fun i => finProdFinEquiv (j,i)); eval_rename gives the block hammingDist - m/2 ∈ ℤ+1/2 (odd m)."
-    },
-    {
-      "name": "charFn_orthogonal",
-      "file": "HeadComplexity/Separations/DistanceThreshold.lean",
-      "status": "jules_ready",
-      "pref": "P4.3",
-      "note": "sum_x charFn S x * charFn T x = if S=T then 2^m else 0. Rewrite summand as prod_i c_i(x_i) and use Finset.prod_univ_sum (sum/product interchange over the cube); each coordinate factor sum_b c_i(b) is 2 off S△T and 0 on it."
-    },
-    {
-      "name": "signMatrix_distThreshold_apply",
-      "file": "HeadComplexity/Separations/DistanceThreshold.lean",
-      "status": "jules_ready",
-      "pref": "P4.1",
-      "note": "signMatrix m m (distThreshold m) x y = distSign m (x xor y). Unfold signMatrix/distThreshold with leftBits_blockJoin/rightBits_blockJoin, then hammingDist x y = hammingDist (fun i => xor (x i) (y i)) (fun _ => false) (both count {i : x i ≠ y i})."
-    },
-    {
-      "name": "signMatrix_mulVec_charFn",
-      "file": "HeadComplexity/Separations/DistanceThreshold.lean",
-      "status": "jules_ready",
-      "pref": "P4.1",
-      "note": "eigen-action M *ᵥ charFn S = (sum_u distSign m u * charFn S u) • charFn S. (M χ_S)(x) = sum_y distSign(x xor y) χ_S(y) (via signMatrix_distThreshold_apply); substitute u = x xor y (Equiv from xor-by-x, involutive), then charFn_xor pulls out χ_S(x)."
-    },
-    {
-      "name": "distSign_sum_eq_zero",
-      "file": "HeadComplexity/Separations/DistanceThreshold.lean",
-      "status": "jules_ready",
-      "pref": "P4.2",
-      "note": "sum_u distSign m u = 0 for odd m (this is λ_∅). Complement involution u ↦ (fun i => !u i) is fixed-point-free (m>=1) and flips the sign: |ū| = m - |u|, and for odd m exactly one of |u|,|ū| reaches (m+1)/2, so distSign ū = -distSign u; pair up via Finset.sum_involution / Equiv."
-    },
-    {
-      "name": "warren_pow_simp",
-      "file": "HeadComplexity/Separations/NDISJ.lean",
-      "status": "jules_ready",
-      "pref": "P10.1",
-      "note": "(4*e*H*k/(2*H))^(2*H) = (2*e*k)^(2*H) for H>=1. Base equality: 4*e*H*k/(2*H) = 2*e*k by cancelling H≠0 (field_simp with (H:ℝ)≠0 from hH), then congr on the exponent."
+      "pref": "P8.3",
+      "note": "Divide hle by the positive (2C)^k; rewrite 2^(k*m) = (2^m)^k and forsterRatio m = 2^m/(2C) (needs m >= 1, so 2^(m-1)*2 = 2^m and 2^(k*m)/2^k = 2^(k*(m-1)))."
     }
   ]
 }

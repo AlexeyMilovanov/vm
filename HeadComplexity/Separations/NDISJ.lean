@@ -31,15 +31,6 @@ def LeftShatters {a b : ℕ} (f : (Fin (a + b) → Bool) → Bool) (k : ℕ) : P
   ∃ zs : Fin k → (Fin a → Bool),
     ∀ s : Fin k → Bool, ∃ w : Fin b → Bool, ∀ j, f (blockJoin (zs j) w) = s j
 
-/-- **Split-shattering head bound** (mega-lab theorem, via Warren): if `f` is
-computable with `H` heads and left-shatters `k` points, then
-`2 ^ k ≤ (2 e k) ^ (2 H)`; equivalently `H* ≥ k / (2 log₂ (2 e k))`. -/
-theorem pow_le_of_leftShatters {a b H k : ℕ}
-    {f : (Fin (a + b) → Bool) → Bool} (hk : 1 ≤ k)
-    (hcomp : computableWithHeadsN (a + b) H f) (hsh : LeftShatters f k) :
-    (2 : ℝ) ^ k ≤ (2 * Real.exp 1 * k) ^ (2 * H) := by
-  sorry
-
 /-- Warren-bound simplification (PROOFS.md P10.1, final step): with `m := 2H`
 and `d := H`, Warren's ceiling `(4·e·d·k/m)^m` collapses to `(2·e·k)^{2H}`
 because `4·e·H·k / (2·H) = 2·e·k` (cancel `H ≠ 0`).  This turns the raw Warren
@@ -245,6 +236,79 @@ theorem fracComputable_ndisj (m : ℕ) : fracComputable (m + m) m (ndisj m) := b
 
 /-- Monotone-DNF upper bound (corpus theorem 029): one calibrated head per
 term gives `H*(NDISJ_m) ≤ m`. -/
+private theorem not_leftShatters_zero_heads {a b k : ℕ} (hk : 1 ≤ k)
+    {f : (Fin (a + b) → Bool) → Bool}
+    (hcomp : computableWithHeadsN (a + b) 0 f) :
+    ¬ LeftShatters f k := by
+  rcases hcomp with ⟨d, Hs, w, τ, hcomp⟩
+  intro hsh
+  rcases hsh with ⟨zs, hsh⟩
+  have h_const : ∀ z1 z2, f z1 = f z2 := by
+    intro z1 z2
+    have h1 : 0 > τ ↔ f z1 = true := by
+      simpa [headFamilyAttnUpdate] using hcomp z1
+    have h2 : 0 > τ ↔ f z2 = true := by
+      simpa [headFamilyAttnUpdate] using hcomp z2
+    cases hfz1 : f z1 <;> cases hfz2 : f z2
+    · rfl
+    · rw [hfz1] at h1
+      rw [hfz2] at h2
+      have hτ : 0 > τ := h2.mpr rfl
+      have hff : false = true := h1.mp hτ
+      contradiction
+    · rw [hfz1] at h1
+      rw [hfz2] at h2
+      have hτ : 0 > τ := h1.mpr rfl
+      have hff : false = true := h2.mp hτ
+      contradiction
+    · rfl
+  set j0 : Fin k := ⟨0, by omega⟩
+  rcases hsh (fun _ => true) with ⟨w1, hw1⟩
+  rcases hsh (fun _ => false) with ⟨w2, hw2⟩
+  have ht := hw1 j0
+  have hf := hw2 j0
+  have hce := h_const (blockJoin (zs j0) w1) (blockJoin (zs j0) w2)
+  rw [ht, hf] at hce
+  contradiction
+
+private theorem pow_le_pow_of_lt_two_mul_H {H k : ℕ} (hk : 1 ≤ k) (hkH : k < 2 * H) :
+    (2 : ℝ) ^ k ≤ (2 * Real.exp 1 * (k : ℝ)) ^ (2 * H) := by
+  have hbase : (2 : ℝ) ≤ 2 * Real.exp 1 * (k : ℝ) := by
+    have hk1 : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+    have he1 : (1 : ℝ) < Real.exp 1 := Real.one_lt_exp_iff.mpr zero_lt_one
+    nlinarith
+  have hpow1 : (2 : ℝ) ^ k ≤ (2 : ℝ) ^ (2 * H) :=
+    pow_le_pow_right₀ (by norm_num) (by omega)
+  have hpow2 : (2 : ℝ) ^ (2 * H) ≤ (2 * Real.exp 1 * (k : ℝ)) ^ (2 * H) :=
+    pow_le_pow_left₀ (by norm_num) hbase (2 * H)
+  exact hpow1.trans hpow2
+
+private theorem warren_bound_of_leftShatters {a b H k : ℕ} (hH : 1 ≤ H) (hkH : 2 * H ≤ k)
+    {f : (Fin (a + b) → Bool) → Bool}
+    (hcomp : computableWithHeadsN (a + b) H f) (hsh : LeftShatters f k) :
+    (2 : ℝ) ^ k ≤ (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H) := by
+  sorry
+
+/-- **Split-shattering head bound** (mega-lab theorem, via Warren): if `f` is
+computable with `H` heads and left-shatters `k` points, then
+`2 ^ k ≤ (2 e k) ^ (2 H)`; equivalently `H* ≥ k / (2 log₂ (2 e k))`. -/
+
+theorem pow_le_of_leftShatters {a b H k : ℕ}
+    {f : (Fin (a + b) → Bool) → Bool} (hk : 1 ≤ k)
+    (hcomp : computableWithHeadsN (a + b) H f) (hsh : LeftShatters f k) :
+    (2 : ℝ) ^ k ≤ (2 * Real.exp 1 * k) ^ (2 * H) := by
+  by_cases hH : H = 0
+  · subst hH
+    exfalso
+    exact not_leftShatters_zero_heads hk hcomp hsh
+  · have hH1 : 1 ≤ H := by omega
+    by_cases hkH : k < 2 * H
+    · exact pow_le_pow_of_lt_two_mul_H hk hkH
+    · have hkH2 : 2 * H ≤ k := by omega
+      have hw := warren_bound_of_leftShatters hH1 hkH2 hcomp hsh
+      rw [warren_pow_simp H k hH1] at hw
+      exact hw
+
 theorem HStar_ndisj_le (m : ℕ) : HStar (m + m) (ndisj m) ≤ m := by
   have hcomp : computableWithHeadsN (m + m) m (ndisj m) :=
     computable_of_fracComputable (fracComputable_ndisj m)

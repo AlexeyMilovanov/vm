@@ -15,7 +15,10 @@ makes the bound tensor (Theorem B of `audit/sources/EXPLICIT_GAP.md`).
 
 namespace HeadComplexity
 
+open Matrix
 open scoped Kronecker
+open scoped Matrix.Norms.L2Operator
+open Metric
 
 /-- Spectral norm of a square real matrix: the operator norm of the induced map
 on Euclidean space. -/
@@ -23,21 +26,105 @@ noncomputable def specNorm {ι : Type*} [Fintype ι] [DecidableEq ι]
     (M : Matrix ι ι ℝ) : ℝ :=
   ‖Matrix.toEuclideanCLM (𝕜 := ℝ) M‖
 
-/-- **Forster's theorem** (Forster 2002): a `±1` matrix of size `N × N` has
-sign-rank at least `N / ‖M‖₂`. -/
-theorem forster {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
-    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
-  sorry
-
-open Matrix
-open scoped Kronecker
-open scoped Matrix.Norms.L2Operator
-open Metric
-
 private theorem norm_sq_eq {ι : Type*} [Fintype ι] [DecidableEq ι] (v : ι → ℝ) :
     ‖(WithLp.equiv 2 _).symm v‖^2 = ∑ i, v i ^ 2 :=
   EuclideanSpace.real_norm_sq_eq _
+
+/-- **±1 spectral lower bound** (PROOFS.md P5.1, the `signRank ≥ N` regime of
+Forster): every column of a `±1` matrix has Euclidean norm `√N`
+(`‖M *ᵥ eⱼ‖² = ∑ᵢ (M i j)² = N`), so `specNorm M ≥ √N`, i.e.
+`card ι ≤ (specNorm M) ^ 2`.  Start from `specNorm M = ‖toEuclideanCLM M‖ ≥
+‖toEuclideanCLM M (EuclideanSpace.single j 1)‖`; for an empty index type the
+claim is simply `0 ≤ (specNorm M)²`. -/
+theorem card_le_specNorm_sq {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
+    (Fintype.card ι : ℝ) ≤ (specNorm M) ^ 2 := by
+  by_cases hι : IsEmpty ι
+  · have h_card : Fintype.card ι = 0 := Fintype.card_eq_zero
+    rw [h_card, Nat.cast_zero]
+    exact sq_nonneg _
+  · rw [not_isEmpty_iff] at hι
+    have j : ι := Classical.choice hι
+    set e_j : ι → ℝ := Pi.single j 1
+    have he_j_norm : ‖(WithLp.equiv 2 _).symm e_j‖ = 1 := by
+      have hsq : ‖(WithLp.equiv 2 _).symm e_j‖^2 = 1 := by
+        rw [norm_sq_eq]
+        have h_sum : ∑ i, e_j i ^ 2 = 1 := by
+          rw [Finset.sum_eq_single j]
+          · simp [e_j]
+          · intro b _ hb
+            simp [e_j, Pi.single_eq_of_ne hb]
+          · intro hb
+            exact False.elim (hb (Finset.mem_univ j))
+        exact h_sum
+      have hpos : 0 ≤ ‖(WithLp.equiv 2 _).symm e_j‖ := norm_nonneg _
+      nlinarith
+    have h_mulVec : M *ᵥ e_j = fun i => M i j := by
+      ext i
+      simp [Matrix.mulVec, dotProduct, e_j, Pi.single_apply]
+    have h_action_norm : ‖(WithLp.equiv 2 (ι → ℝ)).symm (M *ᵥ e_j)‖^2 =
+        (Fintype.card ι : ℝ) := by
+      rw [h_mulVec, norm_sq_eq]
+      have h_sum : ∑ i, (M i j) ^ 2 = (Fintype.card ι : ℝ) := by
+        have h_entry : ∀ i, (M i j) ^ 2 = 1 := by
+          intro i
+          rcases hM i j with h1 | h2
+          · rw [h1]; ring
+          · rw [h2]; ring
+        simp_rw [h_entry]
+        simp
+      exact h_sum
+    have h_op : ‖(WithLp.equiv 2 _).symm (M *ᵥ e_j)‖ ≤
+        specNorm M * ‖(WithLp.equiv 2 _).symm e_j‖ := by
+      have : (WithLp.equiv 2 _).symm (M *ᵥ e_j) =
+          Matrix.toEuclideanCLM (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm e_j) := rfl
+      rw [this]
+      exact ContinuousLinearMap.le_opNorm _ _
+    rw [he_j_norm, mul_one] at h_op
+    have h_op_sq : ‖(WithLp.equiv 2 _).symm (M *ᵥ e_j)‖^2 ≤ (specNorm M)^2 := by
+      nlinarith [h_op, norm_nonneg ((WithLp.equiv 2 (ι → ℝ)).symm (M *ᵥ e_j)),
+        norm_nonneg (Matrix.toEuclideanCLM (𝕜 := ℝ) M)]
+    rwa [h_action_norm] at h_op_sq
+
+/-- **Forster's theorem** (Forster 2002): a `±1` matrix of size `N × N` has
+sign-rank at least `N / ‖M‖₂` (small rank regime). -/
+theorem forster_small_rank {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
+    (h_r : Fintype.card ι ≤ signRank M) :
+    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
+  by_cases hcard : Fintype.card ι = 0
+  · rw [hcard, Nat.cast_zero]
+    exact mul_nonneg (Nat.cast_nonneg _) (by unfold specNorm; exact norm_nonneg _)
+  · have hcard_one : (1 : ℝ) ≤ Fintype.card ι := by
+      exact_mod_cast (Nat.one_le_iff_ne_zero.mpr hcard)
+    have hspec_sq := card_le_specNorm_sq M hM
+    have hspec_nonneg : 0 ≤ specNorm M := norm_nonneg _
+    have hspec_one : 1 ≤ specNorm M := by nlinarith
+    have hr_cast : (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) := by
+      exact_mod_cast h_r
+    calc
+      (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) := hr_cast
+      _ ≤ (signRank M : ℝ) * specNorm M := by
+        nlinarith [show 0 ≤ (signRank M : ℝ) by positivity]
+
+/-- **Forster's theorem** (Forster 2002): a `±1` matrix of size `N × N` has
+sign-rank at least `N / ‖M‖₂` (large rank regime). -/
+theorem forster_large_rank {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
+    (h_r : signRank M < Fintype.card ι) :
+    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
+  sorry
+
+/-- **Forster's theorem** (Forster 2002): a `±1` matrix of size `N × N` has
+sign-rank at least `N / ‖M‖₂`. -/
+
+theorem forster {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
+    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
+  by_cases h : Fintype.card ι ≤ signRank M
+  · exact forster_small_rank M hM h
+  · push Not at h
+    exact forster_large_rank M hM h
 
 private theorem norm_mulVec_le {ι : Type*} [Fintype ι] [DecidableEq ι] (A : Matrix ι ι ℝ)
     (v : ι → ℝ) : ‖(WithLp.equiv 2 _).symm (A *ᵥ v)‖ ≤ ‖A‖ * ‖(WithLp.equiv 2 _).symm v‖ := by
@@ -343,6 +430,35 @@ theorem specNorm_kronecker {ι κ : Type*}
     specNorm (A ⊗ₖ B) = specNorm A * specNorm B :=
   le_antisymm (specNorm_kronecker_le A B) (le_specNorm_kronecker A B)
 
+/-- `k`-fold Kronecker power of a square matrix, indexed by `Fin k → ι`
+(PROOFS.md P8.2): the entry at `(x, y)` is `∏ⱼ M (x j) (y j)`.  This is the
+Kronecker object whose reindex is the tensored sign matrix `S_k`. -/
+def kroneckerPow (k : ℕ) {ι : Type*} (M : Matrix ι ι ℝ) :
+    Matrix (Fin k → ι) (Fin k → ι) ℝ :=
+  fun x y => ∏ j, M (x j) (y j)
+
+/-- **Spectral norm of the Kronecker power** (PROOFS.md P8.3):
+`specNorm (kroneckerPow k M) = (specNorm M) ^ k`.  Induction on `k`: the base
+case is the `1 × 1` matrix with entry `1` (empty product), and the step writes
+`kroneckerPow (k+1) M = reindex e e (M ⊗ₖ kroneckerPow k M)` for the equivalence
+`e : (Fin (k+1) → ι) ≃ ι × (Fin k → ι)` (`Fin.prod_univ_succ` gives the entrywise
+identity), so `specNorm_reindex` and `specNorm_kronecker` reduce it to
+`specNorm M * (specNorm M) ^ k`.  This is the multiplicative engine turning the
+Forster ratio into `γ_m ^ k` for Theorem B. -/
+theorem specNorm_kroneckerPow {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (k : ℕ) (M : Matrix ι ι ℝ) :
+    specNorm (kroneckerPow k M) = (specNorm M) ^ k := by
+  sorry
+
+/-- The Kronecker power of a `±1` matrix is `±1` (PROOFS.md P8.3): each entry
+`∏ⱼ M (x j) (y j)` is a finite product of `±1` values, hence `±1` itself.  This is
+what lets Forster's theorem apply to `kroneckerPow k S₁` (the tensored sign
+matrix), whose card is `2^{k·m}`. -/
+theorem kroneckerPow_mem_pm_one {ι : Type*} (k : ℕ) (M : Matrix ι ι ℝ)
+    (hM : ∀ i j, M i j = 1 ∨ M i j = -1) (x y : Fin k → ι) :
+    kroneckerPow k M x y = 1 ∨ kroneckerPow k M x y = -1 := by
+  sorry
+
 /-- The spectral norm is invariant under simultaneous reindexing (PROOFS.md
 P6.1): `reindex e e M` is `toEuclideanCLM M` conjugated by the coordinate
 permutation isometry `π := piLpCongrLeft`, and operator norms are invariant
@@ -376,58 +492,5 @@ theorem specNorm_reindex {ι ι' : Type*}
     rfl
   rw [key, ContinuousLinearMap.opNorm_linearIsometryEquiv_comp,
     ContinuousLinearMap.opNorm_comp_linearIsometryEquiv]
-
-/-- **±1 spectral lower bound** (PROOFS.md P5.1, the `signRank ≥ N` regime of
-Forster): every column of a `±1` matrix has Euclidean norm `√N`
-(`‖M *ᵥ eⱼ‖² = ∑ᵢ (M i j)² = N`), so `specNorm M ≥ √N`, i.e.
-`card ι ≤ (specNorm M) ^ 2`.  Start from `specNorm M = ‖toEuclideanCLM M‖ ≥
-‖toEuclideanCLM M (EuclideanSpace.single j 1)‖`; the empty index type gives
-`0 ≤ 0` via `norm_eq_zero_of_isEmpty`. -/
-theorem card_le_specNorm_sq {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
-    (Fintype.card ι : ℝ) ≤ (specNorm M) ^ 2 := by
-  by_cases hι : IsEmpty ι
-  · have h_card : Fintype.card ι = 0 := Fintype.card_eq_zero
-    rw [h_card, Nat.cast_zero]
-    exact sq_nonneg _
-  · rw [not_isEmpty_iff] at hι
-    have j : ι := Classical.choice hι
-    set e_j : ι → ℝ := Pi.single j 1
-    have he_j_norm : ‖(WithLp.equiv 2 _).symm e_j‖ = 1 := by
-      have hsq : ‖(WithLp.equiv 2 _).symm e_j‖^2 = 1 := by
-        rw [norm_sq_eq]
-        have h_sum : ∑ i, e_j i ^ 2 = 1 := by
-          rw [Finset.sum_eq_single j]
-          · simp [e_j]
-          · intro b _ hb
-            simp [e_j, Pi.single_eq_of_ne hb]
-          · intro hb
-            exact False.elim (hb (Finset.mem_univ j))
-        exact h_sum
-      have hpos : 0 ≤ ‖(WithLp.equiv 2 _).symm e_j‖ := norm_nonneg _
-      nlinarith
-    have h_mulVec : M *ᵥ e_j = fun i => M i j := by
-      ext i
-      simp [Matrix.mulVec, dotProduct, e_j, Pi.single_apply]
-    have h_action_norm : ‖(WithLp.equiv 2 (ι → ℝ)).symm (M *ᵥ e_j)‖^2 =
-        (Fintype.card ι : ℝ) := by
-      rw [h_mulVec, norm_sq_eq]
-      have h_sum : ∑ i, (M i j) ^ 2 = (Fintype.card ι : ℝ) := by
-        have h_entry : ∀ i, (M i j) ^ 2 = 1 := by
-          intro i
-          rcases hM i j with h1 | h2
-          · rw [h1]; ring
-          · rw [h2]; ring
-        simp_rw [h_entry]
-        simp
-      exact h_sum
-    have h_op : ‖(WithLp.equiv 2 _).symm (M *ᵥ e_j)‖ ≤ specNorm M * ‖(WithLp.equiv 2 _).symm e_j‖ := by
-      have : (WithLp.equiv 2 _).symm (M *ᵥ e_j) = Matrix.toEuclideanCLM (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm e_j) := rfl
-      rw [this]
-      exact ContinuousLinearMap.le_opNorm _ _
-    rw [he_j_norm, mul_one] at h_op
-    have h_op_sq : ‖(WithLp.equiv 2 _).symm (M *ᵥ e_j)‖^2 ≤ (specNorm M)^2 := by
-      nlinarith [h_op, norm_nonneg ((WithLp.equiv 2 (ι → ℝ)).symm (M *ᵥ e_j)), norm_nonneg (Matrix.toEuclideanCLM (𝕜 := ℝ) M)]
-    rwa [h_action_norm] at h_op_sq
 
 end HeadComplexity
