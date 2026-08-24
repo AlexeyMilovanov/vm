@@ -1,0 +1,39 @@
+diff --git a/HeadComplexity/Separations/Forster.lean b/HeadComplexity/Separations/Forster.lean
+index 6758736..da763ee 100644
+--- a/HeadComplexity/Separations/Forster.lean
++++ b/HeadComplexity/Separations/Forster.lean
+@@ -450,6 +450,24 @@ theorem specNorm_kroneckerPow {ι : Type*} [Fintype ι] [DecidableEq ι]
+     specNorm (kroneckerPow k M) = (specNorm M) ^ k := by
+   sorry
+ 
++private lemma prod_mem_pm_one {α : Type*} (s : Finset α) (f : α → ℝ)
++    (hf : ∀ x ∈ s, f x = 1 ∨ f x = -1) :
++    ∏ x ∈ s, f x = 1 ∨ ∏ x ∈ s, f x = -1 := by
++  classical
++  induction s using Finset.induction_on with
++  | empty =>
++    rw [Finset.prod_empty]
++    exact Or.inl rfl
++  | insert a s ha ih =>
++    rw [Finset.prod_insert ha]
++    have hfa : f a = 1 ∨ f a = -1 := hf a (Finset.mem_insert_self a s)
++    have ht : ∀ x ∈ s, f x = 1 ∨ f x = -1 := fun x hx => hf x (Finset.mem_insert_of_mem hx)
++    rcases hfa with h1 | h1 <;> rcases ih ht with h2 | h2 <;> rw [h1, h2]
++    · left; ring
++    · right; ring
++    · right; ring
++    · left; ring
++
+ /-- The Kronecker power of a `±1` matrix is `±1` (PROOFS.md P8.3): each entry
+ `∏ⱼ M (x j) (y j)` is a finite product of `±1` values, hence `±1` itself.  This is
+ what lets Forster's theorem apply to `kroneckerPow k S₁` (the tensored sign
+@@ -457,7 +475,8 @@ matrix), whose card is `2^{k·m}`. -/
+ theorem kroneckerPow_mem_pm_one {ι : Type*} (k : ℕ) (M : Matrix ι ι ℝ)
+     (hM : ∀ i j, M i j = 1 ∨ M i j = -1) (x y : Fin k → ι) :
+     kroneckerPow k M x y = 1 ∨ kroneckerPow k M x y = -1 := by
+-  sorry
++  unfold kroneckerPow
++  exact prod_mem_pm_one Finset.univ (fun j => M (x j) (y j)) (fun j _ => hM (x j) (y j))
+ 
+ /-- The spectral norm is invariant under simultaneous reindexing (PROOFS.md
+ P6.1): `reindex e e M` is `toEuclideanCLM M` conjugated by the coordinate

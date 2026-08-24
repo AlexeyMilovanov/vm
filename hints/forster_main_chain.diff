@@ -1,0 +1,193 @@
+diff --git a/HeadComplexity/Separations/Forster.lean b/HeadComplexity/Separations/Forster.lean
+index 6758736..06d38f8 100644
+--- a/HeadComplexity/Separations/Forster.lean
++++ b/HeadComplexity/Separations/Forster.lean
+@@ -536,6 +536,166 @@ theorem exists_isotropic_reposition {r : ℕ} {ι : Type*} [Fintype ι]
+         ∑ x, ⟪u' x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
+   sorry
+ 
++private theorem forster_main_chain_lower_bound {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
++    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
++    (u v : ι → EuclideanSpace ℝ (Fin r))
++    (hu : ∀ x, ‖u x‖ = 1) (hv : ∀ y, ‖v y‖ = 1)
++    (hsign : ∀ x y, 0 < M x y * ⟪u x, v y⟫_ℝ)
++    (hiso : ∀ w : EuclideanSpace ℝ (Fin r),
++      ∑ x, ⟪u x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2) :
++    ((Fintype.card ι : ℝ) ^ 2) / (r : ℝ) ≤ ∑ x, ∑ y, M x y * ⟪u x, v y⟫_ℝ := by
++  have h_abs : ∀ x y, M x y * ⟪u x, v y⟫_ℝ = |⟪u x, v y⟫_ℝ| := by
++    intro x y
++    rcases hM x y with h1 | h1
++    · rw [h1, one_mul]
++      have hpos : 0 < ⟪u x, v y⟫_ℝ := by
++        have := hsign x y
++        rw [h1, one_mul] at this
++        exact this
++      exact (abs_of_pos hpos).symm
++    · rw [h1, neg_one_mul]
++      have hpos : 0 < -⟪u x, v y⟫_ℝ := by
++        have := hsign x y
++        rw [h1, neg_one_mul] at this
++        exact this
++      have hneg : ⟪u x, v y⟫_ℝ < 0 := by linarith
++      rw [abs_of_neg hneg]
++  have h_sq : ∀ x y, |⟪u x, v y⟫_ℝ| ≥ ⟪u x, v y⟫_ℝ ^ 2 := by
++    intro x y
++    have h_le_1 : |⟪u x, v y⟫_ℝ| ≤ 1 := by
++      have := abs_real_inner_le_norm (u x) (v y)
++      rw [hu x, hv y, mul_one] at this
++      exact this
++    have h_nonneg : 0 ≤ |⟪u x, v y⟫_ℝ| := abs_nonneg _
++    have h_sq_abs : ⟪u x, v y⟫_ℝ ^ 2 = |⟪u x, v y⟫_ℝ| ^ 2 := (sq_abs _).symm
++    rw [h_sq_abs]
++    nlinarith [h_le_1, h_nonneg]
++  have h_sum_le : ∑ x, ∑ y, ⟪u x, v y⟫_ℝ ^ 2 ≤ ∑ x, ∑ y, M x y * ⟪u x, v y⟫_ℝ := by
++    apply Finset.sum_le_sum
++    intro x _
++    apply Finset.sum_le_sum
++    intro y _
++    rw [h_abs x y]
++    exact h_sq x y
++  have h_iso_sum : ∑ y, ∑ x, ⟪u x, v y⟫_ℝ ^ 2 = ((Fintype.card ι : ℝ) ^ 2) / (r : ℝ) := by
++    have h_each : ∀ y, ∑ x, ⟪u x, v y⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r := by
++      intro y
++      have h_y := hiso (v y)
++      rw [hv y, one_pow, mul_one] at h_y
++      exact h_y
++    simp_rw [h_each, Finset.sum_const, Finset.card_univ, nsmul_eq_mul]
++    ring
++  rw [Finset.sum_comm] at h_sum_le
++  rw [h_iso_sum] at h_sum_le
++  exact h_sum_le
++
++private theorem sum_norm_sq_swap {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
++    (u : ι → EuclideanSpace ℝ (Fin r)) (hu : ∀ x, ‖u x‖ = 1) :
++    ∑ k : Fin r, ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖^2 = (Fintype.card ι : ℝ) := by
++  have h_each (k : Fin r) : ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖^2 = ∑ x, (u x k)^2 := by
++    rw [norm_sq_eq]
++  simp_rw [h_each]
++  rw [Finset.sum_comm]
++  have h_u (x : ι) : ∑ k : Fin r, (u x k)^2 = 1 := by
++    have h1 := hu x
++    have h2 : ‖u x‖^2 = 1 := by rw [h1, one_pow]
++    have h3 : ‖(WithLp.equiv 2 _).symm (WithLp.equiv 2 _ (u x))‖^2 = 1 := by
++      rw [Equiv.symm_apply_apply]
++      exact h2
++    rw [norm_sq_eq] at h3
++    exact h3
++  simp_rw [h_u, Finset.sum_const, Finset.card_univ, nsmul_eq_mul, mul_one]
++
++private theorem forster_main_chain_upper_bound {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
++    (M : Matrix ι ι ℝ)
++    (u v : ι → EuclideanSpace ℝ (Fin r))
++    (hu : ∀ x, ‖u x‖ = 1) (hv : ∀ y, ‖v y‖ = 1) :
++    ∑ x, ∑ y, M x y * ⟪u x, v y⟫_ℝ ≤ (Fintype.card ι : ℝ) * specNorm M := by
++  have h_inner_sum (x y : ι) : ⟪u x, v y⟫_ℝ = ∑ k : Fin r, u x k * v y k := by
++    rw [PiLp.inner_apply]
++    congr 1; ext k
++    have h_rfl : ⟪(u x).ofLp k, (v y).ofLp k⟫_ℝ = (v y).ofLp k * (u x).ofLp k := rfl
++    rw [h_rfl, mul_comm]
++  have h_step1 : (∑ x, ∑ y, M x y * ⟪u x, v y⟫_ℝ) =
++      ∑ x, ∑ y, ∑ k : Fin r, M x y * (u x k * v y k) := by
++    apply Finset.sum_congr rfl
++    intro x _
++    apply Finset.sum_congr rfl
++    intro y _
++    rw [h_inner_sum]
++    rw [Finset.mul_sum]
++  have h_step2 : (∑ x, ∑ y, ∑ k : Fin r, M x y * (u x k * v y k)) =
++      ∑ k : Fin r, ∑ x, ∑ y, M x y * (u x k * v y k) := by
++    have h1 : (∑ x, ∑ y, ∑ k : Fin r, M x y * (u x k * v y k)) =
++        ∑ x, ∑ k : Fin r, ∑ y, M x y * (u x k * v y k) := by
++      apply Finset.sum_congr rfl
++      intro x _
++      exact Finset.sum_comm
++    have h2 : (∑ x, ∑ k : Fin r, ∑ y, M x y * (u x k * v y k)) =
++        ∑ k : Fin r, ∑ x, ∑ y, M x y * (u x k * v y k) := Finset.sum_comm
++    rw [h1, h2]
++  have h_rearrange : (∑ x, ∑ y, M x y * ⟪u x, v y⟫_ℝ) =
++      ∑ k : Fin r, ⟪(WithLp.equiv 2 _).symm (fun x => u x k),
++        Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm (fun y => v y k))⟫_ℝ := by
++    rw [h_step1, h_step2]
++    apply Finset.sum_congr rfl
++    intro k _
++    rw [PiLp.inner_apply]
++    have h1 : ∑ x, u x k * (Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm (fun y => v y k))) x =
++        ∑ x, ∑ y, M x y * (u x k * v y k) := by
++      have h2 (x : ι) : (Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm (fun y => v y k))) x = ∑ y, M x y * v y k := rfl
++      simp_rw [h2]
++      simp_rw [Finset.mul_sum]
++      apply Finset.sum_congr rfl
++      intro x _
++      apply Finset.sum_congr rfl
++      intro y _
++      ring
++    rw [← h1]
++    apply Finset.sum_congr rfl
++    intro x _
++    have h_rfl : ⟪((WithLp.equiv 2 (ι → ℝ)).symm fun x => (u x).ofLp k).ofLp x,
++        ((Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M) ((WithLp.equiv 2 (ι → ℝ)).symm fun y => (v y).ofLp k)).ofLp x⟫_ℝ =
++        ((Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M) ((WithLp.equiv 2 (ι → ℝ)).symm fun y => (v y).ofLp k)).ofLp x * (u x).ofLp k := rfl
++    rw [h_rfl, mul_comm]
++  rw [h_rearrange]
++  have h_k_le (k : Fin r) : ⟪(WithLp.equiv 2 _).symm (fun x => u x k), Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm (fun y => v y k))⟫_ℝ ≤
++      specNorm M * ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ * ‖(WithLp.equiv 2 _).symm (fun y => v y k)‖ := by
++    have h_cs := real_inner_le_norm ((WithLp.equiv 2 _).symm (fun x => u x k)) (Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm (fun y => v y k)))
++    have h_op := ContinuousLinearMap.le_opNorm (Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M) ((WithLp.equiv 2 _).symm (fun y => v y k))
++    have h_nonneg_u : 0 ≤ ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ := norm_nonneg _
++    have h_op_mul : ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ * ‖Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm (fun y => v y k))‖ ≤
++        ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ * (specNorm M * ‖(WithLp.equiv 2 _).symm (fun y => v y k)‖) := by
++      exact mul_le_mul_of_nonneg_left h_op h_nonneg_u
++    calc
++      ⟪(WithLp.equiv 2 _).symm (fun x => u x k), Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm (fun y => v y k))⟫_ℝ
++        ≤ ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ * ‖Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm (fun y => v y k))‖ := h_cs
++      _ ≤ ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ * (specNorm M * ‖(WithLp.equiv 2 _).symm (fun y => v y k)‖) := h_op_mul
++      _ = specNorm M * ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ * ‖(WithLp.equiv 2 _).symm (fun y => v y k)‖ := by ring
++  have h_sum_k : ∑ k : Fin r, ⟪(WithLp.equiv 2 _).symm (fun x => u x k), Matrix.toEuclideanCLM (n := ι) (𝕜 := ℝ) M ((WithLp.equiv 2 _).symm (fun y => v y k))⟫_ℝ ≤
++      specNorm M * ∑ k : Fin r, (‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ * ‖(WithLp.equiv 2 _).symm (fun y => v y k)‖) := by
++    rw [Finset.mul_sum]
++    apply Finset.sum_le_sum
++    intro k _
++    have h_k := h_k_le k
++    linarith
++  apply le_trans h_sum_k
++  have h_cs_k : (∑ k : Fin r, (‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ * ‖(WithLp.equiv 2 _).symm (fun y => v y k)‖))^2 ≤
++      (∑ k : Fin r, ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖^2) * (∑ k : Fin r, ‖(WithLp.equiv 2 _).symm (fun y => v y k)‖^2) := by
++    exact Finset.sum_mul_sq_le_sq_mul_sq Finset.univ (fun k => ‖(WithLp.equiv 2 _).symm (fun x => u x k)‖) (fun k => ‖(WithLp.equiv 2 _).symm (fun y => v y k)‖)
++  rw [sum_norm_sq_swap u hu, sum_norm_sq_swap v hv] at h_cs_k
++  have h_cs_sqrt : ∑ k : Fin r, (‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ * ‖(WithLp.equiv 2 _).symm (fun y => v y k)‖) ≤ (Fintype.card ι : ℝ) := by
++    have h_prod_sq : (Fintype.card ι : ℝ) * (Fintype.card ι : ℝ) = (Fintype.card ι : ℝ)^2 := by ring
++    rw [h_prod_sq] at h_cs_k
++    have h_nonneg_sum : 0 ≤ ∑ k : Fin r, (‖(WithLp.equiv 2 _).symm (fun x => u x k)‖ * ‖(WithLp.equiv 2 _).symm (fun y => v y k)‖) := by
++      apply Finset.sum_nonneg
++      intro k _
++      exact mul_nonneg (norm_nonneg _) (norm_nonneg _)
++    have h_nonneg_card : 0 ≤ (Fintype.card ι : ℝ) := Nat.cast_nonneg _
++    nlinarith [h_cs_k]
++  have h_nonneg_spec : 0 ≤ specNorm M := norm_nonneg _
++  nlinarith
++
+ /-- P5.4: the main chain.  `∑_{x,y} M_{xy}⟪u_x,v_y⟫ = ∑ |⟪u_x,v_y⟫| ≥
+ ∑ ⟪u_x,v_y⟫² = N²/r` by isotropy, while the same sum is at most
+ `specNorm·N` by the column decomposition and Cauchy–Schwarz. -/
+@@ -547,7 +707,21 @@ theorem forster_main_chain {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
+     (hiso : ∀ w : EuclideanSpace ℝ (Fin r),
+       ∑ x, ⟪u x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2) :
+     (Fintype.card ι : ℝ) ≤ (r : ℝ) * specNorm M := by
+-  sorry
++  by_cases h_card : Fintype.card ι = 0
++  · rw [h_card, Nat.cast_zero]
++    exact mul_nonneg (Nat.cast_nonneg _) (norm_nonneg _)
++  · have h_card_pos : 0 < (Fintype.card ι : ℝ) := Nat.cast_pos.mpr (Nat.pos_of_ne_zero h_card)
++    have h_lb := forster_main_chain_lower_bound M hM u v hu hv hsign hiso
++    have h_ub := forster_main_chain_upper_bound M u v hu hv
++    have h_chain : ((Fintype.card ι : ℝ) ^ 2) / (r : ℝ) ≤ (Fintype.card ι : ℝ) * specNorm M := le_trans h_lb h_ub
++    have hr_pos : 0 < (r : ℝ) := Nat.cast_pos.mpr hr
++    have h_mul : (Fintype.card ι : ℝ) ^ 2 ≤ (Fintype.card ι : ℝ) * specNorm M * (r : ℝ) := (div_le_iff₀ hr_pos).mp h_chain
++    have h_cancel : (Fintype.card ι : ℝ) * (Fintype.card ι : ℝ) ≤ (Fintype.card ι : ℝ) * ((r : ℝ) * specNorm M) := by
++      calc
++        (Fintype.card ι : ℝ) * (Fintype.card ι : ℝ) = (Fintype.card ι : ℝ) ^ 2 := by ring
++        _ ≤ (Fintype.card ι : ℝ) * specNorm M * (r : ℝ) := h_mul
++        _ = (Fintype.card ι : ℝ) * ((r : ℝ) * specNorm M) := by ring
++    exact (mul_le_mul_iff_of_pos_left h_card_pos).mp h_cancel
+ 
+ end ForsterDecomposition

@@ -1,0 +1,30 @@
+diff --git a/HeadComplexity/Separations/SignRankBridge.lean b/HeadComplexity/Separations/SignRankBridge.lean
+index 322bd60..14fed94 100644
+--- a/HeadComplexity/Separations/SignRankBridge.lean
++++ b/HeadComplexity/Separations/SignRankBridge.lean
+@@ -149,7 +149,24 @@ size-`≤ d` subsets are the disjoint union of these over `i ∈ range (d+1)`
+ theorem card_subsets_card_le (a d : ℕ) :
+     ((Finset.univ : Finset (Fin a)).powerset.filter (fun μ => μ.card ≤ d)).card
+       = ∑ i ∈ Finset.range (d + 1), a.choose i := by
+-  sorry
++  have h_eq : (Finset.univ : Finset (Fin a)).powerset.filter (fun μ => μ.card ≤ d) =
++      (Finset.range (d + 1)).biUnion (fun i => Finset.powersetCard i (Finset.univ : Finset (Fin a))) := by
++    ext μ
++    simp only [Finset.mem_filter, Finset.mem_powerset, Finset.mem_biUnion, Finset.mem_range, Finset.mem_powersetCard, Finset.subset_univ, true_and]
++    constructor
++    · intro h
++      exact ⟨μ.card, Nat.lt_succ_iff.mpr h, rfl⟩
++    · rintro ⟨i, hi, rfl⟩
++      exact Nat.lt_succ_iff.mp hi
++  rw [h_eq]
++  rw [Finset.card_biUnion]
++  · simp only [Finset.card_powersetCard, Finset.card_fin]
++  · intro i _ j _ hij
++    dsimp [Function.onFun]
++    rw [Finset.disjoint_left]
++    intro μ hμi hμj
++    simp only [Finset.mem_powersetCard] at hμi hμj
++    exact hij (hμi.2.symm.trans hμj.2)
+ 
+ /-- Multilinearization & left-monomial factorization core of the degree half
+ (PROOFS.md P3.1–P3.2): a degree-`d` sign representation `P` multilinearizes on

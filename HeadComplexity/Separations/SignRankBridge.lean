@@ -46,20 +46,26 @@ its query term `σ_none` is a positive exponential (`Head.sigma_pos`) and every
 remaining left term is nonnegative (`Finset.sum_nonneg`). -/
 theorem headA_pos {n d a b : ℕ} (hab : n = a + b) (H : Head n d) (x : Fin a → Bool) :
     0 < headA hab H x := by
-  sorry
+  unfold headA
+  have h1 : 0 < H.sigma (hab ▸ blockJoin x (fun _ => false)) none := H.sigma_pos _ _
+  have h2 : 0 ≤ ∑ i : Fin a,
+      H.sigma (hab ▸ blockJoin x (fun _ => false)) (some (hab ▸ Fin.castAdd b i)) :=
+    Finset.sum_nonneg (fun _ _ => (H.sigma_pos _ _).le)
+  exact add_pos_of_pos_of_nonneg h1 h2
 
 /-- Nonnegativity of the right denominator block (PROOFS.md P2.1): `B_h(y) ≥ 0`,
 a finite sum of positive exponentials (`Head.sigma_pos`, `Finset.sum_nonneg`). -/
 theorem headB_nonneg {n d a b : ℕ} (hab : n = a + b) (H : Head n d) (y : Fin b → Bool) :
     0 ≤ headB hab H y := by
-  sorry
+  unfold headB
+  exact Finset.sum_nonneg (fun j _ => (H.sigma_pos _ _).le)
 
 /-- Positivity of the cleared multiplier (PROOFS.md P2.2): the product of the `H`
 head denominators is positive (`Head.denominator_pos`, `Finset.prod_pos`), so
 multiplying the softmax score by it preserves signs entrywise. -/
 theorem denominator_prod_pos {n d H : ℕ} (Hs : HeadFamily n d H) (z : Fin n → Bool) :
     0 < ∏ h : Fin H, (Hs h).denominator z := by
-  sorry
+  exact Finset.prod_pos (fun h _ => (Hs h).denominator_pos z)
 
 /-- Rank-count arithmetic of the bridge (PROOFS.md P2.3): the two boundary head
 subsets (`∅` and the full set) contribute one rank-one piece each, and each of the
@@ -68,7 +74,11 @@ subsets (`∅` and the full set) contribute one rank-one piece each, and each of
 `2^(H+1) = 2·2^H`). -/
 theorem two_mul_two_pow_sub (H : ℕ) (hH : 1 ≤ H) :
     2 * (2 ^ H - 2) + 2 = 2 ^ (H + 1) - 2 := by
-  sorry
+  have h2 : 2 ≤ 2 ^ H := by
+    calc 2 = 2 ^ 1 := by rfl
+    _ ≤ 2 ^ H := Nat.pow_le_pow_right (by decide) hH
+  rw [pow_succ]
+  omega
 
 open scoped InnerProductSpace in
 /-- Two-block split of a head's numerator readout (PROOFS.md P2.1): the readout
@@ -84,7 +94,20 @@ theorem exists_numerator_readout_two_block_split {a b d : ℕ}
     ∃ (A' : (Fin a → Bool) → ℝ) (B' : (Fin b → Bool) → ℝ),
       ∀ (x : Fin a → Bool) (y : Fin b → Bool),
         ⟪w, H.numerator (blockJoin x y)⟫_ℝ = A' x + B' y := by
-  sorry
+  use fun x =>
+    H.sigma (blockJoin x (fun _ => false)) none * ⟪w, H.value (blockJoin x (fun _ => false)) none⟫_ℝ +
+    ∑ i : Fin a, H.sigma (blockJoin x (fun _ => false)) (some (Fin.castAdd b i)) *
+      ⟪w, H.value (blockJoin x (fun _ => false)) (some (Fin.castAdd b i))⟫_ℝ
+  use fun y =>
+    ∑ j : Fin b, H.sigma (blockJoin (fun _ => false) y) (some (Fin.natAdd a j)) *
+      ⟪w, H.value (blockJoin (fun _ => false) y) (some (Fin.natAdd a j))⟫_ℝ
+  intro x y
+  unfold Head.numerator
+  rw [Fintype.sum_option, Fin.sum_univ_add]
+  rw [inner_add_right, inner_add_right, inner_sum, inner_sum]
+  simp only [inner_smul_right]
+  simp [Head.sigma, Head.value, Head.x, Head.seqTok]
+  ring
 
 /-- **Sign-rank bridge** (theorem 028 of the corpus): `H ≥ 1` heads give
 sign-rank at most `2 ^ (H + 1) - 2` under the left/right block partition.
@@ -149,6 +172,44 @@ size-`≤ d` subsets are the disjoint union of these over `i ∈ range (d+1)`
 theorem card_subsets_card_le (a d : ℕ) :
     ((Finset.univ : Finset (Fin a)).powerset.filter (fun μ => μ.card ≤ d)).card
       = ∑ i ∈ Finset.range (d + 1), a.choose i := by
+  have h_eq : ((Finset.univ : Finset (Fin a)).powerset.filter (fun μ => μ.card ≤ d)) =
+      (Finset.range (d + 1)).biUnion (fun i => Finset.powersetCard i (Finset.univ : Finset (Fin a))) := by
+    ext μ
+    simp only [Finset.mem_filter, Finset.mem_powerset, Finset.mem_biUnion, Finset.mem_range,
+      Finset.mem_powersetCard]
+    constructor
+    · intro h
+      refine ⟨μ.card, Nat.lt_succ_iff.mpr h.2, h.1, rfl⟩
+    · rintro ⟨i, hi, hμ1, hμ2⟩
+      exact ⟨hμ1, hμ2 ▸ Nat.le_of_lt_succ hi⟩
+  rw [h_eq]
+  rw [Finset.card_biUnion]
+  · congr 1
+    ext i
+    rw [Finset.card_powersetCard, Finset.card_fin]
+  · intro i _ j _ hij
+    simp only [Set.PairwiseDisjoint, Function.onFun, Finset.disjoint_left, Finset.mem_powersetCard]
+    intro μ hμi hμj
+    exact hij (hμi.2.symm.trans hμj.2)
+
+/-- P3.1: a degree-`d` sign representation may be taken multilinear
+(substitute `x_i^e ↦ x_i`; cube evaluations are unchanged and the total
+degree does not increase). -/
+theorem exists_multilinear_signRepr {n d : ℕ} {f : (Fin n → Bool) → Bool}
+    (h : ThresholdDegLE f d) :
+    ∃ P : MvPolynomial (Fin n) ℝ, P.totalDegree ≤ d ∧
+      (∀ i, P.degreeOf i ≤ 1) ∧ SignRepresents P f := by
+  sorry
+
+/-- P3.2 + η-shift: a multilinear degree-`d` sign representation exhibits the
+sign matrix as a sum of one outer product per left sub-monomial of degree
+`≤ d` (grouping `P = ∑_μ x^μ c_μ(y)`), plus the strictifying constant folded
+into the `μ = ∅` term; hence the rank bound by the monomial count. -/
+theorem signRank_le_of_multilinear_signRepr {a b d : ℕ}
+    {f : (Fin (a + b) → Bool) → Bool} (P : MvPolynomial (Fin (a + b)) ℝ)
+    (hdeg : P.totalDegree ≤ d) (hml : ∀ i, P.degreeOf i ≤ 1)
+    (hsr : SignRepresents P f) :
+    signRank (signMatrix a b f) ≤ ∑ i ∈ Finset.range (d + 1), a.choose i := by
   sorry
 
 /-- Multilinearization & left-monomial factorization core of the degree half
@@ -161,7 +222,8 @@ arithmetic tail `∑_{i ≤ d} C(a, i) ≤ (a + 1) ^ d` is `sum_choose_le_pow`. 
 private theorem signRank_le_sum_choose {a b d : ℕ}
     {f : (Fin (a + b) → Bool) → Bool} (h : ThresholdDegLE f d) :
     signRank (signMatrix a b f) ≤ ∑ i ∈ Finset.range (d + 1), a.choose i := by
-  sorry
+  rcases exists_multilinear_signRepr h with ⟨P, hdeg, hml, hsr⟩
+  exact signRank_le_of_multilinear_signRepr P hdeg hml hsr
 
 /-- **Theorem C, degree half** (ceiling of the sign-rank route): a degree-`d`
 sign representation factors the sign matrix through its monomials in the
@@ -207,7 +269,25 @@ theorem cleared_score_iff {H : ℕ} (τ : ℝ) (u D : Fin H → ℝ)
     (hD : ∀ h, 0 < D h) :
     (τ < ∑ h, u h / D h) ↔
       0 < (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') - τ * ∏ h, D h := by
-  sorry
+  have hP : 0 < ∏ h, D h := Finset.prod_pos (fun h _ => hD h)
+  have h_eq : (∑ h, u h / D h) * (∏ h, D h) = ∑ h, (u h * ∏ h' ∈ Finset.univ.erase h, D h') := by
+    rw [Finset.sum_mul]
+    congr 1
+    ext h
+    have h_erase : (∏ h', D h') = D h * ∏ h' ∈ Finset.univ.erase h, D h' :=
+      (Finset.mul_prod_erase Finset.univ D (Finset.mem_univ h)).symm
+    rw [h_erase, ← mul_assoc, div_mul_cancel₀ (u h) (ne_of_gt (hD h))]
+  constructor
+  · intro hlt
+    have h1 : τ * ∏ h, D h < (∑ h, u h / D h) * ∏ h, D h :=
+      mul_lt_mul_of_pos_right hlt hP
+    rw [h_eq] at h1
+    linarith
+  · intro hgt
+    have h1 : τ * ∏ h, D h < (∑ h, u h / D h) * ∏ h, D h := by
+      rw [h_eq]
+      linarith
+    exact lt_of_mul_lt_mul_right h1 (le_of_lt hP)
 
 /-- P2.3+P2.4 (linear-algebra core of the bridge): any function whose strict
 sign is realized by a two-block head-form score has sign-rank at most
@@ -223,26 +303,6 @@ theorem signRank_le_of_headForm {a b H : ℕ} (hH : 1 ≤ H) (τ : ℝ)
     (hf : ∀ x y, f (blockJoin x y) = true ↔
       τ < ∑ h, (A' h x + B' h y) / (A h x + B h y)) :
     signRank (signMatrix a b f) ≤ 2 ^ (H + 1) - 2 := by
-  sorry
-
-/-- P3.1: a degree-`d` sign representation may be taken multilinear
-(substitute `x_i^e ↦ x_i`; cube evaluations are unchanged and the total
-degree does not increase). -/
-theorem exists_multilinear_signRepr {n d : ℕ} {f : (Fin n → Bool) → Bool}
-    (h : ThresholdDegLE f d) :
-    ∃ P : MvPolynomial (Fin n) ℝ, P.totalDegree ≤ d ∧
-      (∀ i, P.degreeOf i ≤ 1) ∧ SignRepresents P f := by
-  sorry
-
-/-- P3.2 + η-shift: a multilinear degree-`d` sign representation exhibits the
-sign matrix as a sum of one outer product per left sub-monomial of degree
-`≤ d` (grouping `P = ∑_μ x^μ c_μ(y)`), plus the strictifying constant folded
-into the `μ = ∅` term; hence the rank bound by the monomial count. -/
-theorem signRank_le_of_multilinear_signRepr {a b d : ℕ}
-    {f : (Fin (a + b) → Bool) → Bool} (P : MvPolynomial (Fin (a + b)) ℝ)
-    (hdeg : P.totalDegree ≤ d) (hml : ∀ i, P.degreeOf i ≤ 1)
-    (hsr : SignRepresents P f) :
-    signRank (signMatrix a b f) ≤ ∑ i ∈ Finset.range (d + 1), a.choose i := by
   sorry
 
 end HeadComplexity

@@ -1,0 +1,106 @@
+diff --git a/HeadComplexity/Separations/SignRankBridge.lean b/HeadComplexity/Separations/SignRankBridge.lean
+index 322bd60..8666882 100644
+--- a/HeadComplexity/Separations/SignRankBridge.lean
++++ b/HeadComplexity/Separations/SignRankBridge.lean
+@@ -225,6 +225,87 @@ theorem signRank_le_of_headForm {a b H : ℕ} (hH : 1 ≤ H) (τ : ℝ)
+     signRank (signMatrix a b f) ≤ 2 ^ (H + 1) - 2 := by
+   sorry
+ 
++open MvPolynomial
++
++/-- Map a polynomial `P` to its multilinear extension `toMultilinear P` by replacing each
++monomial `m` with `∏ i ∈ m.support, X i`. -/
++noncomputable def toMultilinear {n : ℕ} (P : MvPolynomial (Fin n) ℝ) : MvPolynomial (Fin n) ℝ :=
++  P.sum (fun m c => C c * ∏ i ∈ m.support, X i)
++
++theorem eval_toMultilinear {n : ℕ} (P : MvPolynomial (Fin n) ℝ) (x : Fin n → Bool) :
++    eval (cubePoint x) (toMultilinear P) = eval (cubePoint x) P := by
++  unfold toMultilinear
++  rw [Finsupp.sum, map_sum]
++  conv_rhs => rw [as_sum P, map_sum]
++  refine Finset.sum_congr rfl ?_
++  intro m hm
++  rw [eval_monomial]
++  simp only [map_mul, eval_C, map_prod, eval_X]
++  rw [Finsupp.prod]
++  congr 1
++  refine Finset.prod_congr rfl ?_
++  intro i hi
++  have hbi : boolToReal (x i) = 0 ∨ boolToReal (x i) = 1 := by
++    unfold boolToReal
++    split_ifs <;> simp
++  rcases hbi with h0 | h1
++  · have hmi : m i ≠ 0 := Finsupp.mem_support_iff.mp hi
++    rw [cubePoint, h0, zero_pow hmi]
++  · rw [cubePoint, h1, one_pow]
++
++theorem totalDegree_toMultilinear {n : ℕ} (P : MvPolynomial (Fin n) ℝ) :
++    (toMultilinear P).totalDegree ≤ P.totalDegree := by
++  unfold toMultilinear
++  rw [Finsupp.sum]
++  refine totalDegree_finsetSum _ _ |>.trans ?_
++  rw [Finset.sup_le_iff]
++  intro m hm
++  have h_mul := totalDegree_mul (C (coeff m P)) (∏ i ∈ m.support, X i)
++  refine h_mul.trans ?_
++  rw [totalDegree_C, zero_add]
++  have h_X : ∀ i ∈ m.support, (X i : MvPolynomial (Fin n) ℝ).totalDegree ≤ 1 := fun i _ => totalDegree_X i |>.le
++  have h_prod : (∏ i ∈ m.support, (X i : MvPolynomial (Fin n) ℝ)).totalDegree ≤ ∑ i ∈ m.support, 1 := by
++    have h_le := totalDegree_finsetProd (s := m.support) (f := fun i => (X i : MvPolynomial (Fin n) ℝ))
++    refine h_le.trans ?_
++    exact Finset.sum_le_sum fun i hi => h_X i hi
++  rw [Finset.sum_const, smul_eq_mul, mul_one] at h_prod
++  have h_card : m.support.card ≤ m.sum (fun _ e => e) := by
++    rw [Finsupp.sum]
++    have : m.support.card = ∑ i ∈ m.support, 1 := by simp
++    rw [this]
++    refine Finset.sum_le_sum ?_
++    intro i hi
++    exact Nat.one_le_iff_ne_zero.mpr (Finsupp.mem_support_iff.mp hi)
++  have h_deg : m.sum (fun _ e => e) ≤ P.totalDegree := le_totalDegree hm
++  exact h_prod.trans (h_card.trans h_deg)
++
++theorem degreeOf_toMultilinear {n : ℕ} (P : MvPolynomial (Fin n) ℝ) (i : Fin n) :
++    (toMultilinear P).degreeOf i ≤ 1 := by
++  unfold toMultilinear
++  rw [Finsupp.sum]
++  refine (degreeOf_sum_le i P.support _).trans ?_
++  rw [Finset.sup_le_iff]
++  intro m hm
++  refine (degreeOf_mul_le i (C (coeff m P)) _).trans ?_
++  rw [degreeOf_C, zero_add]
++  refine (degreeOf_prod_le i m.support (fun j => (X j : MvPolynomial (Fin n) ℝ))).trans ?_
++  by_cases hi : i ∈ m.support
++  · have h_sum : ∑ j ∈ m.support, degreeOf i (X j : MvPolynomial (Fin n) ℝ) = 1 := by
++      rw [Finset.sum_eq_single i]
++      · rw [degreeOf_X, if_pos rfl]
++      · intro j hj hne
++        rw [degreeOf_X, if_neg hne.symm]
++      · intro hi'
++        exact False.elim (hi' hi)
++    rw [h_sum]
++  · have h_sum : ∑ j ∈ m.support, degreeOf i (X j : MvPolynomial (Fin n) ℝ) = 0 := by
++      refine Finset.sum_eq_zero ?_
++      intro j hj
++      have hne : j ≠ i := fun h => hi (h ▸ hj)
++      rw [degreeOf_X, if_neg hne.symm]
++    rw [h_sum]
++    exact Nat.zero_le 1
++
+ /-- P3.1: a degree-`d` sign representation may be taken multilinear
+ (substitute `x_i^e ↦ x_i`; cube evaluations are unchanged and the total
+ degree does not increase). -/
+@@ -232,7 +313,12 @@ theorem exists_multilinear_signRepr {n d : ℕ} {f : (Fin n → Bool) → Bool}
+     (h : ThresholdDegLE f d) :
+     ∃ P : MvPolynomial (Fin n) ℝ, P.totalDegree ≤ d ∧
+       (∀ i, P.degreeOf i ≤ 1) ∧ SignRepresents P f := by
+-  sorry
++  rcases h with ⟨P, hdeg, hsign⟩
++  use toMultilinear P
++  refine ⟨(totalDegree_toMultilinear P).trans hdeg, degreeOf_toMultilinear P, ?_⟩
++  intro x
++  rw [eval_toMultilinear P x]
++  exact hsign x
+ 
+ /-- P3.2 + η-shift: a multilinear degree-`d` sign representation exhibits the
+ sign matrix as a sum of one outer product per left sub-monomial of degree

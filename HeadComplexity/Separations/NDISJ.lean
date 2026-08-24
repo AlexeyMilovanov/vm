@@ -283,11 +283,52 @@ private theorem pow_le_pow_of_lt_two_mul_H {H k : ℕ} (hk : 1 ≤ k) (hkH : k <
     pow_le_pow_left₀ (by norm_num) hbase (2 * H)
   exact hpow1.trans hpow2
 
+/-- P10.1 (frozen-left-points normal form): with the left points fixed, the
+label of `f` at `(z_j, w)` is the strict sign of a degree-`≤ H` polynomial
+`Q_j` in the `2H` right-block head statistics `ξ(w) = (p_h(w), q_h(w))`.
+Construction: `Q_j(p, q) = ∑_h (a_{hj} + p_h) ∏_{h'≠h} (b_{h'j} + q_{h'})
+− τ ∏_h (b_{hj} + q_h)` with the frozen reals `a_{hj} = A'_h(z_j)`,
+`b_{hj} = A_h(z_j)` (see `headA`, `exists_numerator_readout_two_block_split`
+in SignRankBridge). -/
+private theorem exists_shatter_polynomials {a b H : ℕ}
+    {f : (Fin (a + b) → Bool) → Bool}
+    (hcomp : computableWithHeadsN (a + b) H f) {k : ℕ}
+    (zs : Fin k → (Fin a → Bool)) :
+    ∃ (Q : Fin k → MvPolynomial (Fin (2 * H)) ℝ)
+      (ξ : (Fin b → Bool) → (Fin (2 * H) → ℝ)),
+      (∀ j, (Q j).totalDegree ≤ H) ∧
+      ∀ j w, (f (blockJoin (zs j) w) = true ↔
+        0 < MvPolynomial.eval (ξ w) (Q j)) := by
+  sorry
+
+/-- P10.1 (Warren application with the η-shift): if every labelling
+`s : Fin k → Bool` is realized as the strict-positive pattern of `k`
+degree-`≤ H` polynomials in `2H` real variables at a witness point, then the
+`2^k` labellings inject into the strict sign patterns of the η-shifted family
+`Q_j − η`, and `warren_sign_patterns` (with `m := 2H ≤ k`, `d := H`) bounds
+their number. -/
+private theorem pow_le_ncard_signPatterns {H k : ℕ} (hH : 1 ≤ H) (hkH : 2 * H ≤ k)
+    (Q : Fin k → MvPolynomial (Fin (2 * H)) ℝ)
+    (hdeg : ∀ j, (Q j).totalDegree ≤ H)
+    (ξ : (Fin k → Bool) → (Fin (2 * H) → ℝ))
+    (hpat : ∀ s j, (s j = true ↔ 0 < MvPolynomial.eval (ξ s) (Q j))) :
+    (2 : ℝ) ^ k ≤
+      (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H) := by
+  sorry
+
 private theorem warren_bound_of_leftShatters {a b H k : ℕ} (hH : 1 ≤ H) (hkH : 2 * H ≤ k)
     {f : (Fin (a + b) → Bool) → Bool}
     (hcomp : computableWithHeadsN (a + b) H f) (hsh : LeftShatters f k) :
     (2 : ℝ) ^ k ≤ (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H) := by
-  sorry
+  rcases hsh with ⟨zs, hw⟩
+  choose w hw using hw
+  obtain ⟨Q, ξ, hdeg, h_iff⟩ := exists_shatter_polynomials hcomp zs
+  have hpat : ∀ (s : Fin k → Bool) (j : Fin k),
+      s j = true ↔ 0 < MvPolynomial.eval (ξ (w s)) (Q j) := by
+    intro s j
+    rw [← hw s j]
+    exact h_iff j (w s)
+  exact pow_le_ncard_signPatterns hH hkH Q hdeg (fun s => ξ (w s)) hpat
 
 /-- **Split-shattering head bound** (mega-lab theorem, via Warren): if `f` is
 computable with `H` heads and left-shatters `k` points, then
@@ -458,43 +499,5 @@ theorem ndisj_of_sharpShatteringUpperBound
     m ≤ 2 * HStar (m + m) (ndisj m) :=
   hconj _ _ _ _ _ (HStar_computable _) (ndisj_leftShatters m)
 
-
-/-! ### Manual decomposition of `warren_bound_of_leftShatters`
-(PROOFS.md P10.1), 2026-08-24.  Assembly: freeze the left points
-(`exists_shatter_polynomials`), feed the shattering witnesses into
-`pow_le_ncard_signPatterns`. -/
-
-/-- P10.1 (frozen-left-points normal form): with the left points fixed, the
-label of `f` at `(z_j, w)` is the strict sign of a degree-`≤ H` polynomial
-`Q_j` in the `2H` right-block head statistics `ξ(w) = (p_h(w), q_h(w))`.
-Construction: `Q_j(p, q) = ∑_h (a_{hj} + p_h) ∏_{h'≠h} (b_{h'j} + q_{h'})
-− τ ∏_h (b_{hj} + q_h)` with the frozen reals `a_{hj} = A'_h(z_j)`,
-`b_{hj} = A_h(z_j)` (see `headA`, `exists_numerator_readout_two_block_split`
-in SignRankBridge). -/
-theorem exists_shatter_polynomials {a b H : ℕ}
-    {f : (Fin (a + b) → Bool) → Bool}
-    (hcomp : computableWithHeadsN (a + b) H f) {k : ℕ}
-    (zs : Fin k → (Fin a → Bool)) :
-    ∃ (Q : Fin k → MvPolynomial (Fin (2 * H)) ℝ)
-      (ξ : (Fin b → Bool) → (Fin (2 * H) → ℝ)),
-      (∀ j, (Q j).totalDegree ≤ H) ∧
-      ∀ j w, (f (blockJoin (zs j) w) = true ↔
-        0 < MvPolynomial.eval (ξ w) (Q j)) := by
-  sorry
-
-/-- P10.1 (Warren application with the η-shift): if every labelling
-`s : Fin k → Bool` is realized as the strict-positive pattern of `k`
-degree-`≤ H` polynomials in `2H` real variables at a witness point, then the
-`2^k` labellings inject into the strict sign patterns of the η-shifted family
-`Q_j − η`, and `warren_sign_patterns` (with `m := 2H ≤ k`, `d := H`) bounds
-their number. -/
-theorem pow_le_ncard_signPatterns {H k : ℕ} (hH : 1 ≤ H) (hkH : 2 * H ≤ k)
-    (Q : Fin k → MvPolynomial (Fin (2 * H)) ℝ)
-    (hdeg : ∀ j, (Q j).totalDegree ≤ H)
-    (ξ : (Fin k → Bool) → (Fin (2 * H) → ℝ))
-    (hpat : ∀ s j, (s j = true ↔ 0 < MvPolynomial.eval (ξ s) (Q j))) :
-    (2 : ℝ) ^ k ≤
-      (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H) := by
-  sorry
 
 end HeadComplexity

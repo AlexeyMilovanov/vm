@@ -1,0 +1,104 @@
+diff --git a/HeadComplexity/Separations/Tensor.lean b/HeadComplexity/Separations/Tensor.lean
+index 6b12d19..e0a63e7 100644
+--- a/HeadComplexity/Separations/Tensor.lean
++++ b/HeadComplexity/Separations/Tensor.lean
+@@ -663,6 +663,59 @@ theorem theoremB_gap {m : ℕ} (hm : Odd m) (k : ℕ) :
+ /-! ### Manual decomposition of `forsterRatio_pow_le_signRank_tensor`
+ (PROOFS.md P8.2–P8.3), 2026-08-24. -/
+ 
++private def curryEquiv (k m : ℕ) : (Fin (k * m) → Bool) ≃ (Fin k → Fin m → Bool) :=
++  { toFun := fun x j i => x (finProdFinEquiv (j, i))
++    invFun := fun X z => X (finProdFinEquiv.symm z).1 (finProdFinEquiv.symm z).2
++    left_inv := fun x => by
++      ext z
++      dsimp
++      congr 1
++      exact finProdFinEquiv.apply_symm_apply z
++    right_inv := fun X => by
++      ext j i
++      dsimp
++      rw [finProdFinEquiv.symm_apply_apply] }
++
++private theorem tensorEquiv_castAdd {m k : ℕ} (j : Fin k) (i : Fin m) :
++    tensorEquiv m k (Fin.castAdd (k * m) (finProdFinEquiv (j, i))) =
++      finProdFinEquiv (j, Fin.castAdd m i) := by
++  have h1 : Fin.castAdd (k * m) (finProdFinEquiv (j, i)) = finSumFinEquiv (Sum.inl (finProdFinEquiv (j, i))) := rfl
++  rw [h1]
++  unfold tensorEquiv
++  simp only [Equiv.trans_apply, Equiv.symm_apply_apply, Equiv.sumCongr_apply, Sum.map_inl]
++  dsimp only [Equiv.prodSumDistrib]
++  simp
++
++private theorem tensorEquiv_natAdd {m k : ℕ} (j : Fin k) (i : Fin m) :
++    tensorEquiv m k (Fin.natAdd (k * m) (finProdFinEquiv (j, i))) =
++      finProdFinEquiv (j, Fin.natAdd m i) := by
++  have h1 : Fin.natAdd (k * m) (finProdFinEquiv (j, i)) = finSumFinEquiv (Sum.inr (finProdFinEquiv (j, i))) := rfl
++  rw [h1]
++  unfold tensorEquiv
++  simp only [Equiv.trans_apply, Equiv.symm_apply_apply, Equiv.sumCongr_apply, Sum.map_inr]
++  dsimp only [Equiv.prodSumDistrib]
++  simp
++
++private theorem blockOf_tensorEquiv {m k : ℕ} (x y : Fin (k * m) → Bool) (j : Fin k) :
++    blockOf ((blockJoin x y) ∘ (tensorEquiv m k).symm) j =
++      blockJoin (fun i => x (finProdFinEquiv (j, i))) (fun i => y (finProdFinEquiv (j, i))) := by
++  ext i
++  unfold blockOf
++  dsimp only [Function.comp_apply]
++  refine Fin.addCases ?_ ?_ i
++  · intro i
++    have h_eq : (tensorEquiv m k).symm (finProdFinEquiv (j, Fin.castAdd m i)) =
++                Fin.castAdd (k * m) (finProdFinEquiv (j, i)) := by
++      rw [← tensorEquiv_castAdd]
++      exact Equiv.symm_apply_apply (tensorEquiv m k) _
++    rw [h_eq, blockJoin_castAdd, blockJoin_castAdd]
++  · intro i
++    have h_eq : (tensorEquiv m k).symm (finProdFinEquiv (j, Fin.natAdd m i)) =
++                Fin.natAdd (k * m) (finProdFinEquiv (j, i)) := by
++      rw [← tensorEquiv_natAdd]
++      exact Equiv.symm_apply_apply (tensorEquiv m k) _
++    rw [h_eq, blockJoin_natAdd, blockJoin_natAdd]
++
+ /-- P8.2 (entrywise sign identity): the reindexed tensored sign matrix factors
+ entrywise into the block sign matrices with the global `(-1)^(k+1)` of the XOR
+ encoding (`e(⊕ b_j) = (-1)^(k+1) ∏ e(b_j)` for `true ↦ +1`).  Unfold
+@@ -675,7 +728,11 @@ theorem signMatrix_tensorReindexed_apply {m k : ℕ}
+         ∏ j : Fin k, signMatrix m m (distThreshold m)
+           (fun i => x (finProdFinEquiv (j, i)))
+           (fun i => y (finProdFinEquiv (j, i))) := by
+-  sorry
++  unfold signMatrix tensorDistThreshold_reindexed tensorDistThreshold xorPower
++  rw [sign_xor_prod]
++  congr 1
++  refine Finset.prod_congr rfl (fun j _ => ?_)
++  rw [blockOf_tensorEquiv]
+ 
+ /-- P8.2 → P8.3 (rank transport): via `signMatrix_tensorReindexed_apply`, the
+ reindex equivalence `(Fin (k·m) → Bool) ≃ (Fin k → Fin m → Bool)` (currying
+@@ -685,6 +742,25 @@ Kronecker power of the base sign matrix. -/
+ theorem signRank_tensorReindexed_eq_kroneckerPow {m k : ℕ} :
+     signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) =
+       signRank (kroneckerPow k (signMatrix m m (distThreshold m))) := by
+-  sorry
++  rw [← signRank_reindex (curryEquiv k m) (curryEquiv k m)]
++  have h_mat : Matrix.reindex (curryEquiv k m) (curryEquiv k m)
++        (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) =
++      (-1 : ℝ) ^ (k + 1) • kroneckerPow k (signMatrix m m (distThreshold m)) := by
++    ext X Y
++    simp only [Matrix.reindex_apply, Matrix.submatrix_apply, Matrix.smul_apply, kroneckerPow, smul_eq_mul]
++    rw [signMatrix_tensorReindexed_apply]
++    congr 1
++    refine Finset.prod_congr rfl (fun j _ => ?_)
++    have h_eval : ∀ i, (curryEquiv k m).symm X (finProdFinEquiv (j, i)) = X j i := fun i => by
++      dsimp [curryEquiv]
++      rw [finProdFinEquiv.symm_apply_apply]
++    have h_evalY : ∀ i, (curryEquiv k m).symm Y (finProdFinEquiv (j, i)) = Y j i := fun i => by
++      dsimp [curryEquiv]
++      rw [finProdFinEquiv.symm_apply_apply]
++    simp_rw [h_eval, h_evalY]
++  rw [h_mat]
++  rcases Nat.even_or_odd (k + 1) with h_even | h_odd
++  · rw [h_even.neg_one_pow, one_smul]
++  · rw [h_odd.neg_one_pow, neg_one_smul, signRank_neg]
+ 
+ end HeadComplexity

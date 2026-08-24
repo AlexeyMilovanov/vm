@@ -1,0 +1,99 @@
+diff --git a/HeadComplexity/Separations/NDISJ.lean b/HeadComplexity/Separations/NDISJ.lean
+index bdc1580..9031596 100644
+--- a/HeadComplexity/Separations/NDISJ.lean
++++ b/HeadComplexity/Separations/NDISJ.lean
+@@ -495,6 +495,93 @@ theorem pow_le_ncard_signPatterns {H k : ℕ} (hH : 1 ≤ H) (hkH : 2 * H ≤ k)
+     (hpat : ∀ s j, (s j = true ↔ 0 < MvPolynomial.eval (ξ s) (Q j))) :
+     (2 : ℝ) ^ k ≤
+       (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H) := by
+-  sorry
++  have H_pos : ∀ s j, s j = true → 0 < MvPolynomial.eval (ξ s) (Q j) := by
++    intro s j hs; exact (hpat s j).mp hs
++  have H_nonpos : ∀ s j, s j = false → MvPolynomial.eval (ξ s) (Q j) ≤ 0 := by
++    intro s j hs
++    have hnot : ¬ (0 < MvPolynomial.eval (ξ s) (Q j)) := by
++      intro hlt
++      have := (hpat s j).mpr hlt
++      rw [hs] at this; contradiction
++    exact not_lt.mp hnot
++  obtain ⟨η, hη_pos, hη_spec⟩ : ∃ η : ℝ, 0 < η ∧ ∀ s j,
++      (s j = true → η < MvPolynomial.eval (ξ s) (Q j)) ∧
++      (s j = false → MvPolynomial.eval (ξ s) (Q j) ≤ 0) := by
++    by_cases h_any : ∃ (s : Fin k → Bool) (j : Fin k), s j = true
++    · set S : Finset ((Fin k → Bool) × Fin k) :=
++        Finset.univ.filter (fun p => p.1 p.2 = true)
++      have hS_nonempty : S.Nonempty := by
++        rcases h_any with ⟨s, j, hs⟩
++        exact ⟨(s, j), Finset.mem_filter.mpr ⟨Finset.mem_univ _, hs⟩⟩
++      let f : (Fin k → Bool) × Fin k → ℝ := fun p => MvPolynomial.eval (ξ p.1) (Q p.2)
++      set vals := S.image f
++      have hvals_nonempty : vals.Nonempty := Finset.Nonempty.image hS_nonempty _
++      have hmem := Finset.min'_mem vals hvals_nonempty
++      have hmem_img := hmem
++      rw [Finset.mem_image] at hmem_img
++      rcases hmem_img with ⟨p0, hp0, heq0⟩
++      rw [Finset.mem_filter] at hp0
++      have hmval_pos : 0 < vals.min' hvals_nonempty := by
++        rw [← heq0]
++        exact H_pos p0.1 p0.2 hp0.2
++      use (vals.min' hvals_nonempty) / 2
++      refine ⟨by linarith, fun s j => ⟨fun hs => ?_, fun hs => H_nonpos s j hs⟩⟩
++      · have hp : (s, j) ∈ S := Finset.mem_filter.mpr ⟨Finset.mem_univ _, hs⟩
++        have hval_mem : f (s, j) ∈ vals := Finset.mem_image_of_mem f hp
++        have hle := Finset.min'_le vals (f (s, j)) hval_mem
++        change (vals.min' hvals_nonempty) / 2 < f (s, j)
++        linarith
++    · use 1
++      refine ⟨by norm_num, fun s j => ⟨fun hs => ?_, fun hs => H_nonpos s j hs⟩⟩
++      · exfalso; exact h_any ⟨s, j, hs⟩
++  set P : Fin k → MvPolynomial (Fin (2 * H)) ℝ := fun j => Q j - MvPolynomial.C η
++  have hPdeg : ∀ j, (P j).totalDegree ≤ H := by
++    intro j
++    dsimp [P]
++    refine (MvPolynomial.totalDegree_sub _ _).trans ?_
++    rw [MvPolynomial.totalDegree_C]
++    exact max_le (hdeg j) (by omega)
++  have hinj : ∀ s : Fin k → Bool, s ∈ signPatterns P := by
++    intro s
++    rw [signPatterns, Set.mem_setOf_eq]
++    use ξ s
++    refine ⟨fun j => ?_, fun j => ?_⟩
++    · dsimp [P]
++      rw [MvPolynomial.eval_sub, MvPolynomial.eval_C]
++      cases hsj : s j
++      · have h1 := (hη_spec s j).2 hsj
++        linarith
++      · have h1 := (hη_spec s j).1 hsj
++        linarith
++    · dsimp [P]
++      rw [MvPolynomial.eval_sub, MvPolynomial.eval_C]
++      cases hsj : s j
++      · have h1 := (hη_spec s j).2 hsj
++        have hlt : ¬ (0 < MvPolynomial.eval (ξ s) (Q j) - η) := by linarith
++        have hdec : decide (0 < MvPolynomial.eval (ξ s) (Q j) - η) = false := decide_eq_false hlt
++        rw [hdec]
++      · have h1 := (hη_spec s j).1 hsj
++        have hlt : 0 < MvPolynomial.eval (ξ s) (Q j) - η := by linarith
++        have hdec : decide (0 < MvPolynomial.eval (ξ s) (Q j) - η) = true := decide_eq_true hlt
++        rw [hdec]
++  have hsubset : Set.univ ⊆ signPatterns P := fun s _ => hinj s
++  have hcard_univ : (Set.univ : Set (Fin k → Bool)).ncard = 2 ^ k := by
++    rw [Set.ncard_univ]
++    have hcard : Nat.card (Fin k → Bool) = 2 ^ k := by
++      rw [Nat.card_eq_fintype_card, Fintype.card_fun, Fintype.card_fin, Fintype.card_bool]
++    rw [hcard]
++  have hcard_le : (2 : ℝ) ^ k ≤ ((signPatterns P).ncard : ℝ) := by
++    have h1 : (2 : ℝ) ^ k = ((Set.univ : Set (Fin k → Bool)).ncard : ℝ) := by
++      rw [hcard_univ]; push_cast; rfl
++    rw [h1]
++    exact_mod_cast Set.ncard_le_ncard hsubset
++  have hw := warren_sign_patterns (by omega) hkH hH P hPdeg
++  have h_eq : (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H) =
++      (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / ↑(2 * H)) ^ (2 * H) := by
++    congr 2
++    push_cast
++    rfl
++  rw [h_eq]
++  exact hcard_le.trans hw
+ 
+ end HeadComplexity

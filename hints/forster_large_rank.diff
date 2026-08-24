@@ -1,0 +1,46 @@
+diff --git a/HeadComplexity/Separations/Forster.lean b/HeadComplexity/Separations/Forster.lean
+index 6758736..6a127a3 100644
+--- a/HeadComplexity/Separations/Forster.lean
++++ b/HeadComplexity/Separations/Forster.lean
+@@ -508,7 +508,40 @@ of a matrix with a nonzero entry is nonzero, so its rank is positive). -/
+ theorem one_le_signRank {ι : Type*} [Fintype ι] [DecidableEq ι] [Nonempty ι]
+     (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
+     1 ≤ signRank M := by
+-  sorry
++  unfold signRank
++  have hnonempty : {r | ∃ A : Matrix ι ι ℝ, SignMatches M A ∧ A.rank = r}.Nonempty := by
++    use M.rank
++    refine ⟨M, ?_, rfl⟩
++    intro i j
++    rcases hM i j with h1 | h2
++    · rw [h1, mul_one]
++      exact Real.zero_lt_one
++    · rw [h2, neg_mul_neg, mul_one]
++      exact Real.zero_lt_one
++  apply le_csInf hnonempty
++  rintro r ⟨A, hA, rfl⟩
++  have i0 : ι := Classical.choice inferInstance
++  have h_pos := hA i0 i0
++  have hA_ne : A ≠ 0 := by
++    intro hA0
++    rw [hA0, Matrix.zero_apply, mul_zero] at h_pos
++    exact lt_irrefl 0 h_pos
++  by_contra h_lt
++  have hr0 : A.rank = 0 := by omega
++  unfold Matrix.rank at hr0
++  have h_range : LinearMap.range A.mulVecLin = ⊥ := Submodule.finrank_eq_zero.mp hr0
++  have h_map : A.mulVecLin = 0 := LinearMap.range_eq_bot.mp h_range
++  have hA_zero : A = 0 := by
++    ext i j
++    have hij : A.mulVecLin (Pi.single j 1) i = 0 := by rw [h_map, LinearMap.zero_apply, Pi.zero_apply]
++    rw [mulVecLin_apply, mulVec, dotProduct] at hij
++    rw [Finset.sum_eq_single j] at hij
++    · simpa using hij
++    · intro b _ hb
++      simp [Pi.single_eq_of_ne hb]
++    · intro hb
++      exact False.elim (hb (Finset.mem_univ j))
++  exact hA_ne hA_zero
+ 
+ /-- P5.1: a rank-`signRank` factorization normalizes to unit vectors with
+ strict entrywise sign agreement. -/

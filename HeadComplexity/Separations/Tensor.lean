@@ -362,7 +362,27 @@ isolates the elementary real-arithmetic tail from the Kronecker spectral core. -
 theorem forsterRatio_pow_le_of_forster {m k r : ℕ} (hm : 1 ≤ m)
     (hle : (2 : ℝ) ^ (k * m) ≤ (r : ℝ) * (2 * ((m - 1).choose ((m - 1) / 2) : ℝ)) ^ k) :
     forsterRatio m ^ k ≤ (r : ℝ) := by
-  sorry
+  set C : ℝ := ((m - 1).choose ((m - 1) / 2) : ℝ)
+  have hC_pos : 0 < C := Nat.cast_pos.mpr (Nat.choose_pos (Nat.div_le_self (m - 1) 2))
+  have h2C_pos : 0 < 2 * C := by linarith
+  have h2C_pow_pos : 0 < (2 * C) ^ k := pow_pos h2C_pos k
+  have h_ratio : forsterRatio m = 2 ^ m / (2 * C) := by
+    unfold forsterRatio
+    have h2m : (2 : ℝ) ^ m = 2 ^ (m - 1) * 2 := by
+      have h_m_eq : m = m - 1 + 1 := (Nat.sub_add_cancel hm).symm
+      conv_lhs => rw [h_m_eq]
+      rw [pow_add, pow_one]
+    have h_div : 2 ^ (m - 1) / C = (2 ^ (m - 1) * 2) / (C * 2) := by
+      exact (mul_div_mul_right (2 ^ (m - 1)) C (by norm_num : (2 : ℝ) ≠ 0)).symm
+    rw [h_div, h2m]
+    ring_nf
+  have h_ratio_pow : forsterRatio m ^ k = 2 ^ (k * m) / (2 * C) ^ k := by
+    rw [h_ratio, div_pow]
+    congr 1
+    rw [← pow_mul, mul_comm m k]
+  rw [h_ratio_pow]
+  rw [div_le_iff₀ h2C_pow_pos]
+  exact hle
 
 /-- **Kronecker/Forster core** (PROOFS.md P8.1–P8.3): under the all-left/all-right
 partition the sign matrix `S_k := signMatrix (k·m) (k·m) G̃` is `(-1)^(k+1)` times a
@@ -668,6 +688,34 @@ entrywise into the block sign matrices with the global `(-1)^(k+1)` of the XOR
 encoding (`e(⊕ b_j) = (-1)^(k+1) ∏ e(b_j)` for `true ↦ +1`).  Unfold
 `tensorEquiv`: the `(j, i)` x-coordinate of the all-left layout is coordinate
 `finProdFinEquiv (j, i)` of the left half. -/
+private theorem blockOf_tensorEquiv_symm {m k : ℕ} (x y : Fin (k * m) → Bool) (j : Fin k) :
+    blockOf (blockJoin x y ∘ (tensorEquiv m k).symm) j =
+      blockJoin (fun i => x (finProdFinEquiv (j, i))) (fun i => y (finProdFinEquiv (j, i))) := by
+  funext i
+  refine Fin.addCases (fun i1 => ?_) (fun i2 => ?_) i
+  · dsimp [blockOf]
+    have h_eq : (tensorEquiv m k).symm (finProdFinEquiv (j, Fin.castAdd m i1)) =
+        Fin.castAdd (k * m) (finProdFinEquiv (j, i1)) := by
+      unfold tensorEquiv
+      dsimp [Equiv.prodCongr, Prod.map]
+      simp only [Equiv.symm_apply_apply]
+      have h1 : finSumFinEquiv.symm (Fin.castAdd m i1) = Sum.inl i1 := finSumFinEquiv_symm_apply_castAdd i1
+      rw [h1]
+      dsimp [Equiv.prodSumDistrib, finSumFinEquiv]
+      rfl
+    rw [h_eq, blockJoin_castAdd, blockJoin_castAdd]
+  · dsimp [blockOf]
+    have h_eq : (tensorEquiv m k).symm (finProdFinEquiv (j, Fin.natAdd m i2)) =
+        Fin.natAdd (k * m) (finProdFinEquiv (j, i2)) := by
+      unfold tensorEquiv
+      dsimp [Equiv.prodCongr, Prod.map]
+      simp only [Equiv.symm_apply_apply]
+      have h1 : finSumFinEquiv.symm (Fin.natAdd m i2) = Sum.inr i2 := finSumFinEquiv_symm_apply_natAdd i2
+      rw [h1]
+      dsimp [Equiv.prodSumDistrib, finSumFinEquiv]
+      rfl
+    rw [h_eq, blockJoin_natAdd, blockJoin_natAdd]
+
 theorem signMatrix_tensorReindexed_apply {m k : ℕ}
     (x y : Fin (k * m) → Bool) :
     signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k) x y =
@@ -675,7 +723,10 @@ theorem signMatrix_tensorReindexed_apply {m k : ℕ}
         ∏ j : Fin k, signMatrix m m (distThreshold m)
           (fun i => x (finProdFinEquiv (j, i)))
           (fun i => y (finProdFinEquiv (j, i))) := by
-  sorry
+  unfold signMatrix tensorDistThreshold_reindexed tensorDistThreshold xorPower
+  simp_rw [blockOf_tensorEquiv_symm]
+  exact sign_xor_prod (fun j : Fin k => distThreshold m (blockJoin
+    (fun i => x (finProdFinEquiv (j, i))) (fun i => y (finProdFinEquiv (j, i)))))
 
 /-- P8.2 → P8.3 (rank transport): via `signMatrix_tensorReindexed_apply`, the
 reindex equivalence `(Fin (k·m) → Bool) ≃ (Fin k → Fin m → Bool)` (currying

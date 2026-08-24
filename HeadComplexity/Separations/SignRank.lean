@@ -125,7 +125,14 @@ bridge polynomial (P2.3) and the degree-`d` left-monomial factorization (P3.2). 
 theorem rank_sum_le {α β ι : Type*} [Fintype β] (s : Finset ι)
     (M : ι → Matrix α β ℝ) :
     (∑ i ∈ s, M i).rank ≤ ∑ i ∈ s, (M i).rank := by
-  sorry
+  classical
+  induction s using Finset.induction_on with
+  | empty =>
+    simp only [Finset.sum_empty, Matrix.rank_zero, le_refl]
+  | @insert a s ha ih =>
+    rw [Finset.sum_insert ha, Finset.sum_insert ha]
+    have h1 := rank_add_le (M a) (∑ i ∈ s, M i)
+    omega
 
 /-- Rank of a finite sum of outer products is at most the number of summands
 (PROOFS.md P2.3 / P3.2): each `vecMulVec (u i) (v i)` has rank `≤ 1`

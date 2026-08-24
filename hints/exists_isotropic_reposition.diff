@@ -1,0 +1,96 @@
+diff --git a/HeadComplexity/Separations/Forster.lean b/HeadComplexity/Separations/Forster.lean
+index 6758736..8bf433a 100644
+--- a/HeadComplexity/Separations/Forster.lean
++++ b/HeadComplexity/Separations/Forster.lean
+@@ -520,6 +520,78 @@ theorem exists_unit_sign_factorization {ι : Type*} [Fintype ι] [DecidableEq ι
+       ∀ x y, 0 < M x y * ⟪u x, v y⟫_ℝ := by
+   sorry
+ 
++/-- Standalone helper lemma: transforming unit vectors via a linear equivalence `T`
++and its adjoint inverse `LinearMap.adjoint T.symm` (followed by normalization)
++strictly preserves inner product sign margins. -/
++private theorem sign_preserved_under_reposition {r : ℕ}
++    (T : EuclideanSpace ℝ (Fin r) ≃ₗ[ℝ] EuclideanSpace ℝ (Fin r))
++    (u v : EuclideanSpace ℝ (Fin r)) (s : ℝ) (hs : 0 < s * ⟪u, v⟫_ℝ) :
++    let T_adj := LinearMap.adjoint (T.symm : EuclideanSpace ℝ (Fin r) →ₗ[ℝ]
++      EuclideanSpace ℝ (Fin r))
++    0 < s * ⟪(‖T u‖)⁻¹ • T u, (‖T_adj v‖)⁻¹ • T_adj v⟫_ℝ := by
++  intro T_adj
++  have hTu : T u ≠ 0 := by
++    intro h
++    have hu0 : u = 0 := T.map_eq_zero_iff.mp h
++    rw [hu0, inner_zero_left, mul_zero] at hs
++    exact lt_irrefl 0 hs
++  have hTv : T_adj v ≠ 0 := by
++    intro h
++    have h2 : ⟪T u, T_adj v⟫_ℝ = 0 := by rw [h, inner_zero_right]
++    have h_adj : ⟪T u, T_adj v⟫_ℝ = ⟪u, v⟫_ℝ := by
++      dsimp [T_adj]
++      rw [LinearMap.adjoint_inner_right]
++      simp
++    rw [h_adj] at h2
++    rw [h2, mul_zero] at hs
++    exact lt_irrefl 0 hs
++  rw [real_inner_smul_left, real_inner_smul_right]
++  have h_adj : ⟪T u, T_adj v⟫_ℝ = ⟪u, v⟫_ℝ := by
++    dsimp [T_adj]
++    rw [LinearMap.adjoint_inner_right]
++    simp
++  rw [h_adj]
++  have hpos1 : 0 < (‖T u‖)⁻¹ := inv_pos.mpr (norm_pos_iff.mpr hTu)
++  have hpos2 : 0 < (‖T_adj v‖)⁻¹ := inv_pos.mpr (norm_pos_iff.mpr hTv)
++  have h_eq : s * ((‖T u‖)⁻¹ * ((‖T_adj v‖)⁻¹ * ⟪u, v⟫_ℝ)) =
++    ((‖T u‖)⁻¹ * (‖T_adj v‖)⁻¹) * (s * ⟪u, v⟫_ℝ) := by ring
++  rw [h_eq]
++  exact mul_pos (mul_pos hpos1 hpos2) hs
++
++/-- P5.2 (Helper step 1): unit vectors with strict sign margin can be perturbed into
++general position (every proper subspace W contains fewer than `(N/r)·dim W` vectors)
++while strictly preserving all inner product sign margins. -/
++private theorem exists_general_position_perturbation {r : ℕ} {ι : Type*} [Fintype ι]
++    (hr : 0 < r) (hcard : r < Fintype.card ι)
++    (u v : ι → EuclideanSpace ℝ (Fin r))
++    (hu : ∀ x, ‖u x‖ = 1) (hv : ∀ y, ‖v y‖ = 1)
++    (s : ι → ι → ℝ) (hs : ∀ x y, 0 < s x y * ⟪u x, v y⟫_ℝ) :
++    ∃ u₁ v₁ : ι → EuclideanSpace ℝ (Fin r),
++      (∀ x, ‖u₁ x‖ = 1) ∧ (∀ y, ‖v₁ y‖ = 1) ∧
++      (∀ x y, 0 < s x y * ⟪u₁ x, v₁ y⟫_ℝ) ∧
++      (∀ (W : Submodule ℝ (EuclideanSpace ℝ (Fin r))) (hW : Module.finrank ℝ W < r),
++        open scoped Classical in
++        ((Finset.univ.filter (fun x => u₁ x ∈ W)).card : ℝ) < ((Fintype.card ι : ℝ) / r) * Module.finrank ℝ W) := by
++  sorry
++
++/-- P5.3 (Helper step 2 - Forster's Isotropic Lemma): vectors in general position
++can be brought to isotropic position by an invertible linear transformation,
++preserving all inner product sign margins. -/
++private theorem isotropic_reposition_of_general_position {r : ℕ} {ι : Type*} [Fintype ι]
++    (hr : 0 < r) (hcard : r < Fintype.card ι)
++    (u₁ v₁ : ι → EuclideanSpace ℝ (Fin r))
++    (hu₁ : ∀ x, ‖u₁ x‖ = 1) (hv₁ : ∀ y, ‖v₁ y‖ = 1)
++    (s : ι → ι → ℝ) (hs₁ : ∀ x y, 0 < s x y * ⟪u₁ x, v₁ y⟫_ℝ)
++    (hgen : ∀ (W : Submodule ℝ (EuclideanSpace ℝ (Fin r))) (hW : Module.finrank ℝ W < r),
++      open scoped Classical in
++      ((Finset.univ.filter (fun x => u₁ x ∈ W)).card : ℝ) < ((Fintype.card ι : ℝ) / r) * Module.finrank ℝ W) :
++    ∃ u' v' : ι → EuclideanSpace ℝ (Fin r),
++      (∀ x, ‖u' x‖ = 1) ∧ (∀ y, ‖v' y‖ = 1) ∧
++      (∀ x y, 0 < s x y * ⟪u' x, v' y⟫_ℝ) ∧
++      ∀ w : EuclideanSpace ℝ (Fin r),
++        ∑ x, ⟪u' x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
++  sorry
++
+ /-- P5.2 + P5.3 (the analytic kernel): unit vectors with a strict sign margin
+ can be perturbed into general position and then brought to isotropic position
+ by an invertible transformation, without changing any sign.  Isotropy is
+@@ -534,7 +606,11 @@ theorem exists_isotropic_reposition {r : ℕ} {ι : Type*} [Fintype ι]
+       (∀ x y, 0 < s x y * ⟪u' x, v' y⟫_ℝ) ∧
+       ∀ w : EuclideanSpace ℝ (Fin r),
+         ∑ x, ⟪u' x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
+-  sorry
++  classical
++  haveI : DecidableEq ι := Classical.decEq ι
++  obtain ⟨u₁, v₁, hu₁, hv₁, hs₁, hgen⟩ :=
++    exists_general_position_perturbation hr hcard u v hu hv s hs
++  exact isotropic_reposition_of_general_position hr hcard u₁ v₁ hu₁ hv₁ s hs₁ hgen
+ 
+ /-- P5.4: the main chain.  `∑_{x,y} M_{xy}⟪u_x,v_y⟫ = ∑ |⟪u_x,v_y⟫| ≥
+ ∑ ⟪u_x,v_y⟫² = N²/r` by isotropy, while the same sum is at most

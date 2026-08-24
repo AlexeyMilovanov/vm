@@ -1,0 +1,201 @@
+diff --git a/HeadComplexity/Separations/SignRankBridge.lean b/HeadComplexity/Separations/SignRankBridge.lean
+index 322bd60..3363cd3 100644
+--- a/HeadComplexity/Separations/SignRankBridge.lean
++++ b/HeadComplexity/Separations/SignRankBridge.lean
+@@ -209,6 +209,167 @@ theorem cleared_score_iff {H : ℕ} (τ : ℝ) (u D : Fin H → ℝ)
+       0 < (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') - τ * ∏ h, D h := by
+   sorry
+ 
++private lemma rank_sum_le_helper {α β ι : Type*} [Fintype β] (s : Finset ι)
++    (M : ι → Matrix α β ℝ) :
++    (∑ i ∈ s, M i).rank ≤ ∑ i ∈ s, (M i).rank := by
++  classical
++  induction s using Finset.induction_on with
++  | empty => simp [Matrix.rank_zero]
++  | insert a s hi ih =>
++    rw [Finset.sum_insert hi, Finset.sum_insert hi]
++    exact (rank_add_le _ _).trans (Nat.add_le_add_left ih _)
++
++private lemma rank_le_card_of_sum_vecMulVec_helper {α β ι : Type*} [Fintype β]
++    (s : Finset ι) (u : ι → α → ℝ) (v : ι → β → ℝ) :
++    (∑ i ∈ s, Matrix.vecMulVec (u i) (v i)).rank ≤ s.card :=
++  calc (∑ i ∈ s, Matrix.vecMulVec (u i) (v i)).rank
++      ≤ ∑ i ∈ s, (Matrix.vecMulVec (u i) (v i)).rank := rank_sum_le_helper s _
++    _ ≤ ∑ _i ∈ s, 1 := Finset.sum_le_sum (fun i _ => Matrix.rank_vecMulVec_le (u i) (v i))
++    _ = s.card := by simp
++
++private lemma two_mul_two_pow_sub_helper (H : ℕ) (hH : 1 ≤ H) :
++    2 * (2 ^ H - 2) + 2 = 2 ^ (H + 1) - 2 := by
++  have h2 : 2 * 2 ^ H = 2 ^ (H + 1) := by
++    rw [pow_succ', mul_comm]
++  have h3 : 2 * (2 ^ H - 2) = 2 ^ (H + 1) - 4 := by
++    rw [Nat.mul_sub_left_distrib, h2]
++  have h4 : 4 ≤ 2 ^ (H + 1) := by
++    calc 4 = 2 ^ 2 := by norm_num
++      _ ≤ 2 ^ (H + 1) := Nat.pow_le_pow_right (by norm_num) (by omega)
++  rw [h3]
++  omega
++
++private lemma cleared_score_iff_helper {H : ℕ} (τ : ℝ) (u D : Fin H → ℝ)
++    (hD : ∀ h, 0 < D h) :
++    (τ < ∑ h, u h / D h) ↔
++      0 < (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') - τ * ∏ h, D h := by
++  have hprod_pos : 0 < ∏ h, D h := Finset.prod_pos (fun h _ => hD h)
++  have h_sum : ∑ h, u h / D h =
++      (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') / ∏ h, D h := by
++    rw [Finset.sum_div]
++    congr 1
++    have hP : ∀ h, ∏ h' ∈ Finset.univ.erase h, D h' ≠ 0 :=
++      fun h => ne_of_gt (Finset.prod_pos (fun h' _ => hD h'))
++    have h_prod_eq : ∀ h, ∏ h', D h' = D h * ∏ h' ∈ Finset.univ.erase h, D h' :=
++      fun h => (Finset.mul_prod_erase Finset.univ D (Finset.mem_univ h)).symm
++    funext h
++    rw [h_prod_eq h]
++    exact (mul_div_mul_right (u h) (D h) (hP h)).symm
++  rw [h_sum]
++  have h1 : (τ < (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') / ∏ h, D h) ↔
++      0 < (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') / ∏ h, D h - τ := sub_pos.symm
++  have h2 : (0 < (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') / ∏ h, D h - τ) ↔
++      0 < ((∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') - τ * ∏ h, D h) / ∏ h, D h := by
++    rw [sub_div, mul_div_cancel_right₀ _ (ne_of_gt hprod_pos)]
++  have h3 : (0 < ((∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') - τ * ∏ h, D h) / ∏ h, D h) ↔
++      0 < (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') - τ * ∏ h, D h := by
++    exact div_pos_iff_of_pos_right hprod_pos
++  rw [h1, h2, h3]
++
++private lemma exists_eta_signMatches {a b : ℕ} {f : (Fin (a + b) → Bool) → Bool}
++    (Q : (Fin a → Bool) → (Fin b → Bool) → ℝ)
++    (hfQ : ∀ x y, f (blockJoin x y) = true ↔ 0 < Q x y) :
++    ∃ η : ℝ, 0 < η ∧ SignMatches (signMatrix a b f) (fun x y => Q x y - η) := by
++  classical
++  let S : Finset ℝ := (Finset.univ ×ˢ Finset.univ).filter
++    (fun p : (Fin a → Bool) × (Fin b → Bool) => f (blockJoin p.1 p.2) = true)
++      |>.image (fun p => Q p.1 p.2)
++  by_cases hS : S.Nonempty
++  · let smin := S.min' hS
++    have hsmin_mem : smin ∈ S := Finset.min'_mem S hS
++    have hsmin_pos : 0 < smin := by
++      rcases Finset.mem_image.mp hsmin_mem with ⟨p, hp_mem, hp_eq⟩
++      rcases Finset.mem_filter.mp hp_mem with ⟨_, hf_true⟩
++      rw [← hp_eq]
++      exact (hfQ p.1 p.2).mp hf_true
++    use smin / 2
++    refine ⟨by linarith, ?_⟩
++    intro x y
++    rw [signMatrix_apply]
++    by_cases hf : f (blockJoin x y) = true
++    · rw [if_pos hf]
++      have hmem : Q x y ∈ S := by
++        apply Finset.mem_image.mpr
++        refine ⟨(x, y), ?_, rfl⟩
++        exact Finset.mem_filter.mpr
++          ⟨Finset.mem_product.mpr ⟨Finset.mem_univ x, Finset.mem_univ y⟩, hf⟩
++      have hsle : smin ≤ Q x y := Finset.min'_le S (Q x y) hmem
++      have hsub : 0 < Q x y - smin / 2 := by linarith
++      linarith
++    · rw [if_neg hf]
++      have hQ_nonpos : Q x y ≤ 0 := by
++        by_contra hcont
++        have hftrue := (hfQ x y).mpr (not_le.mp hcont)
++        exact hf hftrue
++      have hsub : Q x y - smin / 2 < 0 := by linarith
++      nlinarith
++  · use 1
++    refine ⟨by norm_num, ?_⟩
++    intro x y
++    rw [signMatrix_apply]
++    by_cases hf : f (blockJoin x y) = true
++    · exfalso
++      apply hS
++      refine ⟨Q x y, ?_⟩
++      apply Finset.mem_image.mpr
++      refine ⟨(x, y), ?_, rfl⟩
++      exact Finset.mem_filter.mpr
++        ⟨Finset.mem_product.mpr ⟨Finset.mem_univ x, Finset.mem_univ y⟩, hf⟩
++    · rw [if_neg hf]
++      have hQ_nonpos : Q x y ≤ 0 := by
++        by_contra hcont
++        have hftrue := (hfQ x y).mpr (not_le.mp hcont)
++        exact hf hftrue
++      nlinarith
++
++private lemma outer_product_sum_rank_bound {a b H : ℕ} (hH : 1 ≤ H)
++    (S_int : Finset (Finset (Fin H)))
++    (hS_card : S_int.card = 2 ^ H - 2)
++    (u_b1 : (Fin a → Bool) → ℝ) (v_b1 : (Fin b → Bool) → ℝ)
++    (u_b2 : (Fin a → Bool) → ℝ) (v_b2 : (Fin b → Bool) → ℝ)
++    (u1 : Finset (Fin H) → (Fin a → Bool) → ℝ)
++    (v1 : Finset (Fin H) → (Fin b → Bool) → ℝ)
++    (u2 : Finset (Fin H) → (Fin a → Bool) → ℝ)
++    (v2 : Finset (Fin H) → (Fin b → Bool) → ℝ) :
++    (Matrix.vecMulVec u_b1 v_b1 + Matrix.vecMulVec u_b2 v_b2 +
++      ∑ T ∈ S_int, (Matrix.vecMulVec (u1 T) (v1 T) + Matrix.vecMulVec (u2 T) (v2 T))).rank
++      ≤ 2 ^ (H + 1) - 2 := by
++  have h_sum : (∑ T ∈ S_int, (Matrix.vecMulVec (u1 T) (v1 T) +
++      Matrix.vecMulVec (u2 T) (v2 T))) =
++      (∑ T ∈ S_int, Matrix.vecMulVec (u1 T) (v1 T)) +
++      (∑ T ∈ S_int, Matrix.vecMulVec (u2 T) (v2 T)) := by
++    exact Finset.sum_add_distrib
++  rw [h_sum]
++  have r1 := rank_add_le (Matrix.vecMulVec u_b1 v_b1 + Matrix.vecMulVec u_b2 v_b2)
++    ((∑ T ∈ S_int, Matrix.vecMulVec (u1 T) (v1 T)) +
++      (∑ T ∈ S_int, Matrix.vecMulVec (u2 T) (v2 T)))
++  have r2 := rank_add_le (Matrix.vecMulVec u_b1 v_b1) (Matrix.vecMulVec u_b2 v_b2)
++  have r3 := rank_add_le (∑ T ∈ S_int, Matrix.vecMulVec (u1 T) (v1 T))
++    (∑ T ∈ S_int, Matrix.vecMulVec (u2 T) (v2 T))
++  have rb1 := Matrix.rank_vecMulVec_le u_b1 v_b1
++  have rb2 := Matrix.rank_vecMulVec_le u_b2 v_b2
++  have rs1 := rank_le_card_of_sum_vecMulVec_helper S_int u1 v1
++  have rs2 := rank_le_card_of_sum_vecMulVec_helper S_int u2 v2
++  have h_sub := two_mul_two_pow_sub_helper H hH
++  omega
++
++private lemma headForm_cleared_matrix_outer_product_repr {a b H : ℕ} (τ η : ℝ)
++    (A : Fin H → (Fin a → Bool) → ℝ) (B : Fin H → (Fin b → Bool) → ℝ)
++    (A' : Fin H → (Fin a → Bool) → ℝ) (B' : Fin H → (Fin b → Bool) → ℝ) :
++    ∃ (S_int : Finset (Finset (Fin H)))
++      (hS_card : S_int.card = 2 ^ H - 2)
++      (u_b1 : (Fin a → Bool) → ℝ) (v_b1 : (Fin b → Bool) → ℝ)
++      (u_b2 : (Fin a → Bool) → ℝ) (v_b2 : (Fin b → Bool) → ℝ)
++      (u1 : Finset (Fin H) → (Fin a → Bool) → ℝ)
++      (v1 : Finset (Fin H) → (Fin b → Bool) → ℝ)
++      (u2 : Finset (Fin H) → (Fin a → Bool) → ℝ)
++      (v2 : Finset (Fin H) → (Fin b → Bool) → ℝ),
++      (fun x y => (∑ h, (A' h x + B' h y) * ∏ h' ∈ Finset.univ.erase h, (A h' x + B h' y)) -
++        τ * ∏ h, (A h x + B h y) - η) =
++      Matrix.vecMulVec u_b1 v_b1 + Matrix.vecMulVec u_b2 v_b2 +
++        ∑ T ∈ S_int, (Matrix.vecMulVec (u1 T) (v1 T) + Matrix.vecMulVec (u2 T) (v2 T)) := by
++  sorry
++
+ /-- P2.3+P2.4 (linear-algebra core of the bridge): any function whose strict
+ sign is realized by a two-block head-form score has sign-rank at most
+ `2^(H+1) - 2`.  Proof plan: clear denominators (`cleared_score_iff`), group
+@@ -223,7 +384,27 @@ theorem signRank_le_of_headForm {a b H : ℕ} (hH : 1 ≤ H) (τ : ℝ)
+     (hf : ∀ x y, f (blockJoin x y) = true ↔
+       τ < ∑ h, (A' h x + B' h y) / (A h x + B h y)) :
+     signRank (signMatrix a b f) ≤ 2 ^ (H + 1) - 2 := by
+-  sorry
++  classical
++  let Q : (Fin a → Bool) → (Fin b → Bool) → ℝ := fun x y =>
++    (∑ h, (A' h x + B' h y) * ∏ h' ∈ Finset.univ.erase h, (A h' x + B h' y)) -
++      τ * ∏ h, (A h x + B h y)
++  have hfQ : ∀ x y, f (blockJoin x y) = true ↔ 0 < Q x y := by
++    intro x y
++    rw [hf x y]
++    exact cleared_score_iff_helper τ (fun h => A' h x + B' h y)
++      (fun h => A h x + B h y) (fun h => hpos h x y)
++  obtain ⟨η, hη_pos, hMatches⟩ := exists_eta_signMatches Q hfQ
++  let M : Matrix (Fin a → Bool) (Fin b → Bool) ℝ := fun x y => Q x y - η
++  have hsRank : signRank (signMatrix a b f) ≤ M.rank := Nat.sInf_le ⟨M, hMatches, rfl⟩
++  obtain ⟨S_int, hS_card, u_b1, v_b1, u_b2, v_b2, u1, v1, u2, v2, hM_eq⟩ :=
++    headForm_cleared_matrix_outer_product_repr τ η A B A' B'
++  have hM_def : M = (fun x y =>
++      (∑ h, (A' h x + B' h y) * ∏ h' ∈ Finset.univ.erase h, (A h' x + B h' y)) -
++        τ * ∏ h, (A h x + B h y) - η) := rfl
++  have hM_rank : M.rank ≤ 2 ^ (H + 1) - 2 := by
++    rw [hM_def, hM_eq]
++    exact outer_product_sum_rank_bound hH S_int hS_card u_b1 v_b1 u_b2 v_b2 u1 v1 u2 v2
++  exact hsRank.trans hM_rank
+ 
+ /-- P3.1: a degree-`d` sign representation may be taken multilinear
+ (substitute `x_i^e ↦ x_i`; cube evaluations are unchanged and the total

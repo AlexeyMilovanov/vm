@@ -1,0 +1,110 @@
+diff --git a/HeadComplexity/Separations/SignRankBridge.lean b/HeadComplexity/Separations/SignRankBridge.lean
+index 322bd60..3120057 100644
+--- a/HeadComplexity/Separations/SignRankBridge.lean
++++ b/HeadComplexity/Separations/SignRankBridge.lean
+@@ -234,6 +234,90 @@ theorem exists_multilinear_signRepr {n d : ℕ} {f : (Fin n → Bool) → Bool}
+       (∀ i, P.degreeOf i ≤ 1) ∧ SignRepresents P f := by
+   sorry
+ 
++open MvPolynomial
++
++private lemma exists_eta_shift_signMatches {a b : ℕ}
++    {f : (Fin (a + b) → Bool) → Bool} (P : MvPolynomial (Fin (a + b)) ℝ)
++    (hsr : SignRepresents P f) :
++    ∃ η : ℝ, 0 < η ∧
++      SignMatches (signMatrix a b f)
++        (fun x y => eval (cubePoint (blockJoin x y)) P - η) := by
++  let T := (Finset.univ : Finset (Fin (a + b) → Bool)).filter (fun z => f z = true)
++  by_cases hT : T.Nonempty
++  · have hT_img : (T.image (fun z => eval (cubePoint z) P)).Nonempty := hT.image _
++    set m := (T.image (fun z => eval (cubePoint z) P)).min' hT_img
++    have hm_pos : 0 < m := by
++      obtain ⟨z, hz_mem, hz_eq⟩ := Finset.mem_image.mp (Finset.min'_mem _ hT_img)
++      rw [Finset.mem_filter] at hz_mem
++      have hzm : m = eval (cubePoint z) P := hz_eq.symm
++      rw [hzm]
++      exact (hsr z).mpr hz_mem.2
++    refine ⟨m / 2, half_pos hm_pos, ?_⟩
++    intro x y
++    unfold signMatrix
++    by_cases hfxy : f (blockJoin x y) = true
++    · rw [if_pos hfxy, one_mul]
++      have hmem : blockJoin x y ∈ T := by
++        simp [T, hfxy]
++      have hle : m ≤ eval (cubePoint (blockJoin x y)) P :=
++        Finset.min'_le _ _ (Finset.mem_image_of_mem _ hmem)
++      linarith
++    · rw [if_neg hfxy]
++      have hnonpos : eval (cubePoint (blockJoin x y)) P ≤ 0 := by
++        by_contra hcon
++        have ht : f (blockJoin x y) = true := (hsr _).mp (not_le.mp hcon)
++        exact hfxy ht
++      linarith
++  · refine ⟨1, zero_lt_one, ?_⟩
++    intro x y
++    unfold signMatrix
++    have hfxy : f (blockJoin x y) = false := by
++      by_contra hcon
++      have ht : f (blockJoin x y) = true := Bool.of_not_eq_false hcon
++      have hmem : blockJoin x y ∈ T := by
++        simp [T, ht]
++      exact hT ⟨_, hmem⟩
++    rw [if_neg (by simp [hfxy])]
++    have hnonpos : eval (cubePoint (blockJoin x y)) P ≤ 0 := by
++      by_contra hcon
++      have ht : f (blockJoin x y) = true := (hsr _).mp (not_le.mp hcon)
++      rw [ht] at hfxy
++      contradiction
++    linarith
++
++private lemma card_subsets_card_le_proved (a d : ℕ) :
++    ((Finset.univ : Finset (Fin a)).powerset.filter (fun μ => μ.card ≤ d)).card
++      = ∑ i ∈ Finset.range (d + 1), a.choose i := by
++  have h_fiber : ((Finset.univ : Finset (Fin a)).powerset.filter
++        (fun μ => μ.card ≤ d))
++      = Finset.biUnion (Finset.range (d + 1))
++        (fun i => (Finset.univ : Finset (Fin a)).powersetCard i) := by
++    ext μ
++    simp only [Finset.mem_filter, Finset.mem_powerset, Finset.mem_biUnion, Finset.mem_range,
++      Finset.mem_powersetCard, Finset.subset_univ, true_and]
++    constructor
++    · intro hμ
++      exact ⟨μ.card, Nat.lt_succ_iff.mpr hμ, rfl⟩
++    · rintro ⟨i, hi, rfl⟩
++      exact Nat.le_of_lt_succ hi
++  rw [h_fiber, Finset.card_biUnion]
++  · apply Finset.sum_congr rfl
++    intro i _
++    rw [Finset.card_powersetCard, Finset.card_fin]
++  · intro i _ j _ hij
++    change Disjoint (Finset.powersetCard i Finset.univ) (Finset.powersetCard j Finset.univ)
++    rw [Finset.disjoint_left]
++    intro μ hi hj
++    rw [Finset.mem_powersetCard] at hi hj
++    exact hij (hi.2.symm.trans hj.2)
++
++private lemma rank_le_card_subsets_of_eval {a b d : ℕ}
++    (P : MvPolynomial (Fin (a + b)) ℝ) (_hdeg : P.totalDegree ≤ d)
++    (_hml : ∀ i, P.degreeOf i ≤ 1) (η : ℝ) :
++    Matrix.rank (fun x y => eval (cubePoint (blockJoin x y)) P - η)
++      ≤ ∑ i ∈ Finset.range (d + 1), a.choose i := by
++  sorry
++
+ /-- P3.2 + η-shift: a multilinear degree-`d` sign representation exhibits the
+ sign matrix as a sum of one outer product per left sub-monomial of degree
+ `≤ d` (grouping `P = ∑_μ x^μ c_μ(y)`), plus the strictifying constant folded
+@@ -243,6 +327,13 @@ theorem signRank_le_of_multilinear_signRepr {a b d : ℕ}
+     (hdeg : P.totalDegree ≤ d) (hml : ∀ i, P.degreeOf i ≤ 1)
+     (hsr : SignRepresents P f) :
+     signRank (signMatrix a b f) ≤ ∑ i ∈ Finset.range (d + 1), a.choose i := by
+-  sorry
++  obtain ⟨η, hη_pos, hsm⟩ := exists_eta_shift_signMatches P hsr
++  set A : Matrix (Fin a → Bool) (Fin b → Bool) ℝ :=
++    fun x y => eval (cubePoint (blockJoin x y)) P - η
++  have h_sr : signRank (signMatrix a b f) ≤ A.rank :=
++    Nat.sInf_le ⟨A, hsm, rfl⟩
++  have h_rank : A.rank ≤ ∑ i ∈ Finset.range (d + 1), a.choose i :=
++    rank_le_card_subsets_of_eval P hdeg hml η
++  exact h_sr.trans h_rank
+ 
+ end HeadComplexity

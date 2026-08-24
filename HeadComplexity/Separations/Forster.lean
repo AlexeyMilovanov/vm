@@ -430,35 +430,6 @@ theorem specNorm_kronecker {ι κ : Type*}
     specNorm (A ⊗ₖ B) = specNorm A * specNorm B :=
   le_antisymm (specNorm_kronecker_le A B) (le_specNorm_kronecker A B)
 
-/-- `k`-fold Kronecker power of a square matrix, indexed by `Fin k → ι`
-(PROOFS.md P8.2): the entry at `(x, y)` is `∏ⱼ M (x j) (y j)`.  This is the
-Kronecker object whose reindex is the tensored sign matrix `S_k`. -/
-def kroneckerPow (k : ℕ) {ι : Type*} (M : Matrix ι ι ℝ) :
-    Matrix (Fin k → ι) (Fin k → ι) ℝ :=
-  fun x y => ∏ j, M (x j) (y j)
-
-/-- **Spectral norm of the Kronecker power** (PROOFS.md P8.3):
-`specNorm (kroneckerPow k M) = (specNorm M) ^ k`.  Induction on `k`: the base
-case is the `1 × 1` matrix with entry `1` (empty product), and the step writes
-`kroneckerPow (k+1) M = reindex e e (M ⊗ₖ kroneckerPow k M)` for the equivalence
-`e : (Fin (k+1) → ι) ≃ ι × (Fin k → ι)` (`Fin.prod_univ_succ` gives the entrywise
-identity), so `specNorm_reindex` and `specNorm_kronecker` reduce it to
-`specNorm M * (specNorm M) ^ k`.  This is the multiplicative engine turning the
-Forster ratio into `γ_m ^ k` for Theorem B. -/
-theorem specNorm_kroneckerPow {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (k : ℕ) (M : Matrix ι ι ℝ) :
-    specNorm (kroneckerPow k M) = (specNorm M) ^ k := by
-  sorry
-
-/-- The Kronecker power of a `±1` matrix is `±1` (PROOFS.md P8.3): each entry
-`∏ⱼ M (x j) (y j)` is a finite product of `±1` values, hence `±1` itself.  This is
-what lets Forster's theorem apply to `kroneckerPow k S₁` (the tensored sign
-matrix), whose card is `2^{k·m}`. -/
-theorem kroneckerPow_mem_pm_one {ι : Type*} (k : ℕ) (M : Matrix ι ι ℝ)
-    (hM : ∀ i j, M i j = 1 ∨ M i j = -1) (x y : Fin k → ι) :
-    kroneckerPow k M x y = 1 ∨ kroneckerPow k M x y = -1 := by
-  sorry
-
 /-- The spectral norm is invariant under simultaneous reindexing (PROOFS.md
 P6.1): `reindex e e M` is `toEuclideanCLM M` conjugated by the coordinate
 permutation isometry `π := piLpCongrLeft`, and operator norms are invariant
@@ -493,6 +464,68 @@ theorem specNorm_reindex {ι ι' : Type*}
   rw [key, ContinuousLinearMap.opNorm_linearIsometryEquiv_comp,
     ContinuousLinearMap.opNorm_comp_linearIsometryEquiv]
 
+/-- `k`-fold Kronecker power of a square matrix, indexed by `Fin k → ι`
+(PROOFS.md P8.2): the entry at `(x, y)` is `∏ⱼ M (x j) (y j)`.  This is the
+Kronecker object whose reindex is the tensored sign matrix `S_k`. -/
+def kroneckerPow (k : ℕ) {ι : Type*} (M : Matrix ι ι ℝ) :
+    Matrix (Fin k → ι) (Fin k → ι) ℝ :=
+  fun x y => ∏ j, M (x j) (y j)
+
+private def kroneckerPow_e0 (ι : Type*) : (Fin 0 → ι) ≃ Unit where
+  toFun _ := ()
+  invFun _ := fun i => i.elim0
+  left_inv f := by ext i; exact i.elim0
+  right_inv _ := rfl
+
+private def kroneckerPow_e_succ (k : ℕ) (ι : Type*) : (Fin (k + 1) → ι) ≃ ι × (Fin k → ι) where
+  toFun f := (f 0, fun i => f i.succ)
+  invFun p := Fin.cons p.1 p.2
+  left_inv f := by
+    ext i
+    refine Fin.cases ?_ ?_ i
+    · simp
+    · intro j
+      simp
+  right_inv p := by
+    ext <;> simp
+
+/-- **Spectral norm of the Kronecker power** (PROOFS.md P8.3):
+`specNorm (kroneckerPow k M) = (specNorm M) ^ k`.  Induction on `k`: the base
+case is the `1 × 1` matrix with entry `1` (empty product), and the step writes
+`kroneckerPow (k+1) M = reindex e e (M ⊗ₖ kroneckerPow k M)` for the equivalence
+`e : (Fin (k+1) → ι) ≃ ι × (Fin k → ι)` (`Fin.prod_univ_succ` gives the entrywise
+identity), so `specNorm_reindex` and `specNorm_kronecker` reduce it to
+`specNorm M * (specNorm M) ^ k`.  This is the multiplicative engine turning the
+Forster ratio into `γ_m ^ k` for Theorem B. -/
+theorem specNorm_kroneckerPow {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (k : ℕ) (M : Matrix ι ι ℝ) :
+    specNorm (kroneckerPow k M) = (specNorm M) ^ k := by
+  induction k with
+  | zero =>
+    have h_eq : kroneckerPow 0 M =
+        reindex (kroneckerPow_e0 ι).symm (kroneckerPow_e0 ι).symm (1 : Matrix Unit Unit ℝ) := by
+      ext x y
+      simp [kroneckerPow, reindex_apply, kroneckerPow_e0]
+    rw [h_eq, specNorm_reindex]
+    unfold specNorm
+    rw [map_one, norm_one, pow_zero]
+  | succ k ih =>
+    have h_eq : kroneckerPow (k + 1) M =
+        reindex (kroneckerPow_e_succ k ι).symm (kroneckerPow_e_succ k ι).symm
+          (M ⊗ₖ kroneckerPow k M) := by
+      ext x y
+      simp [kroneckerPow, reindex_apply, kroneckerPow_e_succ, Fin.prod_univ_succ]
+    rw [h_eq, specNorm_reindex, specNorm_kronecker, ih, pow_succ, mul_comm]
+
+/-- The Kronecker power of a `±1` matrix is `±1` (PROOFS.md P8.3): each entry
+`∏ⱼ M (x j) (y j)` is a finite product of `±1` values, hence `±1` itself.  This is
+what lets Forster's theorem apply to `kroneckerPow k S₁` (the tensored sign
+matrix), whose card is `2^{k·m}`. -/
+theorem kroneckerPow_mem_pm_one {ι : Type*} (k : ℕ) (M : Matrix ι ι ℝ)
+    (hM : ∀ i j, M i j = 1 ∨ M i j = -1) (x y : Fin k → ι) :
+    kroneckerPow k M x y = 1 ∨ kroneckerPow k M x y = -1 := by
+  sorry
+
 
 /-! ### Manual decomposition of `forster_large_rank` (PROOFS.md P5),
 2026-08-24.  Assembly: `one_le_signRank` gives `1 ≤ r`; factorize
@@ -503,12 +536,52 @@ section ForsterDecomposition
 
 open scoped InnerProductSpace
 
+private theorem matrix_rank_eq_zero_iff {m n : Type*} [Fintype m] [Fintype n] [DecidableEq n] (A : Matrix m n ℝ) :
+    A.rank = 0 ↔ A = 0 := by
+  constructor
+  · intro h
+    unfold Matrix.rank at h
+    rw [Submodule.finrank_eq_zero] at h
+    rw [LinearMap.range_eq_bot] at h
+    ext i j
+    have h1 : A.mulVecLin (Pi.single j 1) = 0 := by rw [h]; rfl
+    have h2 := congr_fun h1 i
+    rw [Matrix.mulVecLin_apply] at h2
+    dsimp [Matrix.mulVec, dotProduct] at h2
+    rw [Finset.sum_eq_single j] at h2
+    · simpa using h2
+    · intro b _ hb
+      simp [Pi.single_eq_of_ne hb]
+    · intro hj
+      exact False.elim (hj (Finset.mem_univ j))
+  · rintro rfl
+    exact Matrix.rank_zero
+
 /-- P5.1: a nonempty `±1` matrix has sign-rank at least one (any sign-match
 of a matrix with a nonzero entry is nonzero, so its rank is positive). -/
 theorem one_le_signRank {ι : Type*} [Fintype ι] [DecidableEq ι] [Nonempty ι]
     (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
     1 ≤ signRank M := by
-  sorry
+  have h_nonempty : {r | ∃ A : Matrix ι ι ℝ, SignMatches M A ∧ A.rank = r}.Nonempty := by
+    use M.rank, M
+    refine ⟨?_, rfl⟩
+    intro i j
+    rcases hM i j with h1 | h2
+    · rw [h1]; norm_num
+    · rw [h2]; norm_num
+  have h_mem := Nat.sInf_mem h_nonempty
+  rcases h_mem with ⟨A, hA, hA_rank⟩
+  unfold signRank
+  rw [← hA_rank]
+  by_contra hc
+  have hA_zero : A.rank = 0 := Nat.lt_one_iff.mp (not_le.mp hc)
+  rw [matrix_rank_eq_zero_iff] at hA_zero
+  obtain ⟨i0⟩ := (inferInstance : Nonempty ι)
+  have h_match := hA i0 i0
+  rw [hA_zero] at h_match
+  dsimp at h_match
+  rw [mul_zero] at h_match
+  exact lt_irrefl 0 h_match
 
 /-- P5.1: a rank-`signRank` factorization normalizes to unit vectors with
 strict entrywise sign agreement. -/

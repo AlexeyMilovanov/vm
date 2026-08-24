@@ -54,9 +54,11 @@ EXTERNAL = {"warren_sign_patterns"}
 MIN_QUEUE = 10
 STAGE_TIMEOUT = 5400
 BUILD_TIMEOUT = 2400
-JULES_SESSION_BUDGET = 2 * 3600
-JULES_PHASE_CAP = int(3.5 * 3600)
-JULES_POLL = 180
+JULES_SESSION_BUDGET = 45 * 60   # sessions self-terminate in 15-25 min;
+                                 # >40 min historically = drifting, not depth
+JULES_PHASE_CAP = 2 * 3600
+JULES_POLL = 60                  # fast poll so approve/nudge latency does
+                                 # not eat into the 45-min budget
 JULES_BATCH = 10
 FORBIDDEN_RE = re.compile(
     r"^\s*(axiom|unsafe)\b|native_decide|\badmit\b|"
@@ -163,9 +165,11 @@ def smoke_build(cwd: Path):
 
 
 def forbidden_scan(base: Path):
+    # comment-aware: a forbidden token in a doc-comment cost a full opus
+    # stage on 2026-08-24 (REVERTED with green build+smoke)
     hits = []
     for f in sorted((base / SEP_DIR).glob("*.lean")):
-        for m in FORBIDDEN_RE.finditer(f.read_text()):
+        for m in FORBIDDEN_RE.finditer(strip_comments(f.read_text())):
             hits.append(f"{f.name}: {m.group(0).strip()}")
     return hits
 
@@ -209,7 +213,18 @@ def sync_work_from_root():
            cwd=WORK, timeout=300)
 
 
+def clean_scratch():
+    """Agents keep leaving scratch files at the work-tree root; sweep the
+    known patterns before committing a stage."""
+    for pat in ["*.py", "scratch*", "tmp_*.lean", "fix_*.lean",
+                "patch_*.lean", "test*.lean"]:
+        for f in WORK.glob(pat):
+            if f.is_file():
+                f.unlink(missing_ok=True)
+
+
 def work_commit(msg: str):
+    clean_scratch()
     sh(["git", "add", "-A"], cwd=WORK, timeout=300)
     sh(["git", "commit", "-qm", msg, "--allow-empty"], cwd=WORK, timeout=300)
 
@@ -348,8 +363,8 @@ COMMON = f"""## Project context (read these files first, in this order)
   "jules_ready"|"hard"|"external", "pref": <PROOFS.md item>, "note": <str>}}]}}
   listing EVERY declaration that currently contains `sorry`.
   `jules_ready` means: a self-contained statement a competent Lean/mathlib
-  user can prove in <= 2 hours by following the referenced PROOFS.md item
-  (no new decomposition needed, no deep external theory).
+  user can prove in about 30-40 minutes by following the referenced
+  PROOFS.md item (no new decomposition needed, no deep external theory).
 - Append to `PROGRESS.md`: what you proved, decomposed, fixed, or found.
 """
 
@@ -359,14 +374,19 @@ ROLE_AUDIT_PROVE = COMMON + """
    `HeadComplexity/Separations/`. For each, check the statement against its
    PROOFS.md item: right hypotheses, right types, actually provable as
    stated. Fix wrong NON-frozen statements (updating PROOFS.md + PROGRESS.md).
-2. PROVE: fully prove the easiest open sorries (start with the ones the
+2. MANDATORY DECOMPOSITION: pick the single HARDEST open sorry in your
+   judgment (justify the choice in one PROGRESS.md line; if an earlier stage
+   of this iteration already decomposed a leaf, pick the hardest one not yet
+   touched this iteration) and split it into 2-4 named helper lemmas keyed
+   to the PROOFS.md steps.  Granularity target: each helper is a
+   self-contained statement a competent Lean/mathlib prover closes in about
+   20-30 minutes.  No vacuous splits: every helper must be a substantive
+   step of the actual proof, and the parent gets an assembly recipe in its
+   docstring/queue note.  This duty is IN ADDITION to items 1 and 3.
+3. PROVE: fully prove the easiest open sorries (start with the ones the
    queue marks jules_ready or SEPARATIONS.md marks easy). Quality over
-   quantity — every proof must compile.
-3. DECOMPOSE: for hard sorries, extract named helper lemmas (statements with
-   `sorry`) such that the parent proof compiles from the helpers, or the
-   helpers clearly reduce the parent. Each helper gets a doc-comment pointing
-   to the PROOFS.md step it captures. Aim to grow the pool of jules_ready
-   leaves.
+   quantity — every proof must compile.  Decompose further hard sorries as
+   time permits (same granularity rules).
 4. Update sorry_queue.json + PROGRESS.md; leave the build green.
 """
 
@@ -397,8 +417,9 @@ ROLE_FINAL = COMMON + f"""
 1. Re-audit the layer end-to-end: build green, smoke green, no forbidden
    constructs, every sorried decl present in sorry_queue.json with an honest
    status, PROGRESS.md up to date.
-2. The pipeline will hand every `jules_ready` leaf to an autonomous 2-hour
-   Jules session. Make the queue as large and as clean as you can; if fewer
+2. The pipeline will hand every `jules_ready` leaf to an autonomous
+   45-minute Jules session. Make the queue as large and as clean as you
+   can; if fewer
    than {MIN_QUEUE} leaves are jules_ready and some `hard` entries are close,
    decompose them now to cross the threshold.
 3. For each jules_ready entry double-check: statement compiles, is
@@ -447,8 +468,11 @@ read it critically and reuse what is sound.
 
 Rules:
 1. Remove ONLY the `sorry` of the target declaration (plus you may add NEW
-   private helper lemmas next to it). Do not modify any other declaration,
-   statement, hypothesis, file header, toolchain, or lakefile. Never edit
+   private helper lemmas placed immediately above it). Do not modify any
+   other declaration, statement, hypothesis, file header, toolchain, or
+   lakefile. In particular do NOT touch or re-prove any OTHER declaration
+   that contains `sorry` — other autonomous sessions own those in parallel,
+   and overlapping edits get both patches rejected. Never edit
    `scripts/smoke/FrozenStatements.lean`.
 2. Forbidden: `sorry` (in your final version of the target), `admit`,
    `axiom`, `native_decide`, `unsafe`, `set_option maxHeartbeats`,
@@ -457,10 +481,10 @@ Rules:
    with the target sorry-free (warnings about OTHER sorries in the layer are
    expected and fine), and
    `lake env lean scripts/smoke/FrozenStatements.lean` must succeed.
-4. Budget: about 2 hours. If a complete proof is out of reach, make honest
-   partial progress: prove some of the needed helper steps fully (new
-   lemmas, no sorries in THEM), keep the target as `sorry`, and say clearly
-   in your final report what remains.
+4. Budget: about 40 minutes. If a complete proof is out of reach, make
+   honest partial progress: prove some of the needed helper steps fully
+   (new lemmas, no sorries in THEM), keep the target as `sorry`, and say
+   clearly in your final report what remains.
 5. If you become convinced the target statement is FALSE, do not weaken it;
    write a file `BLOCKER_{entry['name']}.md` with the counterexample
    argument and stop.
@@ -772,10 +796,18 @@ def jules_phase(ready, base_sha, iter_dir: Path):
             shutil.copy2(pfile, ROOT / "hints" / f"{entry['name']}.diff")
             partial.append(entry["name"])
             return
-        ap = sh(["git", "apply", "--whitespace=nowarn", str(pfile)],
-                cwd=WORK, timeout=120)
+        # 3-way first: neighbours' accepted patches shift context in the
+        # same files, and plain apply threw away complete proofs in wave 1
+        ap = sh(["git", "apply", "--3way", "--whitespace=nowarn",
+                 str(pfile)], cwd=WORK, timeout=120)
         if ap.returncode != 0:
-            log(f"review {entry['name']}: patch does not apply")
+            sh(["git", "reset", "--hard", "-q"], cwd=WORK, timeout=120)
+            sh(["git", "clean", "-fdq", "-e", ".lake"], cwd=WORK,
+               timeout=120)
+            ap = sh(["git", "apply", "--whitespace=nowarn", str(pfile)],
+                    cwd=WORK, timeout=120)
+        if ap.returncode != 0:
+            log(f"review {entry['name']}: patch does not apply (3way+plain)")
             shutil.copy2(pfile, ROOT / "hints" / f"{entry['name']}.diff")
             partial.append(entry["name"])
             return
