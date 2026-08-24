@@ -8,193 +8,53 @@
    "note": "Cite-level monument; DO NOT ATTEMPT (real algebraic geometry: components plus Milnor/Warren bounds)."
   },
   {
-   "name": "signRank_le_of_computableWithHeadsN",
+   "name": "exists_clearedForm_outerProduct_decomp",
    "file": "HeadComplexity/Separations/SignRankBridge.lean",
    "status": "hard",
-   "pref": "P2.2-P2.4",
-   "note": "ASSEMBLY: compose denominator_eq_headA_add_headB + exists_numerator_readout_two_block_split + cleared_score_iff + signRank_le_of_headForm (declared below; reorder as needed)"
-  },
-  {
-   "name": "signRank_le_sum_choose",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "hard",
-   "pref": "P3.1-P3.2",
-   "note": "ASSEMBLY: compose exists_multilinear_signRepr + signRank_le_of_multilinear_signRepr (declared below; reorder as needed)"
-  },
-  {
-   "name": "forster_large_rank",
-   "file": "HeadComplexity/Separations/Forster.lean",
-   "status": "hard",
-   "pref": "P5.2-P5.4",
-   "note": "ASSEMBLY: one_le_signRank + exists_unit_sign_factorization + exists_isotropic_reposition + forster_main_chain (declared below; reorder as needed)"
-  },
-  {
-   "name": "forsterRatio_pow_le_signRank_tensor",
-   "file": "HeadComplexity/Separations/Tensor.lean",
-   "status": "hard",
-   "pref": "P8.1-P8.3",
-   "note": "ASSEMBLY: signMatrix_tensorReindexed_apply + signRank_tensorReindexed_eq_kroneckerPow + forster + specNorm_kroneckerPow + kroneckerPow_mem_pm_one + forsterRatio_pow_le_of_forster"
-  },
-  {
-   "name": "warren_bound_of_leftShatters",
-   "file": "HeadComplexity/Separations/NDISJ.lean",
-   "status": "hard",
-   "pref": "P10.1",
-   "note": "ASSEMBLY: exists_shatter_polynomials (pick witnesses per labelling) + pow_le_ncard_signPatterns"
-  },
-  {
-   "name": "rank_sum_le",
-   "file": "HeadComplexity/Separations/SignRank.lean",
-   "status": "jules_ready",
-   "pref": "P2.3/P3.2",
-   "note": "Finset.induction on s: empty case is Matrix.rank_zero, insertion step is the proved rank_add_le composed with the inductive hypothesis."
-  },
-  {
-   "name": "headA_pos",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "jules_ready",
-   "pref": "P2.1",
-   "note": "unfold headA; the query term is Head.sigma_pos (> 0) and the finite left sum is Finset.sum_nonneg of Head.sigma_pos."
-  },
-  {
-   "name": "headB_nonneg",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "jules_ready",
-   "pref": "P2.1",
-   "note": "unfold headB; Finset.sum_nonneg with each term Head.sigma_pos.le."
-  },
-  {
-   "name": "denominator_prod_pos",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "jules_ready",
-   "pref": "P2.2",
-   "note": "Finset.prod_pos with each factor (Hs h).denominator_pos."
-  },
-  {
-   "name": "two_mul_two_pow_sub",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "jules_ready",
    "pref": "P2.3",
-   "note": "Nat identity; `have : 2 <= 2^H := Nat.one_lt_two_pow ...`; rw [pow_succ]; omega."
-  },
-  {
-   "name": "exists_numerator_readout_two_block_split",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "jules_ready",
-   "pref": "P2.1",
-   "note": "Mirror denominator_eq_headA_add_headB with the readout: real_inner_sum over Head.numerator, then Fintype.sum_option and Fin.sum_univ_add; each some-term depends on one bit (Head_scoreTerm_single, Head_scoreTerm_none_const in ModelToPolynomial). Take A' = query + left sum, B' = right sum."
-  },
-  {
-   "name": "card_subsets_card_le",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "jules_ready",
-   "pref": "P3.2/P3.3",
-   "note": "Partition the size-<=d subsets of Fin a by cardinality; (powersetCard i univ).card = C(a,i) by Finset.card_powersetCard + Finset.card_fin; sum over i in range (d+1) via Finset.card_biUnion of the disjoint layers."
-  },
-  {
-   "name": "specNorm_kroneckerPow",
-   "file": "HeadComplexity/Separations/Forster.lean",
-   "status": "jules_ready",
-   "pref": "P8.3",
-   "note": "Induction on k; base is the 1x1 matrix [1] (empty product); step writes kroneckerPow (k+1) M = reindex e e (M kron kroneckerPow k M) for e : (Fin (k+1) -> i) ~ i x (Fin k -> i) (Fin.prod_univ_succ for entries), then specNorm_reindex + specNorm_kronecker."
-  },
-  {
-   "name": "kroneckerPow_mem_pm_one",
-   "file": "HeadComplexity/Separations/Forster.lean",
-   "status": "jules_ready",
-   "pref": "P8.3",
-   "note": "Each entry is a finite product of +/-1; Finset.prod induction (or rcases on each factor) shows a product of +/-1 values is +/-1."
-  },
-  {
-   "name": "forsterRatio_pow_le_of_forster",
-   "file": "HeadComplexity/Separations/Tensor.lean",
-   "status": "jules_ready",
-   "pref": "P8.3",
-   "note": "Divide hle by the positive (2C)^k; rewrite 2^(k*m) = (2^m)^k and forsterRatio m = 2^m/(2C) (needs m >= 1, so 2^(m-1)*2 = 2^m and 2^(k*m)/2^k = 2^(k*(m-1)))."
-  },
-  {
-   "name": "cleared_score_iff",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "jules_ready",
-   "pref": "P2.2",
-   "note": "pure real algebra: multiply by positive prod D; div_add etc."
-  },
-  {
-   "name": "signRank_le_of_headForm",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "hard",
-   "pref": "P2.3-P2.4",
-   "note": "T-subset grouping, 2(2^H-2)+2 outer products, eta-shift in T=empty piece"
-  },
-  {
-   "name": "exists_multilinear_signRepr",
-   "file": "HeadComplexity/Separations/SignRankBridge.lean",
-   "status": "jules_ready",
-   "pref": "P3.1",
-   "note": "substitute x_i^e -> x_i; cube eval unchanged; degree non-increasing"
+   "note": "SOLE residual debt of the now-PROVED 028 bridge (signRank_le_of_computableWithHeadsN) and signRank_le_of_headForm. Expand the cleared score Q via Finset.prod_add over the A-side/B-side choice per factor and group by the A-side set T \u2286 [H]; the boundary sets T=\u2205 (constant left factor 1) and T=[H] merge their two pieces, giving 2(2^H\u22122)+2 = 2^(H+1)\u22122 outer products with the \u2205-piece constant. Output feeds signRank_le_card_of_signRepr_sum (PROVED)."
   },
   {
    "name": "signRank_le_of_multilinear_signRepr",
    "file": "HeadComplexity/Separations/SignRankBridge.lean",
    "status": "hard",
    "pref": "P3.2-P3.3",
-   "note": "group by left monomials, one outer product each, eta-shift on mu=empty"
-  },
-  {
-   "name": "one_le_signRank",
-   "file": "HeadComplexity/Separations/Forster.lean",
-   "status": "jules_ready",
-   "pref": "P5.1",
-   "note": "sign-match of nonzero matrix is nonzero => rank >= 1; sInf over such ranks"
+   "note": "Factor eval(cubePoint(blockJoin x y)) P\u0303 = \u2211_{\u03bc\u2286Fin a, |\u03bc|\u2264d} (\u220f_{i\u2208\u03bc} x_i)\u00b7c_\u03bc(y) (sum of outer products, \u03bc=\u2205 the constant piece), then apply signRank_le_card_of_signRepr_sum (PROVED reusable strictification) + card_subsets_card_le (proved, #{\u03bc:|\u03bc|\u2264d}=\u2211_{i\u2264d}C(a,i)). Note signRank_le_card_of_signRepr_sum currently sits after this decl; move it up or restate."
   },
   {
    "name": "exists_unit_sign_factorization",
    "file": "HeadComplexity/Separations/Forster.lean",
    "status": "hard",
    "pref": "P5.1",
-   "note": "rank factorization of the sign-matching matrix; normalize rows/cols"
+   "note": "Rank factorization of a rank-(signRank M) sign-matching matrix into r columns (u_x, v_y \u2208 \u211d^r with \u27e8u_x,v_y\u27e9 = A_xy \u2260 0); normalize each to a unit vector (positive scaling preserves the strict signs)."
   },
   {
    "name": "exists_isotropic_reposition",
    "file": "HeadComplexity/Separations/Forster.lean",
    "status": "hard",
    "pref": "P5.2-P5.3",
-   "note": "general position perturbation under sign margin + Forster isotropic lemma (compactness minimization)"
+   "note": "Forster's isotropic-position kernel (deepest analytic leaf): general-position perturbation under the sign margin, then minimize \u03a6(P)=\u2211_x log(u_x\u1d40 P u_x) over {P\u227b0, det P=1} (coercivity via (\u2605) count + compactness), and read the isotropy \u2211_x \u00fb_x \u00fb_x\u1d40 = (N/r)I from the first-order/Lagrange condition."
   },
   {
    "name": "forster_main_chain",
    "file": "HeadComplexity/Separations/Forster.lean",
    "status": "hard",
    "pref": "P5.4",
-   "note": "|t|>=t^2 for unit vectors, isotropy quadratic form, column Cauchy-Schwarz vs specNorm"
-  },
-  {
-   "name": "signMatrix_tensorReindexed_apply",
-   "file": "HeadComplexity/Separations/Tensor.lean",
-   "status": "jules_ready",
-   "pref": "P8.2",
-   "note": "unfold tensorEquiv/blockJoin; XOR sign encoding identity; finite product over blocks"
-  },
-  {
-   "name": "signRank_tensorReindexed_eq_kroneckerPow",
-   "file": "HeadComplexity/Separations/Tensor.lean",
-   "status": "hard",
-   "pref": "P8.2-P8.3",
-   "note": "reindex by currying equivalence + signRank_reindex + signRank_neg for the global sign"
+   "note": "Lower bound: \u2211_{x,y} M_xy\u27e8u_x,v_y\u27e9 = \u2211|\u27e8u_x,v_y\u27e9| \u2265 \u2211\u27e8u_x,v_y\u27e9\u00b2 = N\u00b2/r (unit vecs give |t|\u2265t\u00b2; isotropy hiso applied to each v_y with \u2016v_y\u2016=1). Upper bound: same sum = tr(U\u1d40 M V) \u2264 specNorm\u00b7N by column Cauchy\u2013Schwarz. Combine N\u00b2/r \u2264 specNorm\u00b7N."
   },
   {
    "name": "exists_shatter_polynomials",
    "file": "HeadComplexity/Separations/NDISJ.lean",
-   "status": "hard",
+   "status": "closed_manual",
    "pref": "P10.1",
-   "note": "freeze left blocks; Q_j from head splits; degree count over H brackets"
+   "note": "recovered from FAILED Jules session 12276953153585817114 (platform failed AFTER agent completed; diff pulled and merged manually)"
   },
   {
    "name": "pow_le_ncard_signPatterns",
    "file": "HeadComplexity/Separations/NDISJ.lean",
    "status": "hard",
    "pref": "P10.1",
-   "note": "eta-shift over finite witness set; inject labellings into signPatterns; apply warren_sign_patterns"
+   "note": "\u03b7-shift the family (Q_j \u2212 \u03b7) as in signRank_le_card_of_signRepr_sum (PROVED template), inject the 2^k strict labellings into the strict signPatterns of (Q_1,\u2026,Q_k), and apply warren_sign_patterns (external) + warren_pow_simp (proved) for the (2ek)^{2H} ceiling."
   }
  ]
 }

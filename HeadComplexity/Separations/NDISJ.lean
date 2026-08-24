@@ -283,6 +283,92 @@ private theorem pow_le_pow_of_lt_two_mul_H {H k : ℕ} (hk : 1 ≤ k) (hkH : k <
     pow_le_pow_left₀ (by norm_num) hbase (2 * H)
   exact hpow1.trans hpow2
 
+private theorem totalDegree_C_add_X_le {n : ℕ} (c : ℝ) (i : Fin n) :
+    (MvPolynomial.C c + MvPolynomial.X i).totalDegree ≤ 1 := by
+  refine (MvPolynomial.totalDegree_add _ _).trans (max_le ?_ ?_)
+  · rw [MvPolynomial.totalDegree_C]; exact zero_le_one
+  · rw [MvPolynomial.totalDegree_X]
+
+private theorem totalDegree_finsetProd_le_card {ι : Type*} {n : ℕ} (s : Finset ι)
+    (f : ι → MvPolynomial (Fin n) ℝ) (hf : ∀ i ∈ s, (f i).totalDegree ≤ 1) :
+    (∏ i ∈ s, f i).totalDegree ≤ s.card := by
+  refine (MvPolynomial.totalDegree_finsetProd _ _).trans ?_
+  have h1 : ∑ i ∈ s, (f i).totalDegree ≤ ∑ i ∈ s, 1 := Finset.sum_le_sum hf
+  rw [Finset.sum_const, nsmul_eq_mul, mul_one] at h1
+  exact h1
+
+private noncomputable def shatterPoly {H : ℕ} (a_j b_j : Fin H → ℝ) (τ : ℝ) :
+    MvPolynomial (Fin (2 * H)) ℝ :=
+  open MvPolynomial in
+  ∑ h : Fin H,
+    (C (a_j h) + X ⟨h.val, by omega⟩) *
+    ∏ h' ∈ Finset.univ.erase h, (C (b_j h') + X ⟨H + h'.val, by omega⟩) -
+  C τ * ∏ h : Fin H, (C (b_j h) + X ⟨H + h.val, by omega⟩)
+
+private theorem totalDegree_shatterPoly {H : ℕ} (a_j b_j : Fin H → ℝ) (τ : ℝ) :
+    (shatterPoly a_j b_j τ).totalDegree ≤ H := by
+  open MvPolynomial in
+  unfold shatterPoly
+  refine (totalDegree_sub _ _).trans (max_le ?_ ?_)
+  · refine totalDegree_finsetSum_le (fun h _ => ?_)
+    refine (totalDegree_mul _ _).trans ?_
+    have hlt1 : h.1 < 2 * H := by omega
+    have h1 := totalDegree_C_add_X_le (a_j h) ⟨h.1, hlt1⟩
+    have h2 := totalDegree_finsetProd_le_card (Finset.univ.erase h)
+      (fun h' => C (b_j h') + X (⟨H + h'.1, by omega⟩ : Fin (2 * H)))
+      (fun h' _ => totalDegree_C_add_X_le (b_j h') ⟨H + h'.1, by omega⟩)
+    rw [Finset.card_erase_of_mem (Finset.mem_univ _), Finset.card_univ, Fintype.card_fin] at h2
+    by_cases hH : H = 0
+    · subst hH; exact h.elim0
+    · have : 1 + (H - 1) ≤ H := by omega
+      exact (add_le_add h1 h2).trans this
+  · refine (totalDegree_mul _ _).trans ?_
+    rw [totalDegree_C, zero_add]
+    have h2 := totalDegree_finsetProd_le_card (Finset.univ)
+      (fun h' => C (b_j h') + X (⟨H + h'.1, by omega⟩ : Fin (2 * H)))
+      (fun h' _ => totalDegree_C_add_X_le (b_j h') ⟨H + h'.1, by omega⟩)
+    rw [Finset.card_univ, Fintype.card_fin] at h2
+    exact h2
+
+private theorem eval_shatterPoly {H : ℕ} (a_j b_j : Fin H → ℝ) (τ : ℝ) (p q : Fin H → ℝ) :
+    MvPolynomial.eval (fun i : Fin (2 * H) => if hlt : i.1 < H then p ⟨i.1, hlt⟩ else q ⟨i.1 - H, by omega⟩)
+      (shatterPoly a_j b_j τ)
+      = (∑ h : Fin H, (a_j h + p h) * ∏ h' ∈ Finset.univ.erase h, (b_j h' + q h')) -
+        τ * ∏ h : Fin H, (b_j h + q h) := by
+  open MvPolynomial in
+  unfold shatterPoly
+  simp only [map_sub, map_sum, map_mul, map_add, map_prod, eval_C, eval_X]
+  have hp : ∀ h : Fin H, (if hlt : h.1 < H then p ⟨h.1, hlt⟩ else q ⟨h.1 - H, by omega⟩) = p h := by
+    intro h
+    have hlt : h.1 < H := h.2
+    simp [hlt]
+  have hq : ∀ h' : Fin H, (if hlt : H + h'.1 < H then p ⟨H + h'.1, hlt⟩ else q ⟨H + h'.1 - H, by omega⟩) = q h' := by
+    intro h'
+    have hnlt : ¬ (H + h'.1 < H) := by omega
+    have hsub : H + h'.1 - H = h'.1 := by omega
+    simp [hnlt, hsub]
+  simp_rw [hp, hq]
+
+private theorem cleared_score_iff' {H : ℕ} (τ : ℝ) (u D : Fin H → ℝ)
+    (hD : ∀ h, 0 < D h) :
+    (τ < ∑ h, u h / D h) ↔
+      0 < (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') - τ * ∏ h, D h := by
+  have hdpos : 0 < ∏ g, D g := Finset.prod_pos (fun g _ => hD g)
+  have hU : (∑ h, u h / D h) = (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') / (∏ g, D g) := by
+    rw [Finset.sum_div]
+    refine Finset.sum_congr rfl (fun h _ => ?_)
+    have hne : ∏ h' ∈ Finset.univ.erase h, D h' ≠ 0 :=
+      (Finset.prod_pos (fun g _ => hD g)).ne'
+    have hd_eq : ∏ g, D g = D h * ∏ h' ∈ Finset.univ.erase h, D h' :=
+      (Finset.mul_prod_erase Finset.univ D (Finset.mem_univ h)).symm
+    rw [hd_eq]
+    rw [mul_div_mul_right _ _ hne]
+  rw [hU]
+  rw [lt_div_iff₀ hdpos]
+  exact sub_pos.symm
+
+open scoped InnerProductSpace
+
 /-- P10.1 (frozen-left-points normal form): with the left points fixed, the
 label of `f` at `(z_j, w)` is the strict sign of a degree-`≤ H` polynomial
 `Q_j` in the `2H` right-block head statistics `ξ(w) = (p_h(w), q_h(w))`.
@@ -299,7 +385,40 @@ private theorem exists_shatter_polynomials {a b H : ℕ}
       (∀ j, (Q j).totalDegree ≤ H) ∧
       ∀ j w, (f (blockJoin (zs j) w) = true ↔
         0 < MvPolynomial.eval (ξ w) (Q j)) := by
-  sorry
+  obtain ⟨d, Hs, w, τ, hsep⟩ := hcomp
+  have h1 := Classical.axiomOfChoice (fun h : Fin H => exists_numerator_readout_two_block_split (Hs h) w)
+  obtain ⟨A', hA'⟩ := h1
+  have h2 := Classical.axiomOfChoice hA'
+  obtain ⟨B', hA'B'_eq⟩ := h2
+  let a_j : Fin k → Fin H → ℝ := fun j h => A' h (zs j)
+  let b_j : Fin k → Fin H → ℝ := fun j h => headA rfl (Hs h) (zs j)
+  let p_w : (Fin b → Bool) → Fin H → ℝ := fun w_in h => B' h w_in
+  let q_w : (Fin b → Bool) → Fin H → ℝ := fun w_in h => headB rfl (Hs h) w_in
+  let Q : Fin k → MvPolynomial (Fin (2 * H)) ℝ := fun j => shatterPoly (a_j j) (b_j j) τ
+  let ξ : (Fin b → Bool) → (Fin (2 * H) → ℝ) := fun w_in =>
+    fun i => if hlt : i.1 < H then p_w w_in ⟨i.1, hlt⟩ else q_w w_in ⟨i.1 - H, by omega⟩
+  refine ⟨Q, ξ, fun j => totalDegree_shatterPoly (a_j j) (b_j j) τ, fun j w_in => ?_⟩
+  rw [eval_shatterPoly]
+  have hDpos : ∀ h : Fin H, 0 < headA rfl (Hs h) (zs j) + headB rfl (Hs h) w_in := by
+    intro h
+    have hA := headA_pos rfl (Hs h) (zs j)
+    have hB := headB_nonneg rfl (Hs h) w_in
+    linarith
+  have hU_split : (∑ h : Fin H, (a_j j h + p_w w_in h) / (b_j j h + q_w w_in h)) =
+      ⟪w, headFamilyAttnUpdate Hs (blockJoin (zs j) w_in)⟫_ℝ := by
+    change (∑ h : Fin H, (a_j j h + p_w w_in h) / (b_j j h + q_w w_in h)) =
+      ⟪w, ∑ h : Fin H, (Hs h).attnUpdate (blockJoin (zs j) w_in)⟫_ℝ
+    rw [inner_sum]
+    refine Finset.sum_congr rfl ?_
+    intro h _
+    change (a_j j h + p_w w_in h) / (b_j j h + q_w w_in h) =
+      ⟪w, ((Hs h).denominator (blockJoin (zs j) w_in))⁻¹ • (Hs h).numerator (blockJoin (zs j) w_in)⟫_ℝ
+    rw [inner_smul_right, hA'B'_eq h (zs j) w_in, denominator_eq_headA_add_headB rfl (Hs h) (zs j) w_in]
+    rw [div_eq_inv_mul]
+  have hcleared := cleared_score_iff' τ (fun h => a_j j h + p_w w_in h) (fun h => b_j j h + q_w w_in h) hDpos
+  rw [← hcleared, hU_split]
+  exact (hsep (blockJoin (zs j) w_in)).symm
+
 
 /-- P10.1 (Warren application with the η-shift): if every labelling
 `s : Fin k → Bool` is realized as the strict-positive pattern of `k`

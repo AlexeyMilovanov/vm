@@ -852,3 +852,35 @@ Corrections/upgrades of the informal sources established here:
   silently when moving to the all-left/all-right partition.
 * P8.2 records the global `(−1)^{k+1}` in the XOR sign identity (absent in
   the source, harmless for norms/ranks but required in any Lean proof).
+
+**Decomposition leaves surfaced by the s1_opus_audit iter_001 pass** (statements
+verified to elaborate and to be TRUE; the endpoints they close are noted):
+
+28. `signRank_le_card_of_signRepr_sum` (P2.4/P3.3, SignRankBridge) — PROVED,
+    reusable strictification: an outer-product sum `∑_{i∈s} uᵢ(x)·vᵢ(y)` with a
+    constant left factor (`u i₀ = 1`, `i₀ ∈ s`) that sign-represents `f` on the
+    cube gives `signRank (signMatrix a b f) ≤ s.card`.  The strictifying shift
+    `−η` (below every true-entry value, `Finset.lt_inf'_iff`/`inf'_le`) is absorbed
+    into the `i₀` right factor, so the outer-product count is preserved
+    (`rank_le_card_of_sum_vecMulVec`).  Consumes exactly the data of P2.3/P3.2.
+29. `exists_clearedForm_outerProduct_decomp` (P2.3, SignRankBridge) — the
+    head-subset regrouping: the cleared score `Q(x,y)` decomposes as
+    `2^(H+1)−2` outer products with the `T=∅` piece constant (`Finset.prod_add`
+    over the A-side/B-side choice, boundary sets `∅,[H]` merging).  The **sole
+    residual debt** of the now-PROVED frozen bridge `signRank_le_of_computableWithHeadsN`
+    and of `signRank_le_of_headForm`.  hard.
+
+Endpoints CLOSED this pass (each now proved modulo the residual hard leaves above):
+
+* **`signRank_le_of_computableWithHeadsN`** (frozen 028 bridge, P2) — assembled from
+  the proved two-block splits (`denominator_eq_headA_add_headB`,
+  `exists_numerator_readout_two_block_split`, `headA_pos`, `headB_nonneg`),
+  `signRank_le_of_headForm` (= item 29 + item 28 + `cleared_score_iff`).  The whole
+  bridge reduces to item 29.
+* **`forsterRatio_pow_le_signRank_tensor`** (P8, Theorem B core) — so the frozen
+  `theoremB_HStar`/`theoremB_gap` are now fully proved.
+* **`forster` / `forster_large_rank`** (P5) — assembled from the P5.1/P5.3/P5.4
+  sub-lemmas (`exists_unit_sign_factorization`, `exists_isotropic_reposition`,
+  `forster_main_chain`), which remain the residual hard leaves.
+* Leaves proved directly: `exists_multilinear_signRepr` (P3.1, via `toMultilinear`),
+  `kroneckerPow_mem_pm_one` (P8.3), `signRank_tensorReindexed_eq_kroneckerPow` (P8.2).

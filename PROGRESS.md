@@ -332,3 +332,83 @@ exists_unit_sign_factorization, exists_isotropic_reposition, forster_main_chain;
 P8: signMatrix_tensorReindexed_apply, signRank_tensorReindexed_eq_kroneckerPow;
 P10: exists_shatter_polynomials, pow_le_ncard_signPatterns).  Parents relabeled
 as assemblies.  Build green (2504 jobs), smoke green.
+
+## Jules phase iter_001 (2026-08-24)
+- merged: ['headA_pos', 'denominator_prod_pos', 'two_mul_two_pow_sub', 'forsterRatio_pow_le_of_forster', 'cleared_score_iff', 'one_le_signRank', 'signRank_le_sum_choose', 'warren_bound_of_leftShatters', 'rank_sum_le', 'headB_nonneg', 'exists_numerator_readout_two_block_split', 'specNorm_kroneckerPow', 'signMatrix_tensorReindexed_apply']
+- partial (hints saved): ['forsterRatio_pow_le_signRank_tensor', 'pow_le_ncard_signPatterns', 'card_subsets_card_le', 'kroneckerPow_mem_pm_one', 'exists_multilinear_signRepr', 'signRank_le_of_headForm', 'signRank_le_of_multilinear_signRepr', 'exists_isotropic_reposition', 'forster_main_chain', 'signRank_tensorReindexed_eq_kroneckerPow', 'forster_large_rank']
+
+## s1_opus_audit iter_001 (2026-08-24, run 20260824T085320Z)
+
+Entry state after the Jules phase above: 14 sorried decls (1 external, several
+jules-merged leaves closed).  `sorry_queue.json` was stale (still listed the
+merged/partial leaves) and has been rebuilt to the real state.
+
+**Audit.** Checked all sorried declarations against their PROOFS.md items and the
+frozen smoke restatements.  No frozen statement is wrong; no non-frozen helper in
+the tree needed repair; no `BLOCKER_*` needed.  `warren_sign_patterns` remains the
+sole `external` leaf.  `lake env lean scripts/smoke/FrozenStatements.lean` exit 0;
+forbidden-construct scan (`axiom`/`admit`/`native_decide`/`unsafe`/`maxHeartbeats`/
+`maxRecDepth`) clean; `git diff --check` clean.  The two NDISJ P10.1 leaves, the
+three Forster P5 sub-lemmas, and the P3.2 leaf all have correct hypotheses/edge
+cases; the new P2.3 leaf (below) was verified TRUE (checked the `H = 1` case
+`Q = (A'₀−τA₀)·1 + 1·(B'₀−τB₀)`, 2 = 2^(1+1)−2 pieces with a constant piece).
+
+**Proved (leaves + assemblies; no axiom/admit/native_decide/maxHeartbeats):**
+- `kroneckerPow_mem_pm_one` (P8.3) — finite product of ±1 is ±1 (`Finset.induction`).
+- `exists_multilinear_signRepr` (P3.1) — the multilinear extension `toMultilinear P`
+  (replace each monomial by its squarefree support product); `eval_toMultilinear`
+  (cube values unchanged, `x_i^e = x_i`), `totalDegree_toMultilinear`,
+  `degreeOf_toMultilinear (≤ 1)`.
+- `signRank_tensorReindexed_eq_kroneckerPow` (P8.2 rank transport) — `signMatrix … =
+  (−1)^(k+1) • reindex e e (kroneckerPow k S₁)` (currying equiv + the proved
+  `signMatrix_tensorReindexed_apply`), then `signRank_neg`/`signRank_reindex`.
+- `forsterRatio_pow_le_signRank_tensor` (**Theorem B Kronecker/Forster core**) —
+  assembled from the above + `specNorm_kroneckerPow`·`specNorm_signMatrix_distThreshold`
+  (= (2C)^k), `kroneckerPow_mem_pm_one`, `forster`, card = 2^{k·m}, and the proved
+  `forsterRatio_pow_le_of_forster`.  This was the **sole residual debt of the already
+  proved frozen `theoremB_HStar`/`theoremB_gap`, so Theorem B's lower bound is now
+  fully discharged.**  (Relocated the P8.2 helper chain above the parent to fix the
+  forward reference.)
+- `signRank_le_card_of_signRepr_sum` (**NEW, P2.4/P3.3 strictification — reusable**) —
+  the η-shift as a black box: an outer-product sum `∑ᵢ uᵢ(x)vᵢ(y)` with a constant
+  left factor (`u i₀ = 1`) that sign-represents `f` gives `signRank ≤ s.card`; shift
+  `−η` (below every true-entry value, via `Finset.lt_inf'_iff`/`inf'_le`) is absorbed
+  into the `i₀` right factor, keeping the outer-product count (`rank_le_card_of_sum_vecMulVec`).
+- `signRank_le_of_headForm` (P2.3-P2.4) — now PROVED by assembling
+  `cleared_score_iff` (proved) + `exists_clearedForm_outerProduct_decomp` (new leaf) +
+  `signRank_le_card_of_signRepr_sum`.
+- `forster_large_rank` (P5) + top-level `forster` — now PROVED by assembling
+  `one_le_signRank` + `exists_unit_sign_factorization` + `exists_isotropic_reposition`
+  + `forster_main_chain` (relocated below the `ForsterDecomposition` section).
+- `signRank_le_of_computableWithHeadsN` (**frozen 028 bridge, PROVED**) — assembled:
+  `⟪w, ∑ₕ attnUpdateₕ⟫ = ∑ₕ ⟪w,numₕ⟫/denₕ` (`inner_sum`, `real_inner_smul_right`)
+  splits per head via the proved `exists_numerator_readout_two_block_split` and
+  `denominator_eq_headA_add_headB` (positivity `headA_pos`/`headB_nonneg`), then
+  `signRank_le_of_headForm`.  (Relocated the bridge + `signRank_le_pow_HStar` to the
+  end of the file, after the now-proved `signRank_le_of_headForm`.)  **The entire 028
+  bridge now reduces to the single P2.3 leaf `exists_clearedForm_outerProduct_decomp`.**
+
+**Mandatory decomposition.** Hardest tractably-decomposable open leaf =
+`signRank_le_of_headForm` (P2, the central "028 bridge" own result).  Split (keyed to
+PROOFS.md P2.3/P2.4) into `signRank_le_card_of_signRepr_sum` (P2.4 strictification —
+PROVED, reusable for P3 too) and `exists_clearedForm_outerProduct_decomp` (P2.3 subset
+regrouping — the genuine hard combinatorial core), and the parent now assembles from
+them.  No vacuous split: each helper is a substantive on-critical-path step; the parent
+carries the assembly recipe.
+
+**Queue now:** 8 sorried decls — 1 external (`warren`), **7 hard**, 0 jules_ready.
+The 7 hard leaves are the genuine mathematical cores: the P2.3 subset regrouping, the
+P3.2 left-monomial factorization, Forster's three P5 pieces (unit factorization,
+isotropic-position kernel, main chain), and the two P10.1 shattering leaves (Model
+internals + external Warren).  `lake build` green (2504 jobs);
+`lake env lean scripts/smoke/FrozenStatements.lean` green; forbidden-construct scan
+and `git diff --check` clean.
+
+## Manual recovery (2026-08-24, operator)
+Jules session 12276953153585817114 (exists_shatter_polynomials) was marked
+sessionFailed by the platform 2 seconds AFTER the agent reported a complete
+sorry-free proof.  Pulled the 139-line diff manually, applied surgically
+(3-way conflicted with the warren_bound merge), build+smoke green: P10.1
+normal form is now fully proved.  NDISJ.lean has 1 sorry left
+(pow_le_ncard_signPatterns).  Lesson encoded for the pipeline: FAILED
+sessions should still be pulled and reviewed.

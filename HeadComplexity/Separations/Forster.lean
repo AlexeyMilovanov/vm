@@ -107,24 +107,10 @@ theorem forster_small_rank {ι : Type*} [Fintype ι] [DecidableEq ι]
       _ ≤ (signRank M : ℝ) * specNorm M := by
         nlinarith [show 0 ≤ (signRank M : ℝ) by positivity]
 
-/-- **Forster's theorem** (Forster 2002): a `±1` matrix of size `N × N` has
-sign-rank at least `N / ‖M‖₂` (large rank regime). -/
-theorem forster_large_rank {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
-    (h_r : signRank M < Fintype.card ι) :
-    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
-  sorry
-
-/-- **Forster's theorem** (Forster 2002): a `±1` matrix of size `N × N` has
-sign-rank at least `N / ‖M‖₂`. -/
-
-theorem forster {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
-    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
-  by_cases h : Fintype.card ι ≤ signRank M
-  · exact forster_small_rank M hM h
-  · push Not at h
-    exact forster_large_rank M hM h
+-- `forster_large_rank` (the large-rank regime) and the top-level `forster` are
+-- assembled at the end of the `ForsterDecomposition` section below, since they
+-- depend on its sub-lemmas (`one_le_signRank`, `exists_unit_sign_factorization`,
+-- `exists_isotropic_reposition`, `forster_main_chain`).
 
 private theorem norm_mulVec_le {ι : Type*} [Fintype ι] [DecidableEq ι] (A : Matrix ι ι ℝ)
     (v : ι → ℝ) : ‖(WithLp.equiv 2 _).symm (A *ᵥ v)‖ ≤ ‖A‖ * ‖(WithLp.equiv 2 _).symm v‖ := by
@@ -524,7 +510,20 @@ matrix), whose card is `2^{k·m}`. -/
 theorem kroneckerPow_mem_pm_one {ι : Type*} (k : ℕ) (M : Matrix ι ι ℝ)
     (hM : ∀ i j, M i j = 1 ∨ M i j = -1) (x y : Fin k → ι) :
     kroneckerPow k M x y = 1 ∨ kroneckerPow k M x y = -1 := by
-  sorry
+  have prod_mem_pm_one : ∀ (s : Finset (Fin k)),
+      (∏ j ∈ s, M (x j) (y j)) = 1 ∨ (∏ j ∈ s, M (x j) (y j)) = -1 := by
+    intro s
+    classical
+    induction s using Finset.induction_on with
+    | empty => rw [Finset.prod_empty]; exact Or.inl rfl
+    | insert a s ha ih =>
+      rw [Finset.prod_insert ha]
+      rcases hM (x a) (y a) with h1 | h1 <;> rcases ih with h2 | h2 <;> rw [h1, h2]
+      · left; ring
+      · right; ring
+      · right; ring
+      · left; ring
+  simpa [kroneckerPow] using prod_mem_pm_one Finset.univ
 
 
 /-! ### Manual decomposition of `forster_large_rank` (PROOFS.md P5),
@@ -621,6 +620,34 @@ theorem forster_main_chain {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
       ∑ x, ⟪u x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2) :
     (Fintype.card ι : ℝ) ≤ (r : ℝ) * specNorm M := by
   sorry
+
+/-- **Forster's theorem, large-rank regime** (Forster 2002; PROOFS.md P5.1–P5.4).
+Assembly: `one_le_signRank` gives `1 ≤ r := signRank M`; `exists_unit_sign_factorization`
+produces the unit factorization; `exists_isotropic_reposition` (using `r < N`) brings it
+to isotropic position preserving signs; `forster_main_chain` is the Cauchy–Schwarz /
+isotropy inequality. -/
+theorem forster_large_rank {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
+    (h_r : signRank M < Fintype.card ι) :
+    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
+  haveI : Nonempty ι := Fintype.card_pos_iff.mp (by omega)
+  have hr1 : 1 ≤ signRank M := one_le_signRank M hM
+  obtain ⟨u, v, hu, hv, hsign⟩ := exists_unit_sign_factorization M hM hr1
+  obtain ⟨u', v', hu', hv', hsign', hiso⟩ :=
+    exists_isotropic_reposition hr1 h_r u v hu hv (fun x y => M x y) hsign
+  have hsign'' : ∀ x y, 0 < M x y * ⟪u' x, v' y⟫_ℝ := hsign'
+  exact forster_main_chain hr1 M hM u' v' hu' hv' hsign'' hiso
+
+/-- **Forster's theorem** (Forster 2002): a `±1` matrix of size `N × N` has
+sign-rank at least `N / ‖M‖₂`.  Split into the small-rank (`N ≤ r`) and large-rank
+regimes. -/
+theorem forster {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
+    (Fintype.card ι : ℝ) ≤ (signRank M : ℝ) * specNorm M := by
+  by_cases h : Fintype.card ι ≤ signRank M
+  · exact forster_small_rank M hM h
+  · push Not at h
+    exact forster_large_rank M hM h
 
 end ForsterDecomposition
 

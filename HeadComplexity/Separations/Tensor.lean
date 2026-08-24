@@ -384,6 +384,146 @@ theorem forsterRatio_pow_le_of_forster {m k r : ℕ} (hm : 1 ≤ m)
   rw [div_le_iff₀ h2C_pow_pos]
   exact hle
 
+/-- **XOR sign encoding** (PROOFS.md P8.2): with the `signMatrix` encoding
+`e(true) = 1`, `e(false) = -1`, the sign of an XOR of `k` bits is
+`(-1)^(k+1) · ∏ⱼ e(bⱼ)`.  This is the global-sign bookkeeping that lets the
+product of the `k` block sign polynomials sign-represent the tensored family
+(`thresholdDegLE_tensorDistThreshold`).  Induction on `k`: `k = 0` gives `-1 =
+-1`; the step is `e(b ⊕ c) = -e(b)·e(c)`.  Equivalently `∏ⱼ e(gⱼ) =
+(-1) ^ (#false)`, and `#true + #false = k`. -/
+theorem sign_xor_prod {k : ℕ} (g : Fin k → Bool) :
+    (if (decide (Odd (Finset.univ.filter fun j : Fin k => g j).card)) then (1 : ℝ) else -1)
+      = (-1 : ℝ) ^ (k + 1) * ∏ j : Fin k, (if g j then (1 : ℝ) else -1) := by
+  have hsplit := (Finset.prod_filter_mul_prod_filter_not (Finset.univ : Finset (Fin k))
+    (fun j => g j = true) (fun j => if g j then (1 : ℝ) else -1)).symm
+  have hpos : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => g j = true),
+      (if g j then (1 : ℝ) else -1) = 1 := by
+    have h1 : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => g j = true),
+        (if g j then (1 : ℝ) else -1) =
+        ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => g j = true), (1 : ℝ) := by
+      refine Finset.prod_congr rfl (fun x hx => ?_)
+      have hg : g x = true := (Finset.mem_filter.mp hx).2
+      simp [hg]
+    rw [h1, Finset.prod_const_one]
+  have hneg : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true)),
+      (if g j then (1 : ℝ) else -1) =
+      (-1 : ℝ) ^ ((Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true))).card := by
+    have h1 : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true)),
+        (if g j then (1 : ℝ) else -1) =
+        ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true)), (-1 : ℝ) := by
+      refine Finset.prod_congr rfl (fun x hx => ?_)
+      have hg : g x = false := Bool.eq_false_iff.mpr (Finset.mem_filter.mp hx).2
+      simp [hg]
+    rw [h1, Finset.prod_const]
+  rw [hsplit, hpos, one_mul, hneg]
+  have hcard := Finset.card_filter_add_card_filter_not (s := (Finset.univ : Finset (Fin k)))
+    (fun j => g j = true)
+  rw [Finset.card_univ, Fintype.card_fin] at hcard
+  set n_true := ((Finset.univ : Finset (Fin k)).filter (fun j => g j = true)).card
+  set n_false := ((Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true))).card
+  have hk : k = n_true + n_false := hcard.symm
+  rw [hk]
+  have hpow_eq : (-1 : ℝ) ^ (n_true + n_false + 1) * (-1 : ℝ) ^ n_false =
+      (-1 : ℝ) ^ (n_true + 1) := by
+    have h1 : (-1 : ℝ) ^ (n_true + n_false + 1) * (-1 : ℝ) ^ n_false =
+        (-1 : ℝ) ^ (n_true + 1 + 2 * n_false) := by
+      rw [← pow_add]
+      congr 1
+      ring
+    rw [h1, pow_add]
+    have h_even : Even (2 * n_false) := even_two_mul n_false
+    rw [h_even.neg_one_pow, mul_one]
+  rw [hpow_eq]
+  change (if (decide (Odd n_true)) then (1 : ℝ) else -1) = (-1 : ℝ) ^ (n_true + 1)
+  by_cases h : Odd n_true
+  · rw [decide_eq_true h, if_pos rfl]
+    have h_even : Even (n_true + 1) := h.add_one
+    exact h_even.neg_one_pow.symm
+  · rw [decide_eq_false h, if_neg Bool.false_ne_true]
+    have h_even : Even n_true := Nat.not_odd_iff_even.mp h
+    have h_odd : Odd (n_true + 1) := h_even.add_one
+    exact h_odd.neg_one_pow.symm
+
+/-! ### Manual decomposition of `forsterRatio_pow_le_signRank_tensor`
+(PROOFS.md P8.2–P8.3), 2026-08-24. -/
+
+/-- P8.2 (entrywise sign identity): the reindexed tensored sign matrix factors
+entrywise into the block sign matrices with the global `(-1)^(k+1)` of the XOR
+encoding (`e(⊕ b_j) = (-1)^(k+1) ∏ e(b_j)` for `true ↦ +1`).  Unfold
+`tensorEquiv`: the `(j, i)` x-coordinate of the all-left layout is coordinate
+`finProdFinEquiv (j, i)` of the left half. -/
+private theorem blockOf_tensorEquiv_symm {m k : ℕ} (x y : Fin (k * m) → Bool) (j : Fin k) :
+    blockOf (blockJoin x y ∘ (tensorEquiv m k).symm) j =
+      blockJoin (fun i => x (finProdFinEquiv (j, i))) (fun i => y (finProdFinEquiv (j, i))) := by
+  funext i
+  refine Fin.addCases (fun i1 => ?_) (fun i2 => ?_) i
+  · dsimp [blockOf]
+    have h_eq : (tensorEquiv m k).symm (finProdFinEquiv (j, Fin.castAdd m i1)) =
+        Fin.castAdd (k * m) (finProdFinEquiv (j, i1)) := by
+      unfold tensorEquiv
+      dsimp [Equiv.prodCongr, Prod.map]
+      simp only [Equiv.symm_apply_apply]
+      have h1 : finSumFinEquiv.symm (Fin.castAdd m i1) = Sum.inl i1 := finSumFinEquiv_symm_apply_castAdd i1
+      rw [h1]
+      dsimp [Equiv.prodSumDistrib, finSumFinEquiv]
+      rfl
+    rw [h_eq, blockJoin_castAdd, blockJoin_castAdd]
+  · dsimp [blockOf]
+    have h_eq : (tensorEquiv m k).symm (finProdFinEquiv (j, Fin.natAdd m i2)) =
+        Fin.natAdd (k * m) (finProdFinEquiv (j, i2)) := by
+      unfold tensorEquiv
+      dsimp [Equiv.prodCongr, Prod.map]
+      simp only [Equiv.symm_apply_apply]
+      have h1 : finSumFinEquiv.symm (Fin.natAdd m i2) = Sum.inr i2 := finSumFinEquiv_symm_apply_natAdd i2
+      rw [h1]
+      dsimp [Equiv.prodSumDistrib, finSumFinEquiv]
+      rfl
+    rw [h_eq, blockJoin_natAdd, blockJoin_natAdd]
+
+theorem signMatrix_tensorReindexed_apply {m k : ℕ}
+    (x y : Fin (k * m) → Bool) :
+    signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k) x y =
+      (-1 : ℝ) ^ (k + 1) *
+        ∏ j : Fin k, signMatrix m m (distThreshold m)
+          (fun i => x (finProdFinEquiv (j, i)))
+          (fun i => y (finProdFinEquiv (j, i))) := by
+  unfold signMatrix tensorDistThreshold_reindexed tensorDistThreshold xorPower
+  simp_rw [blockOf_tensorEquiv_symm]
+  exact sign_xor_prod (fun j : Fin k => distThreshold m (blockJoin
+    (fun i => x (finProdFinEquiv (j, i))) (fun i => y (finProdFinEquiv (j, i)))))
+
+/-- P8.2 → P8.3 (rank transport): via `signMatrix_tensorReindexed_apply`, the
+reindex equivalence `(Fin (k·m) → Bool) ≃ (Fin k → Fin m → Bool)` (currying
+through `finProdFinEquiv`), `signRank_reindex`, and `signRank_neg` (for even
+`k`), the reindexed tensored sign matrix has the same sign-rank as the
+Kronecker power of the base sign matrix. -/
+theorem signRank_tensorReindexed_eq_kroneckerPow {m k : ℕ} :
+    signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) =
+      signRank (kroneckerPow k (signMatrix m m (distThreshold m))) := by
+  classical
+  -- currying equivalence `(Fin (k*m) → Bool) ≃ (Fin k → Fin m → Bool)`
+  set e : (Fin (k * m) → Bool) ≃ (Fin k → Fin m → Bool) :=
+    (Equiv.arrowCongr finProdFinEquiv.symm (Equiv.refl Bool)).trans
+      (Equiv.curry (Fin k) (Fin m) Bool)
+  set S₁ := signMatrix m m (distThreshold m) with hS
+  -- The reindexed tensored sign matrix is `(-1)^(k+1)` times a reindexed Kronecker power.
+  have h_ident :
+      signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k) =
+        (-1 : ℝ) ^ (k + 1) • Matrix.reindex e.symm e.symm (kroneckerPow k S₁) := by
+    ext x y
+    rw [signMatrix_tensorReindexed_apply]
+    simp only [Matrix.smul_apply, Matrix.reindex_apply, Matrix.submatrix_apply,
+      Equiv.symm_symm, smul_eq_mul]
+    -- `e x j = fun i => x (finProdFinEquiv (j, i))` holds by `rfl` (see `hex`), so the
+    -- Kronecker-power entry `∏ⱼ S₁ (e x j) (e y j)` is definitionally the product above.
+    congr 1
+  rw [h_ident]
+  rcases Nat.even_or_odd k with hk | hk
+  · -- `k` even ⇒ `(-1)^(k+1) = -1`
+    rw [Odd.neg_one_pow hk.add_one, neg_one_smul, signRank_neg, signRank_reindex]
+  · -- `k` odd ⇒ `(-1)^(k+1) = 1`
+    rw [Even.neg_one_pow hk.add_one, one_smul, signRank_reindex]
+
 /-- **Kronecker/Forster core** (PROOFS.md P8.1–P8.3): under the all-left/all-right
 partition the sign matrix `S_k := signMatrix (k·m) (k·m) G̃` is `(-1)^(k+1)` times a
 reindexed `k`-fold Kronecker power of the base sign matrix `S₁`, so
@@ -393,7 +533,30 @@ reindexed `k`-fold Kronecker power of the base sign matrix `S₁`, so
 theorem forsterRatio_pow_le_signRank_tensor {m : ℕ} (hm : Odd m) {k : ℕ} (hk : 1 ≤ k) :
     forsterRatio m ^ k ≤
       (signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) : ℝ) := by
-  sorry
+  have hm1 : 1 ≤ m := by have := Nat.odd_iff.mp hm; omega
+  set S₁ := signMatrix m m (distThreshold m) with hS
+  -- `S₁` and hence its Kronecker power are `±1` matrices, so Forster applies.
+  have hpm_base : ∀ x y, S₁ x y = 1 ∨ S₁ x y = -1 := by
+    intro x y; rw [hS]; unfold signMatrix
+    split
+    · exact Or.inl rfl
+    · exact Or.inr rfl
+  have hforster := forster (kroneckerPow k S₁) (kroneckerPow_mem_pm_one k S₁ hpm_base)
+  -- Card of the row/column index `(Fin k → Fin m → Bool)` is `2 ^ (k * m)`.
+  have h_card : (Fintype.card (Fin k → Fin m → Bool) : ℝ) = 2 ^ (k * m) := by
+    have h : Fintype.card (Fin k → Fin m → Bool) = 2 ^ (k * m) := by
+      simp only [Fintype.card_fun, Fintype.card_fin, Fintype.card_bool]
+      rw [← pow_mul, mul_comm m k]
+    rw [h]; push_cast; ring
+  -- `specNorm (⊗^k S₁) = (specNorm S₁) ^ k = (2C)^k` (Kronecker multiplicativity + P4).
+  have h_spec : specNorm (kroneckerPow k S₁) =
+      (2 * ((m - 1).choose ((m - 1) / 2) : ℝ)) ^ k := by
+    rw [specNorm_kroneckerPow, hS, specNorm_signMatrix_distThreshold hm]
+  rw [h_card, h_spec] at hforster
+  -- Forster now reads `2^(k*m) ≤ signRank(⊗^k S₁) · (2C)^k`; the arithmetic tail finishes.
+  have hle := forsterRatio_pow_le_of_forster hm1 hforster
+  rw [signRank_tensorReindexed_eq_kroneckerPow]
+  exact hle
 
 /-- **Sign-rank bridge for the reindexed tensored family** (PROOFS.md P8.3): `G̃`
 is nonconstant for `m ≥ 1`, `k ≥ 1` (set exactly one block to a distance-majority
@@ -499,66 +662,6 @@ theorem theoremB_HStar {m : ℕ} (hm : Odd m) {k : ℕ} (hk : 1 ≤ k) :
     rw [Nat.cast_sub h_two_le, Nat.cast_pow, Nat.cast_two] at h2_cast
     exact h2_cast
   exact h1.trans h2_R
-
-/-- **XOR sign encoding** (PROOFS.md P8.2): with the `signMatrix` encoding
-`e(true) = 1`, `e(false) = -1`, the sign of an XOR of `k` bits is
-`(-1)^(k+1) · ∏ⱼ e(bⱼ)`.  This is the global-sign bookkeeping that lets the
-product of the `k` block sign polynomials sign-represent the tensored family
-(`thresholdDegLE_tensorDistThreshold`).  Induction on `k`: `k = 0` gives `-1 =
--1`; the step is `e(b ⊕ c) = -e(b)·e(c)`.  Equivalently `∏ⱼ e(gⱼ) =
-(-1) ^ (#false)`, and `#true + #false = k`. -/
-theorem sign_xor_prod {k : ℕ} (g : Fin k → Bool) :
-    (if (decide (Odd (Finset.univ.filter fun j : Fin k => g j).card)) then (1 : ℝ) else -1)
-      = (-1 : ℝ) ^ (k + 1) * ∏ j : Fin k, (if g j then (1 : ℝ) else -1) := by
-  have hsplit := (Finset.prod_filter_mul_prod_filter_not (Finset.univ : Finset (Fin k))
-    (fun j => g j = true) (fun j => if g j then (1 : ℝ) else -1)).symm
-  have hpos : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => g j = true),
-      (if g j then (1 : ℝ) else -1) = 1 := by
-    have h1 : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => g j = true),
-        (if g j then (1 : ℝ) else -1) =
-        ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => g j = true), (1 : ℝ) := by
-      refine Finset.prod_congr rfl (fun x hx => ?_)
-      have hg : g x = true := (Finset.mem_filter.mp hx).2
-      simp [hg]
-    rw [h1, Finset.prod_const_one]
-  have hneg : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true)),
-      (if g j then (1 : ℝ) else -1) =
-      (-1 : ℝ) ^ ((Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true))).card := by
-    have h1 : ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true)),
-        (if g j then (1 : ℝ) else -1) =
-        ∏ j ∈ (Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true)), (-1 : ℝ) := by
-      refine Finset.prod_congr rfl (fun x hx => ?_)
-      have hg : g x = false := Bool.eq_false_iff.mpr (Finset.mem_filter.mp hx).2
-      simp [hg]
-    rw [h1, Finset.prod_const]
-  rw [hsplit, hpos, one_mul, hneg]
-  have hcard := Finset.card_filter_add_card_filter_not (s := (Finset.univ : Finset (Fin k)))
-    (fun j => g j = true)
-  rw [Finset.card_univ, Fintype.card_fin] at hcard
-  set n_true := ((Finset.univ : Finset (Fin k)).filter (fun j => g j = true)).card
-  set n_false := ((Finset.univ : Finset (Fin k)).filter (fun j => ¬(g j = true))).card
-  have hk : k = n_true + n_false := hcard.symm
-  rw [hk]
-  have hpow_eq : (-1 : ℝ) ^ (n_true + n_false + 1) * (-1 : ℝ) ^ n_false =
-      (-1 : ℝ) ^ (n_true + 1) := by
-    have h1 : (-1 : ℝ) ^ (n_true + n_false + 1) * (-1 : ℝ) ^ n_false =
-        (-1 : ℝ) ^ (n_true + 1 + 2 * n_false) := by
-      rw [← pow_add]
-      congr 1
-      ring
-    rw [h1, pow_add]
-    have h_even : Even (2 * n_false) := even_two_mul n_false
-    rw [h_even.neg_one_pow, mul_one]
-  rw [hpow_eq]
-  change (if (decide (Odd n_true)) then (1 : ℝ) else -1) = (-1 : ℝ) ^ (n_true + 1)
-  by_cases h : Odd n_true
-  · rw [decide_eq_true h, if_pos rfl]
-    have h_even : Even (n_true + 1) := h.add_one
-    exact h_even.neg_one_pow.symm
-  · rw [decide_eq_false h, if_neg Bool.false_ne_true]
-    have h_even : Even n_true := Nat.not_odd_iff_even.mp h
-    have h_odd : Odd (n_true + 1) := h_even.add_one
-    exact h_odd.neg_one_pow.symm
 
 open MvPolynomial in
 /-- **Per-block strict sign representation** (PROOFS.md P8.4): the block-`j` copy
@@ -678,64 +781,5 @@ theorem theoremB_gap {m : ℕ} (hm : Odd m) (k : ℕ) :
         = (k : ℝ) * Real.logb 2 (forsterRatio m) - 2 * (k : ℝ) - 1 := by ring
     rw [hexpand]
     linarith [hlog, hdegR]
-
-
-/-! ### Manual decomposition of `forsterRatio_pow_le_signRank_tensor`
-(PROOFS.md P8.2–P8.3), 2026-08-24. -/
-
-/-- P8.2 (entrywise sign identity): the reindexed tensored sign matrix factors
-entrywise into the block sign matrices with the global `(-1)^(k+1)` of the XOR
-encoding (`e(⊕ b_j) = (-1)^(k+1) ∏ e(b_j)` for `true ↦ +1`).  Unfold
-`tensorEquiv`: the `(j, i)` x-coordinate of the all-left layout is coordinate
-`finProdFinEquiv (j, i)` of the left half. -/
-private theorem blockOf_tensorEquiv_symm {m k : ℕ} (x y : Fin (k * m) → Bool) (j : Fin k) :
-    blockOf (blockJoin x y ∘ (tensorEquiv m k).symm) j =
-      blockJoin (fun i => x (finProdFinEquiv (j, i))) (fun i => y (finProdFinEquiv (j, i))) := by
-  funext i
-  refine Fin.addCases (fun i1 => ?_) (fun i2 => ?_) i
-  · dsimp [blockOf]
-    have h_eq : (tensorEquiv m k).symm (finProdFinEquiv (j, Fin.castAdd m i1)) =
-        Fin.castAdd (k * m) (finProdFinEquiv (j, i1)) := by
-      unfold tensorEquiv
-      dsimp [Equiv.prodCongr, Prod.map]
-      simp only [Equiv.symm_apply_apply]
-      have h1 : finSumFinEquiv.symm (Fin.castAdd m i1) = Sum.inl i1 := finSumFinEquiv_symm_apply_castAdd i1
-      rw [h1]
-      dsimp [Equiv.prodSumDistrib, finSumFinEquiv]
-      rfl
-    rw [h_eq, blockJoin_castAdd, blockJoin_castAdd]
-  · dsimp [blockOf]
-    have h_eq : (tensorEquiv m k).symm (finProdFinEquiv (j, Fin.natAdd m i2)) =
-        Fin.natAdd (k * m) (finProdFinEquiv (j, i2)) := by
-      unfold tensorEquiv
-      dsimp [Equiv.prodCongr, Prod.map]
-      simp only [Equiv.symm_apply_apply]
-      have h1 : finSumFinEquiv.symm (Fin.natAdd m i2) = Sum.inr i2 := finSumFinEquiv_symm_apply_natAdd i2
-      rw [h1]
-      dsimp [Equiv.prodSumDistrib, finSumFinEquiv]
-      rfl
-    rw [h_eq, blockJoin_natAdd, blockJoin_natAdd]
-
-theorem signMatrix_tensorReindexed_apply {m k : ℕ}
-    (x y : Fin (k * m) → Bool) :
-    signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k) x y =
-      (-1 : ℝ) ^ (k + 1) *
-        ∏ j : Fin k, signMatrix m m (distThreshold m)
-          (fun i => x (finProdFinEquiv (j, i)))
-          (fun i => y (finProdFinEquiv (j, i))) := by
-  unfold signMatrix tensorDistThreshold_reindexed tensorDistThreshold xorPower
-  simp_rw [blockOf_tensorEquiv_symm]
-  exact sign_xor_prod (fun j : Fin k => distThreshold m (blockJoin
-    (fun i => x (finProdFinEquiv (j, i))) (fun i => y (finProdFinEquiv (j, i)))))
-
-/-- P8.2 → P8.3 (rank transport): via `signMatrix_tensorReindexed_apply`, the
-reindex equivalence `(Fin (k·m) → Bool) ≃ (Fin k → Fin m → Bool)` (currying
-through `finProdFinEquiv`), `signRank_reindex`, and `signRank_neg` (for even
-`k`), the reindexed tensored sign matrix has the same sign-rank as the
-Kronecker power of the base sign matrix. -/
-theorem signRank_tensorReindexed_eq_kroneckerPow {m k : ℕ} :
-    signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) =
-      signRank (kroneckerPow k (signMatrix m m (distThreshold m))) := by
-  sorry
 
 end HeadComplexity

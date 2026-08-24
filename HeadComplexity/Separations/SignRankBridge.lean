@@ -109,21 +109,9 @@ theorem exists_numerator_readout_two_block_split {a b d : ℕ}
   simp [Head.sigma, Head.value, Head.x, Head.seqTok]
   ring
 
-/-- **Sign-rank bridge** (theorem 028 of the corpus): `H ≥ 1` heads give
-sign-rank at most `2 ^ (H + 1) - 2` under the left/right block partition.
-(`H = 0` is genuinely excluded: a constant function has sign-rank `1 > 0`.) -/
-theorem signRank_le_of_computableWithHeadsN {a b H : ℕ}
-    {f : (Fin (a + b) → Bool) → Bool} (hH : 1 ≤ H)
-    (h : computableWithHeadsN (a + b) H f) :
-    signRank (signMatrix a b f) ≤ 2 ^ (H + 1) - 2 := by
-  sorry
-
-/-- The bridge instantiated at the optimum: sign-rank bounds `H*` from below
-for any nonconstant function (`1 ≤ H*`). -/
-theorem signRank_le_pow_HStar (a b : ℕ) (f : (Fin (a + b) → Bool) → Bool)
-    (hH : 1 ≤ HStar (a + b) f) :
-    signRank (signMatrix a b f) ≤ 2 ^ (HStar (a + b) f + 1) - 2 :=
-  signRank_le_of_computableWithHeadsN hH (HStar_computable f)
+-- The sign-rank bridge `signRank_le_of_computableWithHeadsN` and its optimum
+-- instantiation `signRank_le_pow_HStar` are assembled at the end of this file,
+-- since the bridge is now proved from `signRank_le_of_headForm` (declared below).
 
 private lemma choose_succ_le_mul (a d : ℕ) : a.choose (d + 1) ≤ a * a.choose d := by
   have h1 : a.choose (d + 1) ≤ a.choose (d + 1) * (d + 1) := by
@@ -192,6 +180,85 @@ theorem card_subsets_card_le (a d : ℕ) :
     intro μ hμi hμj
     exact hij (hμi.2.symm.trans hμj.2)
 
+section Multilinearization
+open MvPolynomial
+
+/-- Multilinear extension of `P`: replace each monomial `m` with the squarefree
+`∏ i ∈ m.support, X i` (scaled by its coefficient).  On the Boolean cube this
+does not change the value (`x_i^e = x_i` for `x_i ∈ {0,1}`, `e ≥ 1`) and it never
+increases the total degree. -/
+noncomputable def toMultilinear {n : ℕ} (P : MvPolynomial (Fin n) ℝ) :
+    MvPolynomial (Fin n) ℝ :=
+  P.sum (fun m c => C c * ∏ i ∈ m.support, X i)
+
+theorem eval_toMultilinear {n : ℕ} (P : MvPolynomial (Fin n) ℝ) (x : Fin n → Bool) :
+    eval (cubePoint x) (toMultilinear P) = eval (cubePoint x) P := by
+  unfold toMultilinear
+  rw [Finsupp.sum, map_sum]
+  conv_rhs => rw [as_sum P, map_sum]
+  refine Finset.sum_congr rfl ?_
+  intro m hm
+  rw [eval_monomial]
+  simp only [map_mul, eval_C, map_prod, eval_X]
+  rw [Finsupp.prod]
+  congr 1
+  refine Finset.prod_congr rfl ?_
+  intro i hi
+  have hbi : boolToReal (x i) = 0 ∨ boolToReal (x i) = 1 := by
+    unfold boolToReal; split_ifs <;> simp
+  rcases hbi with h0 | h1
+  · have hmi : m i ≠ 0 := Finsupp.mem_support_iff.mp hi
+    simp only [cubePoint, h0, zero_pow hmi]
+  · simp only [cubePoint, h1, one_pow]
+
+theorem totalDegree_toMultilinear {n : ℕ} (P : MvPolynomial (Fin n) ℝ) :
+    (toMultilinear P).totalDegree ≤ P.totalDegree := by
+  unfold toMultilinear
+  rw [Finsupp.sum]
+  refine (totalDegree_finsetSum _ _).trans ?_
+  rw [Finset.sup_le_iff]
+  intro m hm
+  refine (totalDegree_mul (C (coeff m P)) (∏ i ∈ m.support, X i)).trans ?_
+  rw [totalDegree_C, zero_add]
+  have h_prod : (∏ i ∈ m.support, (X i : MvPolynomial (Fin n) ℝ)).totalDegree
+      ≤ ∑ i ∈ m.support, 1 := by
+    refine (totalDegree_finsetProd _ _).trans ?_
+    exact Finset.sum_le_sum fun i _ => (totalDegree_X i).le
+  rw [Finset.sum_const, smul_eq_mul, mul_one] at h_prod
+  have h_card : m.support.card ≤ m.sum (fun _ e => e) := by
+    rw [Finsupp.sum]
+    have hone : m.support.card = ∑ _i ∈ m.support, 1 := by simp
+    rw [hone]
+    refine Finset.sum_le_sum ?_
+    intro i hi
+    exact Nat.one_le_iff_ne_zero.mpr (Finsupp.mem_support_iff.mp hi)
+  have h_deg : m.sum (fun _ e => e) ≤ P.totalDegree := le_totalDegree hm
+  exact h_prod.trans (h_card.trans h_deg)
+
+theorem degreeOf_toMultilinear {n : ℕ} (P : MvPolynomial (Fin n) ℝ) (i : Fin n) :
+    (toMultilinear P).degreeOf i ≤ 1 := by
+  unfold toMultilinear
+  rw [Finsupp.sum]
+  refine (degreeOf_sum_le i _ _).trans ?_
+  rw [Finset.sup_le_iff]
+  intro m hm
+  refine (degreeOf_mul_le i (C (coeff m P)) _).trans ?_
+  rw [degreeOf_C, zero_add]
+  refine (degreeOf_prod_le i m.support (fun j => (X j : MvPolynomial (Fin n) ℝ))).trans ?_
+  by_cases hi : i ∈ m.support
+  · have h_sum : ∑ j ∈ m.support, degreeOf i (X j : MvPolynomial (Fin n) ℝ) = 1 := by
+      rw [Finset.sum_eq_single i]
+      · rw [degreeOf_X, if_pos rfl]
+      · intro j _ hne; rw [degreeOf_X, if_neg (Ne.symm hne)]
+      · intro hi'; exact absurd hi hi'
+    rw [h_sum]
+  · have h_sum : ∑ j ∈ m.support, degreeOf i (X j : MvPolynomial (Fin n) ℝ) = 0 := by
+      refine Finset.sum_eq_zero ?_
+      intro j hj
+      have hne : j ≠ i := fun h => hi (h ▸ hj)
+      rw [degreeOf_X, if_neg (Ne.symm hne)]
+    rw [h_sum]; exact Nat.zero_le 1
+
 /-- P3.1: a degree-`d` sign representation may be taken multilinear
 (substitute `x_i^e ↦ x_i`; cube evaluations are unchanged and the total
 degree does not increase). -/
@@ -199,7 +266,14 @@ theorem exists_multilinear_signRepr {n d : ℕ} {f : (Fin n → Bool) → Bool}
     (h : ThresholdDegLE f d) :
     ∃ P : MvPolynomial (Fin n) ℝ, P.totalDegree ≤ d ∧
       (∀ i, P.degreeOf i ≤ 1) ∧ SignRepresents P f := by
-  sorry
+  rcases h with ⟨P, hdeg, hsign⟩
+  refine ⟨toMultilinear P, (totalDegree_toMultilinear P).trans hdeg,
+    degreeOf_toMultilinear P, ?_⟩
+  intro x
+  rw [eval_toMultilinear P x]
+  exact hsign x
+
+end Multilinearization
 
 /-- P3.2 + η-shift: a multilinear degree-`d` sign representation exhibits the
 sign matrix as a sum of one outer product per left sub-monomial of degree
@@ -289,12 +363,99 @@ theorem cleared_score_iff {H : ℕ} (τ : ℝ) (u D : Fin H → ℝ)
       linarith
     exact lt_of_mul_lt_mul_right h1 (le_of_lt hP)
 
+/-- **P2.4 strictification (η-shift), reusable for both P2 and P3.** A real
+matrix presented as a finite sum of outer products `E x y = ∑ᵢ uᵢ(x)·vᵢ(y)` that
+already contains a *constant* left factor (`u i₀ = 1`, `i₀ ∈ s`) and sign-
+represents `f` on the cube (`0 < E x y ↔ f (blockJoin x y)`) has
+`signRank (signMatrix a b f) ≤ s.card`.  The constant piece absorbs the strictifying
+shift `−η`: pick `η > 0` below every positive (true-side) entry, set
+`v' i₀ := v i₀ − η` (unchanged elsewhere), and `E − η = ∑ᵢ uᵢ·v'ᵢ` still has
+`≤ s.card` outer products while now matching signs strictly.  Bounds
+`rank ≤ s.card` via `rank_le_card_of_sum_vecMulVec`. -/
+theorem signRank_le_card_of_signRepr_sum {a b : ℕ} {f : (Fin (a + b) → Bool) → Bool}
+    {ι : Type*} (s : Finset ι) (u : ι → (Fin a → Bool) → ℝ)
+    (v : ι → (Fin b → Bool) → ℝ) (i₀ : ι) (hi₀ : i₀ ∈ s) (hu₀ : u i₀ = fun _ => 1)
+    (hrepr : ∀ x y, (0 < ∑ i ∈ s, u i x * v i y) ↔ f (blockJoin x y) = true) :
+    signRank (signMatrix a b f) ≤ s.card := by
+  classical
+  -- a positive shift `η` strictly below every "true"-entry value of the sum
+  set T : Finset ((Fin a → Bool) × (Fin b → Bool)) :=
+    Finset.univ.filter (fun p => f (blockJoin p.1 p.2) = true) with hT
+  obtain ⟨η, hηpos, hηlt⟩ :
+      ∃ η : ℝ, 0 < η ∧ ∀ x y, f (blockJoin x y) = true → η < ∑ i ∈ s, u i x * v i y := by
+    by_cases hTne : T.Nonempty
+    · refine ⟨T.inf' hTne (fun p => ∑ i ∈ s, u i p.1 * v i p.2) / 2, ?_, ?_⟩
+      · refine half_pos ?_
+        rw [Finset.lt_inf'_iff]
+        intro p hp
+        rw [hT, Finset.mem_filter] at hp
+        exact (hrepr p.1 p.2).mpr hp.2
+      · intro x y hxy
+        have hxT : (x, y) ∈ T := by
+          rw [hT, Finset.mem_filter]; exact ⟨Finset.mem_univ _, hxy⟩
+        have hle : T.inf' hTne (fun p => ∑ i ∈ s, u i p.1 * v i p.2) ≤ ∑ i ∈ s, u i x * v i y :=
+          Finset.inf'_le (fun p => ∑ i ∈ s, u i p.1 * v i p.2) hxT
+        have hpos : (0 : ℝ) < T.inf' hTne (fun p => ∑ i ∈ s, u i p.1 * v i p.2) := by
+          rw [Finset.lt_inf'_iff]; intro q hq
+          rw [hT, Finset.mem_filter] at hq; exact (hrepr q.1 q.2).mpr hq.2
+        linarith
+    · refine ⟨1, one_pos, fun x y hxy => ?_⟩
+      exact absurd (⟨(x, y), by rw [hT, Finset.mem_filter]; exact ⟨Finset.mem_univ _, hxy⟩⟩ :
+        T.Nonempty) hTne
+  -- shift the `i₀` (constant) right factor down by `η`; keep every outer product
+  set v' : ι → (Fin b → Bool) → ℝ :=
+    fun i y => v i y - (if i = i₀ then η else 0) with hv'
+  set Amat : Matrix (Fin a → Bool) (Fin b → Bool) ℝ :=
+    ∑ i ∈ s, Matrix.vecMulVec (u i) (v' i) with hAmat
+  have hApp : ∀ x y, Amat x y = (∑ i ∈ s, u i x * v i y) - η := by
+    intro x y
+    have e1 : Amat x y = ∑ i ∈ s, (u i x * v i y - u i x * (if i = i₀ then η else 0)) := by
+      rw [hAmat, Matrix.sum_apply]
+      refine Finset.sum_congr rfl (fun i _ => ?_)
+      rw [Matrix.vecMulVec_apply, hv']; ring
+    rw [e1, Finset.sum_sub_distrib]
+    congr 1
+    rw [Finset.sum_eq_single_of_mem i₀ hi₀ (fun i _ hne => by rw [if_neg hne, mul_zero])]
+    rw [if_pos rfl, hu₀]; simp
+  -- `Amat` matches `signMatrix a b f` in sign strictly, with `≤ s.card` outer products
+  have hmatch : SignMatches (signMatrix a b f) Amat := by
+    intro x y
+    show 0 < signMatrix a b f x y * Amat x y
+    rw [hApp]; unfold signMatrix
+    split_ifs with h
+    · rw [one_mul]; linarith [hηlt x y h]
+    · have hle : (∑ i ∈ s, u i x * v i y) ≤ 0 := not_lt.mp (fun hlt => h ((hrepr x y).mp hlt))
+      rw [neg_one_mul]; linarith
+  have hrank : Amat.rank ≤ s.card := by
+    rw [hAmat]; exact rank_le_card_of_sum_vecMulVec s u v'
+  refine le_trans ?_ hrank
+  exact Nat.sInf_le ⟨Amat, hmatch, rfl⟩
+
+/-- **P2.3 subset regrouping (the head-subset rank decomposition).** The cleared
+head-form score `Q(x,y) = ∑ₕ (A'ₕx+B'ₕy)·∏_{h'≠h}(Aₕ'x+Bₕ'y) − τ·∏ₕ(Aₕx+Bₕy)`
+expands, by `Finset.prod_add` over the choice of A-side/B-side per factor, into a
+sum of outer products grouped by the A-side set `T ⊆ [H]`; the boundary sets
+`T = ∅` (constant left factor `1`) and `T = [H]` merge their two pieces, giving
+`2(2^H−2)+2 = 2^(H+1)−2` rank-one terms with the `∅`-piece constant.  This packages
+exactly the data consumed by `signRank_le_card_of_signRepr_sum`. -/
+theorem exists_clearedForm_outerProduct_decomp {a b H : ℕ} (hH : 1 ≤ H) (τ : ℝ)
+    (A : Fin H → (Fin a → Bool) → ℝ) (B : Fin H → (Fin b → Bool) → ℝ)
+    (A' : Fin H → (Fin a → Bool) → ℝ) (B' : Fin H → (Fin b → Bool) → ℝ) :
+    ∃ (ι : Type) (s : Finset ι) (u : ι → (Fin a → Bool) → ℝ)
+      (v : ι → (Fin b → Bool) → ℝ) (i₀ : ι),
+      i₀ ∈ s ∧ u i₀ = (fun _ => 1) ∧ s.card ≤ 2 ^ (H + 1) - 2 ∧
+      ∀ x y, (∑ h, (A' h x + B' h y) * ∏ h' ∈ Finset.univ.erase h, (A h' x + B h' y))
+          - τ * ∏ h, (A h x + B h y) = ∑ i ∈ s, u i x * v i y := by
+  sorry
+
 /-- P2.3+P2.4 (linear-algebra core of the bridge): any function whose strict
 sign is realized by a two-block head-form score has sign-rank at most
-`2^(H+1) - 2`.  Proof plan: clear denominators (`cleared_score_iff`), group
-the cleared matrix by the subset `T ⊆ [H]` of factors contributing their
-left part (`2(2^H - 2) + 2` outer products, boundary subsets merging), and
-strictify the false side by the η-shift absorbed into the `T = ∅` piece. -/
+`2^(H+1) - 2`.  **Assembly** (PROOFS.md P2.2–P2.4): clear denominators
+(`cleared_score_iff`, proved), decompose the cleared score into the
+`2^(H+1)−2` outer products with a constant `T = ∅` piece
+(`exists_clearedForm_outerProduct_decomp`, P2.3), and read off the sign-rank
+bound with the η-shift folded into that constant piece
+(`signRank_le_card_of_signRepr_sum`, P2.4). -/
 theorem signRank_le_of_headForm {a b H : ℕ} (hH : 1 ≤ H) (τ : ℝ)
     {f : (Fin (a + b) → Bool) → Bool}
     (A : Fin H → (Fin a → Bool) → ℝ) (B : Fin H → (Fin b → Bool) → ℝ)
@@ -303,6 +464,55 @@ theorem signRank_le_of_headForm {a b H : ℕ} (hH : 1 ≤ H) (τ : ℝ)
     (hf : ∀ x y, f (blockJoin x y) = true ↔
       τ < ∑ h, (A' h x + B' h y) / (A h x + B h y)) :
     signRank (signMatrix a b f) ≤ 2 ^ (H + 1) - 2 := by
-  sorry
+  obtain ⟨ι, s, u, v, i₀, hi₀, hu₀, hcard, hsum⟩ :=
+    exists_clearedForm_outerProduct_decomp hH τ A B A' B'
+  refine le_trans (signRank_le_card_of_signRepr_sum s u v i₀ hi₀ hu₀ ?_) hcard
+  intro x y
+  rw [← hsum x y]
+  exact (cleared_score_iff τ (fun h => A' h x + B' h y) (fun h => A h x + B h y)
+    (fun h => hpos h x y)).symm.trans (hf x y).symm
+
+open scoped InnerProductSpace in
+/-- **Sign-rank bridge** (theorem 028 of the corpus; PROOFS.md P2): `H ≥ 1` heads
+give sign-rank at most `2 ^ (H + 1) - 2` under the left/right block partition.
+Assembly: the aggregated readout `⟪w, ∑ₕ attnUpdateₕ(x,y)⟫ = ∑ₕ ⟪w, numₕ⟫ / denₕ`
+splits per head into `(A'ₕx + B'ₕy)/(Aₕx + Bₕy)` via the proved
+`exists_numerator_readout_two_block_split` and `denominator_eq_headA_add_headB`
+(positivity from `headA_pos`/`headB_nonneg`), and `signRank_le_of_headForm` reads
+off the bound.  (`H = 0` is genuinely excluded: a constant function has
+sign-rank `1 > 0`.) -/
+theorem signRank_le_of_computableWithHeadsN {a b H : ℕ}
+    {f : (Fin (a + b) → Bool) → Bool} (hH : 1 ≤ H)
+    (h : computableWithHeadsN (a + b) H f) :
+    signRank (signMatrix a b f) ≤ 2 ^ (H + 1) - 2 := by
+  obtain ⟨d, Hs, w, τ, hcomp⟩ := h
+  choose A' B' hA'B' using fun h => exists_numerator_readout_two_block_split (Hs h) w
+  have hpos : ∀ h (x : Fin a → Bool) (y : Fin b → Bool),
+      0 < headA rfl (Hs h) x + headB rfl (Hs h) y := fun h x y =>
+    add_pos_of_pos_of_nonneg (headA_pos rfl (Hs h) x) (headB_nonneg rfl (Hs h) y)
+  have hscore : ∀ (x : Fin a → Bool) (y : Fin b → Bool),
+      ⟪w, headFamilyAttnUpdate Hs (blockJoin x y)⟫_ℝ
+        = ∑ h, (A' h x + B' h y) / (headA rfl (Hs h) x + headB rfl (Hs h) y) := by
+    intro x y
+    unfold headFamilyAttnUpdate
+    rw [inner_sum]
+    refine Finset.sum_congr rfl (fun h _ => ?_)
+    unfold Head.attnUpdate
+    rw [real_inner_smul_right, hA'B' h x y, denominator_eq_headA_add_headB rfl (Hs h) x y,
+      inv_mul_eq_div]
+  have hf : ∀ (x : Fin a → Bool) (y : Fin b → Bool), f (blockJoin x y) = true ↔
+      τ < ∑ h, (A' h x + B' h y) / (headA rfl (Hs h) x + headB rfl (Hs h) y) := by
+    intro x y
+    rw [← hscore x y]
+    exact (hcomp (blockJoin x y)).symm
+  exact signRank_le_of_headForm hH τ (fun h x => headA rfl (Hs h) x)
+    (fun h y => headB rfl (Hs h) y) A' B' hpos hf
+
+/-- The bridge instantiated at the optimum: sign-rank bounds `H*` from below
+for any nonconstant function (`1 ≤ H*`). -/
+theorem signRank_le_pow_HStar (a b : ℕ) (f : (Fin (a + b) → Bool) → Bool)
+    (hH : 1 ≤ HStar (a + b) f) :
+    signRank (signMatrix a b f) ≤ 2 ^ (HStar (a + b) f + 1) - 2 :=
+  signRank_le_of_computableWithHeadsN hH (HStar_computable f)
 
 end HeadComplexity
