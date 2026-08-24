@@ -1,6 +1,8 @@
 import Mathlib.Analysis.CStarAlgebra.Matrix
 import Mathlib.LinearAlgebra.Matrix.Kronecker
 import Mathlib.Analysis.Calculus.Deriv.Basic
+import Mathlib.Analysis.Calculus.Deriv.Add
+import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import HeadComplexity.Separations.SignRank
 
 set_option linter.style.header false
@@ -717,7 +719,11 @@ interior would force the subspace to be everything
 lemma interior_empty_of_ne_top {r : ℕ}
     (W : Submodule ℝ (EuclideanSpace ℝ (Fin r))) (hW : W ≠ ⊤) :
     interior (W : Set (EuclideanSpace ℝ (Fin r))) = ∅ := by
-  sorry
+  by_contra h
+  have hne : (interior (W : Set (EuclideanSpace ℝ (Fin r)))).Nonempty :=
+    Set.nonempty_iff_ne_empty.mpr h
+  have htop := Submodule.eq_top_of_nonempty_interior' W hne
+  exact hW htop
 
 /-- A nonempty open set is not covered by finitely many proper subspaces:
 each is closed (`Submodule.closed_of_finiteDimensional`) with empty interior
@@ -730,7 +736,38 @@ lemma exists_mem_avoiding_subspaces {r : ℕ}
     (h𝒲 : ∀ W ∈ 𝒲, W ≠ ⊤) :
     ∀ U : Set (EuclideanSpace ℝ (Fin r)), IsOpen U → U.Nonempty →
       ∃ z ∈ U, ∀ W ∈ 𝒲, z ∉ W := by
-  sorry
+  induction 𝒲 using Finset.induction_on with
+  | empty =>
+    intro U _ hU_nonempty
+    obtain ⟨z, hz⟩ := hU_nonempty
+    use z, hz
+    intro W hW
+    simp at hW
+  | insert W 𝒲 _ ih =>
+    intro U hU hU_nonempty
+    have hW_ne_top : W ≠ ⊤ := h𝒲 W (Finset.mem_insert_self W 𝒲)
+    have h𝒲' : ∀ W' ∈ 𝒲, W' ≠ ⊤ := fun W' hW' => h𝒲 W' (Finset.mem_insert_of_mem hW')
+    have hW_closed : IsClosed (W : Set (EuclideanSpace ℝ (Fin r))) := Submodule.closed_of_finiteDimensional W
+    set U' := U \ W with hU'_def
+    have hU'_open : IsOpen U' := hU.sdiff hW_closed
+    have hU'_nonempty : U'.Nonempty := by
+      by_contra hc
+      rw [Set.not_nonempty_iff_eq_empty] at hc
+      have hU_sub_W : U ⊆ W := Set.sdiff_eq_empty.mp hc
+      have hU_sub_int : U ⊆ interior (W : Set (EuclideanSpace ℝ (Fin r))) := by
+        rw [hU.subset_interior_iff]
+        exact hU_sub_W
+      rw [interior_empty_of_ne_top W hW_ne_top] at hU_sub_int
+      obtain ⟨z, hz⟩ := hU_nonempty
+      exact hU_sub_int hz
+    obtain ⟨z, hzU', hz𝒲⟩ := ih h𝒲' U' hU'_open hU'_nonempty
+    have hzU : z ∈ U := hzU'.1
+    have hzW : z ∉ W := hzU'.2
+    use z, hzU
+    intro W' hW'
+    rcases Finset.mem_insert.mp hW' with rfl | hW'_in_𝒲
+    · exact hzW
+    · exact hz𝒲 W' hW'_in_𝒲
 
 /-- The one-coordinate slice of an open set of families is open:
 `z ↦ Function.update w x₀ z` is continuous (coordinatewise it is either the
@@ -739,7 +776,16 @@ lemma isOpen_update_slice {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
     {U : Set (ι → EuclideanSpace ℝ (Fin r))} (hU : IsOpen U)
     (w : ι → EuclideanSpace ℝ (Fin r)) (x₀ : ι) :
     IsOpen {z : EuclideanSpace ℝ (Fin r) | Function.update w x₀ z ∈ U} := by
-  sorry
+  have h_cont : Continuous (fun (z : EuclideanSpace ℝ (Fin r)) => Function.update w x₀ z) := by
+    apply continuous_pi
+    intro i
+    by_cases hi : i = x₀
+    · subst hi
+      simp
+      exact continuous_id
+    · simp [hi]
+      exact continuous_const
+  exact hU.preimage h_cont
 
 /-- The span of fewer than `r` vectors is a proper subspace of `ℝ^r`:
 its finrank is at most the cardinality of the spanning image
@@ -748,7 +794,17 @@ its finrank is at most the cardinality of the spanning image
 lemma span_ne_top_of_card_lt {r : ℕ} {ι : Type*}
     (w : ι → EuclideanSpace ℝ (Fin r)) (S : Finset ι) (hS : S.card < r) :
     Submodule.span ℝ (w '' (S : Set ι)) ≠ ⊤ := by
-  sorry
+  intro htop
+  have h1 : Module.finrank ℝ (Submodule.span ℝ (w '' (S : Set ι))) = Module.finrank ℝ (EuclideanSpace ℝ (Fin r)) := by
+    rw [htop, finrank_top]
+  have h2 : Module.finrank ℝ (Submodule.span ℝ (w '' (S : Set ι))) ≤ (S.image w).card := by
+    have h_set : w '' (S : Set ι) = ↑(S.image w) := Finset.coe_image.symm
+    rw [h_set]
+    exact finrank_span_finset_le_card (S.image w)
+  have h3 : (S.image w).card ≤ S.card := Finset.card_image_le
+  have h4 : Module.finrank ℝ (EuclideanSpace ℝ (Fin r)) = r := finrank_euclideanSpace_fin
+  rw [h1, h4] at h2
+  omega
 
 /-- Extending partial general position by one index: a subset of
 `insert x₀ T` of size at most `r` either avoids `x₀` (use `hT`) or is
@@ -761,14 +817,46 @@ lemma partialGP_insert {r : ℕ} {ι : Type*} [DecidableEq ι]
     (havoid : ∀ S : Finset ι, S ⊆ T → S.card < r →
       u x₀ ∉ Submodule.span ℝ (u '' (S : Set ι))) :
     PartialGP u (insert x₀ T) := by
-  sorry
+  intro S hS hScard
+  by_cases hxS : x₀ ∈ S
+  · have hx0_notin : x₀ ∉ (S.erase x₀ : Set ι) := by
+      intro h
+      rw [Finset.mem_coe, Finset.mem_erase] at h
+      exact h.1 rfl
+    have hS'_sub : S.erase x₀ ⊆ T := by
+      intro y hy
+      rw [Finset.mem_erase] at hy
+      have hy_ins := hS hy.2
+      rw [Finset.mem_insert] at hy_ins
+      exact hy_ins.resolve_left hy.1
+    have hS_card_pos : 1 ≤ S.card := Finset.card_pos.mpr ⟨x₀, hxS⟩
+    have hS'_card : (S.erase x₀).card < r := by
+      rw [Finset.card_erase_of_mem hxS]
+      omega
+    have h_indep : LinearIndepOn ℝ u (S.erase x₀ : Set ι) :=
+      hT (S.erase x₀) hS'_sub (by omega)
+    have h_not_in : u x₀ ∉ Submodule.span ℝ (u '' (S.erase x₀ : Set ι)) :=
+      havoid (S.erase x₀) hS'_sub hS'_card
+    have hS_eq : S = insert x₀ (S.erase x₀) := (Finset.insert_erase hxS).symm
+    rw [hS_eq, Finset.coe_insert]
+    rw [linearIndepOn_insert hx0_notin]
+    exact ⟨h_indep, h_not_in⟩
+  · have hS_sub : S ⊆ T := by
+      intro y hy
+      have hy_ins := hS hy
+      rw [Finset.mem_insert] at hy_ins
+      exact hy_ins.resolve_left (fun h => hxS (h ▸ hy))
+    exact hT S hS_sub hScard
 
 /-- Partial general position only reads the family on `T`
 (`LinearIndepOn` congruence on the base set). -/
 lemma partialGP_congr {r : ℕ} {ι : Type*}
     {u w : ι → EuclideanSpace ℝ (Fin r)} {T : Finset ι}
     (h : ∀ i ∈ T, u i = w i) (hw : PartialGP w T) : PartialGP u T := by
-  sorry
+  intro S hS hcard
+  refine LinearIndepOn.congr (hw S hS hcard) ?_
+  intro i hi
+  exact (h i (hS hi)).symm
 
 /-- Induction core of P5.2: inside any nonempty open set of families one can
 reach partial general position on any finite `T`, replacing one coordinate
@@ -788,7 +876,54 @@ lemma exists_partialGP_mem {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
     {U : Set (ι → EuclideanSpace ℝ (Fin r))} (hU : IsOpen U)
     {u : ι → EuclideanSpace ℝ (Fin r)} (hu : u ∈ U) (T : Finset ι) :
     ∃ w ∈ U, PartialGP w T := by
-  sorry
+  classical
+  induction T using Finset.induction_on with
+  | empty =>
+    use u, hu
+    intro S hS hScard
+    have hS_empty : S = ∅ := Finset.subset_empty.mp hS
+    rw [hS_empty, Finset.coe_empty]
+    exact linearIndepOn_empty ℝ u
+  | insert x0 T hx0 ih =>
+    obtain ⟨w, hwU, hwGP⟩ := ih
+    let V := {z : EuclideanSpace ℝ (Fin r) | Function.update w x0 z ∈ U}
+    have hV_open : IsOpen V := isOpen_update_slice hU w x0
+    have hV_nonempty : V.Nonempty := ⟨w x0, by
+      change Function.update w x0 (w x0) ∈ U
+      rw [Function.update_eq_self]
+      exact hwU⟩
+    let subsets : Finset (Finset ι) := T.powerset.filter (fun S => S.card < r)
+    let 𝒲 : Finset (Submodule ℝ (EuclideanSpace ℝ (Fin r))) :=
+      Finset.image (fun (S : Finset ι) => Submodule.span ℝ (w '' (S : Set ι))) subsets
+    have h𝒲 : ∀ W ∈ 𝒲, W ≠ ⊤ := by
+      intro W hW
+      obtain ⟨S, hS, rfl⟩ := Finset.mem_image.mp hW
+      have hS' := Finset.mem_filter.mp hS
+      exact span_ne_top_of_card_lt w S hS'.2
+    obtain ⟨z, hzV, hz_avoid⟩ := exists_mem_avoiding_subspaces 𝒲 h𝒲 V hV_open hV_nonempty
+    let w' := Function.update w x0 z
+    have hw'U : w' ∈ U := hzV
+    have hw'_eq_w : ∀ i ∈ T, w' i = w i := by
+      intro i hi
+      have hne : i ≠ x0 := fun h => hx0 (h ▸ hi)
+      exact Function.update_of_ne hne z w
+    have hw'GP : PartialGP w' T := partialGP_congr hw'_eq_w hwGP
+    refine ⟨w', hw'U, partialGP_insert hx0 hw'GP ?_⟩
+    intro S hS hScard
+    have hw'x0 : w' x0 = z := Function.update_self x0 z w
+    rw [hw'x0]
+    have h_image : w' '' (S : Set ι) = w '' (S : Set ι) := by
+      apply Set.image_congr
+      intro i hi
+      exact hw'_eq_w i (hS hi)
+    rw [h_image]
+    have hS_mem_subsets : S ∈ subsets := by
+      rw [Finset.mem_filter, Finset.mem_powerset]
+      exact ⟨hS, hScard⟩
+    have hW_mem : Submodule.span ℝ (w '' (S : Set ι)) ∈ 𝒲 := by
+      rw [Finset.mem_image]
+      exact ⟨S, hS_mem_subsets, rfl⟩
+    exact hz_avoid _ hW_mem
 
 /-- At `T = univ`, partial general position upgrades to general position: an
 injective selection `g : Fin r → ι` has image of size `r`, `LinearIndepOn`
@@ -798,7 +933,22 @@ with the injection `Fin r → ↑(Finset.univ.image g)`, `i ↦ ⟨g i, _⟩`
 lemma inGeneralPosition_of_partialGP_univ {r : ℕ} {ι : Type*} [Fintype ι]
     {u : ι → EuclideanSpace ℝ (Fin r)} (h : PartialGP u Finset.univ) :
     InGeneralPosition u := by
-  sorry
+  classical
+  intro g hg
+  let S : Finset ι := Finset.univ.image g
+  have hS_sub : S ⊆ Finset.univ := Finset.subset_univ S
+  have hS_card : S.card = r := by
+    rw [Finset.card_image_of_injective _ hg, Finset.card_univ, Fintype.card_fin]
+  have hS_card_le : S.card ≤ r := hS_card.le
+  have h_indep : LinearIndepOn ℝ u (S : Set ι) := h S hS_sub hS_card_le
+  have hli : LinearIndependent ℝ (fun (x : ↑(S : Set ι)) => u ↑x) := h_indep.linearIndependent
+  let f : Fin r → ↑(S : Set ι) := fun i => ⟨g i, Finset.mem_coe.mpr (Finset.mem_image_of_mem g (Finset.mem_univ i))⟩
+  have hf_inj : Function.Injective f := by
+    intro i j hij
+    have h_eq : g i = g j := Subtype.ext_iff.mp hij
+    exact hg h_eq
+  have h_comp := LinearIndependent.comp hli f hf_inj
+  exact h_comp
 
 lemma exists_inGeneralPosition_of_isOpen_nonempty {r : ℕ} {ι : Type*} [Fintype ι]
     (_hr : 0 < r) (U : Set (ι → EuclideanSpace ℝ (Fin r))) (hU_open : IsOpen U)
@@ -811,22 +961,69 @@ lemma exists_inGeneralPosition_of_isOpen_nonempty {r : ℕ} {ι : Type*} [Fintyp
 lemma isOpen_strict_sign_margin_pullback {r : ℕ} {ι : Type*} [Fintype ι]
     (v : ι → EuclideanSpace ℝ (Fin r)) (s : ι → ι → ℝ) :
     IsOpen {w : ι → EuclideanSpace ℝ (Fin r) | (∀ x, w x ≠ 0) ∧ ∀ x y, 0 < s x y * ⟪(‖w x‖⁻¹ : ℝ) • w x, v y⟫_ℝ} := by
-  sorry
+  have h_eq : {w : ι → EuclideanSpace ℝ (Fin r) | (∀ x, w x ≠ 0) ∧ ∀ x y, 0 < s x y * ⟪(‖w x‖⁻¹ : ℝ) • w x, v y⟫_ℝ} =
+              (⋂ x, {w | w x ≠ (0 : EuclideanSpace ℝ (Fin r))}) ∩
+              (⋂ (x : ι) (y : ι), {w | 0 < s x y * ⟪w x, v y⟫_ℝ}) := by
+    ext w
+    simp only [Set.mem_setOf_eq, Set.mem_inter_iff, Set.mem_iInter]
+    constructor
+    · rintro ⟨hne, hgt⟩
+      refine ⟨hne, fun x y => ?_⟩
+      have hgtxy := hgt x y
+      rw [real_inner_smul_left] at hgtxy
+      have h1 : s x y * (‖w x‖⁻¹ * ⟪w x, v y⟫_ℝ) = ‖w x‖⁻¹ * (s x y * ⟪w x, v y⟫_ℝ) := by ring
+      rw [h1] at hgtxy
+      have hpos : 0 < ‖w x‖ := norm_pos_iff.mpr (hne x)
+      have hinvpos : 0 < ‖w x‖⁻¹ := inv_pos.mpr hpos
+      exact pos_of_mul_pos_right hgtxy (le_of_lt hinvpos)
+    · rintro ⟨hne, hgt⟩
+      refine ⟨hne, fun x y => ?_⟩
+      have hgtxy := hgt x y
+      rw [real_inner_smul_left]
+      have h1 : s x y * (‖w x‖⁻¹ * ⟪w x, v y⟫_ℝ) = ‖w x‖⁻¹ * (s x y * ⟪w x, v y⟫_ℝ) := by ring
+      rw [h1]
+      have hpos : 0 < ‖w x‖ := norm_pos_iff.mpr (hne x)
+      have hinvpos : 0 < ‖w x‖⁻¹ := inv_pos.mpr hpos
+      exact mul_pos hinvpos hgtxy
+
+  rw [h_eq]
+  refine IsOpen.inter ?_ ?_
+  · apply isOpen_iInter_of_finite
+    intro x
+    have h_cont : Continuous (fun (w : ι → EuclideanSpace ℝ (Fin r)) ↦ w x) := continuous_apply x
+    have h_open : IsOpen ({(0 : EuclideanSpace ℝ (Fin r))}ᶜ) := isOpen_compl_singleton
+    exact h_open.preimage h_cont
+  · apply isOpen_iInter_of_finite
+    intro x
+    apply isOpen_iInter_of_finite
+    intro y
+    have h_mul : Continuous (fun (w : ι → EuclideanSpace ℝ (Fin r)) ↦ s x y * ⟪w x, v y⟫_ℝ) :=
+      continuous_const.mul ((continuous_apply x).inner continuous_const)
+    exact isOpen_Ioi.preimage h_mul
 
 lemma inGeneralPosition_smul {r : ℕ} {ι : Type*} [Fintype ι]
     {u : ι → EuclideanSpace ℝ (Fin r)} (hu : InGeneralPosition u)
     {c : ι → ℝ} (hc : ∀ x, c x ≠ 0) :
     InGeneralPosition (fun x ↦ c x • u x) := by
-  sorry
+  intro g hg
+  have h_lin := hu g hg
+  let w : Fin r → ℝˣ := fun i => Units.mk0 (c (g i)) (hc (g i))
+  have h_units := LinearIndependent.units_smul h_lin w
+  have h_eq : (w • (fun i => u (g i))) = (fun i => c (g i) • u (g i)) := by
+    ext i
+    rfl
+  rw [h_eq] at h_units
+  exact h_units
 
 lemma norm_normalize_eq_one {r : ℕ}
     {x : EuclideanSpace ℝ (Fin r)} (hx : x ≠ 0) :
     ‖(‖x‖⁻¹ : ℝ) • x‖ = 1 := by
-  sorry
+  rw [norm_smul, Real.norm_eq_abs, abs_inv, abs_norm, inv_mul_cancel₀]
+  exact norm_ne_zero_iff.mpr hx
 
 lemma inv_norm_ne_zero {r : ℕ} {x : EuclideanSpace ℝ (Fin r)} (hx : x ≠ 0) :
-    (‖x‖⁻¹ : ℝ) ≠ 0 := by
-  sorry
+    (‖x‖⁻¹ : ℝ) ≠ 0 :=
+  inv_ne_zero (norm_ne_zero_iff.mpr hx)
 
 /-- **P5.2 (general position).**  Unit vectors `u` with a strict sign margin
 against `v` can be perturbed by an arbitrarily small amount into unit vectors
@@ -902,7 +1099,37 @@ lemma exists_l1_relation_of_finrank_lt {w r : ℕ}
     (W : Submodule ℝ (EuclideanSpace ℝ (Fin r))) (hW : Module.finrank ℝ W ≤ w)
     (p : Fin (w + 1) → EuclideanSpace ℝ (Fin r)) (hp : ∀ i, p i ∈ W) :
     ∃ c : Fin (w + 1) → ℝ, ∑ i, |c i| = 1 ∧ ∑ i, c i • p i = 0 := by
-  sorry
+  let pW : Fin (w + 1) → W := fun i => ⟨p i, hp i⟩
+  have h_not_li : ¬ LinearIndependent ℝ pW := by
+    intro hli
+    have h_card := LinearIndependent.fintype_card_le_finrank hli
+    simp only [Fintype.card_fin] at h_card
+    omega
+  rw [Fintype.not_linearIndependent_iff] at h_not_li
+  rcases h_not_li with ⟨g, hg_sum, i0, hgi0⟩
+  have h_sum_abs_pos : 0 < ∑ i, |g i| := by
+    apply Finset.sum_pos'
+    · intro i _
+      exact abs_nonneg (g i)
+    · use i0
+      refine ⟨Finset.mem_univ i0, ?_⟩
+      exact abs_pos.mpr hgi0
+  let S := ∑ i, |g i|
+  use fun i => g i / S
+  constructor
+  · have h_abs : ∀ i, |g i / S| = |g i| / S := by
+      intro i
+      rw [abs_div, abs_of_pos h_sum_abs_pos]
+    simp_rw [h_abs]
+    rw [← Finset.sum_div, div_self (ne_of_gt h_sum_abs_pos)]
+  · have h_sum_val : (∑ i, g i • pW i : W).val = 0 := by rw [hg_sum, Submodule.coe_zero]
+    rw [Submodule.coe_sum] at h_sum_val
+    simp only [Submodule.coe_smul] at h_sum_val
+    have h_smul : ∀ i, (g i / S) • p i = S⁻¹ • (g i • p i) := by
+      intro i
+      rw [div_eq_inv_mul, mul_smul, smul_smul, mul_comm]
+    simp_rw [h_smul]
+    rw [← Finset.smul_sum, h_sum_val, smul_zero]
 
 /-- Sub-selections of a general-position family are linearly independent:
 extend the injection `e : Fin k → ι` to an injective `g : Fin r → ι` —
@@ -914,7 +1141,181 @@ lemma linearIndependent_selection_of_inGeneralPosition {r : ℕ} {ι : Type*}
     (hgen : InGeneralPosition u) (hcard : r ≤ Fintype.card ι)
     {k : ℕ} (hk : k ≤ r) (e : Fin k → ι) (he : Function.Injective e) :
     LinearIndependent ℝ (u ∘ e) := by
-  sorry
+  classical
+  let s : Finset ι := Finset.image e Finset.univ
+  have hs_card : s.card = k := by
+    rw [Finset.card_image_of_injective _ he, Finset.card_univ, Fintype.card_fin]
+  have hcompl_card : sᶜ.card = Fintype.card ι - k := by
+    rw [Finset.card_compl, hs_card]
+  have h_rem : r - k ≤ sᶜ.card := by
+    rw [hcompl_card]
+    exact Nat.sub_le_sub_right hcard k
+  obtain ⟨t, ht_sub, ht_card⟩ := Finset.exists_subset_card_eq h_rem
+  let e' : Fin (r - k) ≃ t := Fintype.equivFinOfCardEq (by rw [Fintype.card_coe, ht_card]) |>.symm
+  let f2 : Fin (r - k) → ι := fun i => (e' i).val
+  have hf2_inj : Function.Injective f2 := by
+    intro i j h
+    have h'' : e' i = e' j := Subtype.ext h
+    exact e'.injective h''
+  have h_disj : ∀ i j, e i ≠ f2 j := by
+    intro i j h
+    have h_in_s : e i ∈ s := Finset.mem_image_of_mem _ (Finset.mem_univ i)
+    have h_in_t : f2 j ∈ t := (e' j).2
+    have h_in_sc : f2 j ∈ sᶜ := ht_sub h_in_t
+    rw [Finset.mem_compl] at h_in_sc
+    rw [h] at h_in_s
+    exact h_in_sc h_in_s
+  let g0 : Fin k ⊕ Fin (r - k) → ι := Sum.elim e f2
+  have hg0_inj : Function.Injective g0 := by
+    rintro (i1|j1) (i2|j2) h
+    · dsimp [g0] at h
+      rw [he h]
+    · dsimp [g0] at h
+      exact False.elim (h_disj i1 j2 h)
+    · dsimp [g0] at h
+      exact False.elim (h_disj i2 j1 h.symm)
+    · dsimp [g0] at h
+      rw [hf2_inj h]
+  have hkr : k + (r - k) = r := Nat.add_sub_of_le hk
+  let g : Fin r → ι := fun i => g0 (finSumFinEquiv.symm (Fin.cast hkr.symm i))
+  have hg_inj : Function.Injective g := by
+    intro i j h
+    dsimp [g] at h
+    have h1 := hg0_inj h
+    have h2 := finSumFinEquiv.symm.injective h1
+    have h3 := Fin.cast_injective hkr.symm h2
+    exact h3
+  have hg_e : ∀ i : Fin k, g (Fin.castLE hk i) = e i := by
+    intro i
+    dsimp [g, g0]
+    have h1 : Fin.cast hkr.symm (Fin.castLE hk i) = Fin.castAdd (r - k) i := by ext; rfl
+    rw [h1, ← finSumFinEquiv_apply_left, finSumFinEquiv.symm_apply_apply]
+    rfl
+  have h_li : LinearIndependent ℝ (u ∘ g) := hgen g hg_inj
+  have h_li_sub : LinearIndependent ℝ ((u ∘ g) ∘ Fin.castLE hk) :=
+    LinearIndependent.comp h_li (Fin.castLE hk) (Fin.castLE_injective hk)
+  have h_eq : (u ∘ g) ∘ Fin.castLE hk = u ∘ e := by
+    ext i
+    dsimp
+    rw [hg_e i]
+  rwa [h_eq] at h_li_sub
+
+private lemma exists_injective_of_le_ncard {ι : Type*} [Fintype ι] {S : Set ι} {k : ℕ} (hk : k ≤ S.ncard) :
+    ∃ e : Fin k → ι, Function.Injective e ∧ ∀ i, e i ∈ S := by
+  classical
+  have hfin : S.Finite := Set.toFinite S
+  rw [Set.ncard_eq_toFinset_card S hfin] at hk
+  obtain ⟨T, hTS, hTcard⟩ := Finset.exists_subset_card_eq hk
+  obtain ⟨e⟩ := Fintype.truncEquivFin T
+  have hTcard' : Fintype.card T = k := by
+    rw [Fintype.card_coe]
+    exact hTcard
+  let e' : Fin k → T := fun i => (e.symm (Fin.cast hTcard'.symm i))
+  use fun i => (e' i).val
+  refine ⟨?_, ?_⟩
+  · intro i j hij
+    have h1 : e' i = e' j := Subtype.ext hij
+    dsimp [e'] at h1
+    have h2 := e.symm.injective h1
+    have h3 := Fin.ext_iff.mp (Fin.cast_injective _ h2)
+    exact Fin.ext h3
+  · intro i
+    have hT := hTS (e' i).2
+    rwa [Set.Finite.mem_toFinset] at hT
+
+private lemma l1_norm_sum_sub_le {k : ℕ} {V : Type*} [NormedAddCommGroup V] [NormedSpace ℝ V]
+    (u p : Fin k → V) (c : Fin k → ℝ) (hc_sum : ∑ i, c i • p i = 0) (hc1 : ∑ i, |c i| = 1)
+    (δ : ℝ) (hδ : ∀ i, ‖u i - p i‖ ≤ δ) :
+    ‖∑ i, c i • u i‖ ≤ δ := by
+  have h_eq : ∑ i, c i • u i = ∑ i, c i • (u i - p i) := by
+    rw [← sub_zero (∑ i, c i • u i), ← hc_sum, ← Finset.sum_sub_distrib]
+    congr 1
+    ext i
+    rw [smul_sub]
+  rw [h_eq]
+  calc
+    ‖∑ i, c i • (u i - p i)‖ ≤ ∑ i, ‖c i • (u i - p i)‖ := norm_sum_le _ _
+    _ = ∑ i, |c i| * ‖u i - p i‖ := by
+      congr 1; ext i; rw [norm_smul, Real.norm_eq_abs]
+    _ ≤ ∑ i, |c i| * δ := by
+      apply Finset.sum_le_sum
+      intro i _
+      exact mul_le_mul_of_nonneg_left (hδ i) (abs_nonneg _)
+    _ = δ := by
+      rw [← Finset.sum_mul, hc1, one_mul]
+
+private noncomputable def marginVal {r : ℕ} {ι : Type*} [Fintype ι]
+    (hcard : r ≤ Fintype.card ι)
+    (u : ι → EuclideanSpace ℝ (Fin r))
+    (hgen : InGeneralPosition u)
+    (p : (k : Fin (r + 1)) × (Fin k → ι)) : ℝ :=
+  open Classical in
+  if he : Function.Injective p.2 then
+    (exists_l1_min_of_linearIndependent
+      (linearIndependent_selection_of_inGeneralPosition hgen hcard p.1.is_le p.2 he)).choose
+  else 1
+
+private lemma marginVal_pos {r : ℕ} {ι : Type*} [Fintype ι]
+    (hcard : r ≤ Fintype.card ι)
+    (u : ι → EuclideanSpace ℝ (Fin r))
+    (hgen : InGeneralPosition u)
+    (p : (k : Fin (r + 1)) × (Fin k → ι)) :
+    0 < marginVal hcard u hgen p := by
+  unfold marginVal
+  split_ifs with he
+  · exact (exists_l1_min_of_linearIndependent
+      (linearIndependent_selection_of_inGeneralPosition hgen hcard p.1.is_le p.2 he)).choose_spec.1
+  · exact zero_lt_one
+
+private lemma marginVal_le {r : ℕ} {ι : Type*} [Fintype ι]
+    (hcard : r ≤ Fintype.card ι)
+    (u : ι → EuclideanSpace ℝ (Fin r))
+    (hgen : InGeneralPosition u)
+    (k : ℕ) (hk : k ≤ r) (e : Fin k → ι) (he : Function.Injective e)
+    (c : Fin k → ℝ) (hc : ∑ i, |c i| = 1) :
+    marginVal hcard u hgen ⟨⟨k, Nat.lt_succ_of_le hk⟩, e⟩ ≤ ‖∑ i, c i • u (e i)‖ := by
+  unfold marginVal
+  rw [dif_pos he]
+  exact (exists_l1_min_of_linearIndependent
+    (linearIndependent_selection_of_inGeneralPosition hgen hcard hk e he)).choose_spec.2 c hc
+
+private lemma exists_margin_delta {r : ℕ} {ι : Type*} [Fintype ι]
+    (hcard : r ≤ Fintype.card ι)
+    {u : ι → EuclideanSpace ℝ (Fin r)}
+    (hgen : InGeneralPosition u) :
+    ∃ δ : ℝ, 0 < δ ∧ δ ≤ 1 ∧
+      ∀ (k : ℕ) (hk : k ≤ r) (e : Fin k → ι) (he : Function.Injective e)
+        (c : Fin k → ℝ) (hc : ∑ i, |c i| = 1),
+        δ < ‖∑ i, c i • u (e i)‖ := by
+  classical
+  haveI : Nonempty ((k : Fin (r + 1)) × (Fin k → ι)) := ⟨⟨0, fun i => i.elim0⟩⟩
+  set S : Finset ((k : Fin (r + 1)) × (Fin k → ι)) := Finset.univ
+  have hS_nonempty : S.Nonempty := Finset.univ_nonempty
+  set f := marginVal hcard u hgen
+  set η_min := (S.image f).min' (by simpa using hS_nonempty)
+  have hη_pos : 0 < η_min := by
+    rw [Finset.lt_min'_iff]
+    intro y hy
+    rw [Finset.mem_image] at hy
+    obtain ⟨p, _, rfl⟩ := hy
+    exact marginVal_pos hcard u hgen p
+  set δ := min (1/2) (η_min / 2)
+  have hδ_pos : 0 < δ := lt_min (by norm_num) (half_pos hη_pos)
+  have hδ_le1 : δ ≤ 1 := by
+    calc δ ≤ 1/2 := min_le_left _ _
+    _ ≤ 1 := by norm_num
+  refine ⟨δ, hδ_pos, hδ_le1, ?_⟩
+  intro k hk e he c hc
+  have hp : ⟨⟨k, Nat.lt_succ_of_le hk⟩, e⟩ ∈ S := Finset.mem_univ _
+  have h_min_le : η_min ≤ f ⟨⟨k, Nat.lt_succ_of_le hk⟩, e⟩ := by
+    apply Finset.min'_le
+    rw [Finset.mem_image]
+    exact ⟨_, hp, rfl⟩
+  have h_le := marginVal_le hcard u hgen k hk e he c hc
+  calc δ ≤ η_min / 2 := min_le_right _ _
+  _ < η_min := half_lt_self hη_pos
+  _ ≤ f ⟨⟨k, Nat.lt_succ_of_le hk⟩, e⟩ := h_min_le
+  _ ≤ ‖∑ i, c i • u (e i)‖ := h_le
 
 /-- **Quantitative general position.**  There is a margin `δ > 0` such that
 every proper subspace `W` has at most `finrank W` of the unit vectors
@@ -939,7 +1340,24 @@ lemma card_near_subspace_le_finrank {r : ℕ} {ι : Type*} [Fintype ι]
       ∀ W : Submodule ℝ (EuclideanSpace ℝ (Fin r)), Module.finrank ℝ W < r →
         ({x : ι | ∃ p ∈ W, ‖u x - p‖ < δ} : Set ι).ncard ≤
           Module.finrank ℝ W := by
-  sorry
+  obtain ⟨δ, hδ_pos, hδ_le1, hδ_margin⟩ := exists_margin_delta hcard hgen
+  refine ⟨δ, hδ_pos, hδ_le1, ?_⟩
+  intro W hW
+  by_contra hc
+  have hc_gt : Module.finrank ℝ W < ({x : ι | ∃ p ∈ W, ‖u x - p‖ < δ} : Set ι).ncard := not_le.mp hc
+  set w := Module.finrank ℝ W
+  have hw_le : w + 1 ≤ ({x : ι | ∃ p ∈ W, ‖u x - p‖ < δ} : Set ι).ncard := hc_gt
+  obtain ⟨e, he_inj, he_mem⟩ := exists_injective_of_le_ncard hw_le
+  have hw1_le_r : w + 1 ≤ r := hW
+  have hp_ex : ∀ i : Fin (w + 1), ∃ p ∈ W, ‖u (e i) - p‖ < δ := fun i => he_mem i
+  choose p hp_in hp_dist using hp_ex
+  obtain ⟨c, hc1, hc_sum⟩ := exists_l1_relation_of_finrank_lt W (le_refl w) p hp_in
+  have h_bound : ‖∑ i, c i • u (e i)‖ ≤ δ := by
+    apply l1_norm_sum_sub_le (u ∘ e) p c hc_sum hc1 δ
+    intro i
+    exact le_of_lt (hp_dist i)
+  have h_margin := hδ_margin (w + 1) hw1_le_r e he_inj c hc1
+  linarith
 
 /-- Sorted spectral data for a `ForsterPosDef` matrix: an orthonormal
 spanning eigen-family with nondecreasing positive eigenvalues whose product
@@ -962,6 +1380,17 @@ lemma exists_sorted_eigen_data {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
         forsterQuad P z = ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2 := by
   sorry
 
+private lemma norm_sq_sum_eq_sum_sq {r : ℕ} (e : Fin r → EuclideanSpace ℝ (Fin r)) (he : Orthonormal ℝ e)
+    (f : Fin r → ℝ) (s : Finset (Fin r)) :
+    ‖∑ i ∈ s, f i • e i‖^2 = ∑ i ∈ s, (f i)^2 := by
+  have h_inner := he.inner_sum f f s
+  have h_norm : ‖∑ i ∈ s, f i • e i‖^2 = ⟪∑ i ∈ s, f i • e i, ∑ i ∈ s, f i • e i⟫_ℝ := by
+    rw [real_inner_self_eq_norm_mul_norm, sq]
+  rw [h_norm, h_inner]
+  congr 1
+  ext i
+  simp [sq]
+
 /-- If `z` is `δ`-far from the span of the low eigenvectors `{i | i < k}`,
 the quadratic form at `z` is at least `lam k * δ²`.  Recipe: the orthogonal
 projection `p := ∑ i ∈ Finset.univ.filter (· < k), ⟪e i, z⟫_ℝ • e i` lies in
@@ -978,7 +1407,64 @@ lemma forsterQuad_ge_of_far {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
     (k : Fin r) {z : EuclideanSpace ℝ (Fin r)} {δ : ℝ} (hδ : 0 ≤ δ)
     (hfar : ∀ p ∈ Submodule.span ℝ (e '' {i | i < k}), δ ≤ ‖z - p‖) :
     lam k * δ ^ 2 ≤ forsterQuad P z := by
-  sorry
+  let B := OrthonormalBasis.mk he (le_of_eq hspan.symm)
+  let p := ∑ i ∈ Finset.univ.filter (fun i => i < k), ⟪e i, z⟫_ℝ • e i
+  have hp : p ∈ Submodule.span ℝ (e '' {i | i < k}) := by
+    dsimp [p]
+    apply Submodule.sum_mem
+    intro i hi
+    rw [Finset.mem_filter] at hi
+    apply Submodule.smul_mem
+    apply Submodule.subset_span
+    exact Set.mem_image_of_mem e hi.2
+  have h_zp : z - p = ∑ i ∈ Finset.univ.filter (fun i => ¬ i < k), ⟪e i, z⟫_ℝ • e i := by
+    dsimp [p]
+    have h_sum : z = ∑ i, ⟪e i, z⟫_ℝ • e i := by
+      have h_repr := B.sum_repr z
+      dsimp [B] at h_repr
+      simp_rw [OrthonormalBasis.repr_apply_apply, OrthonormalBasis.coe_mk] at h_repr
+      exact h_repr.symm
+    nth_rw 1 [h_sum]
+    have h_sub : Finset.filter (fun i => i < k) Finset.univ ⊆ Finset.univ := Finset.filter_subset _ _
+    rw [← Finset.sum_sdiff (f := fun i => ⟪e i, z⟫_ℝ • e i) h_sub]
+    have h_sdiff : Finset.univ \ Finset.univ.filter (fun i => i < k) = Finset.univ.filter (fun i => ¬ i < k) := by
+      ext i
+      simp
+    rw [h_sdiff]
+    exact add_sub_cancel_right _ _
+  have h_norm_zp : ‖z - p‖^2 = ∑ i ∈ Finset.univ.filter (fun i => ¬ i < k), ⟪e i, z⟫_ℝ ^ 2 := by
+    rw [h_zp]
+    exact norm_sq_sum_eq_sum_sq e he (fun i => ⟪e i, z⟫_ℝ) (Finset.univ.filter (fun i => ¬ i < k))
+  have h_δ_le : δ^2 ≤ ‖z - p‖^2 := by
+    have h_le := hfar p hp
+    nlinarith
+  have h_quad_split : forsterQuad P z = (∑ i ∈ Finset.univ.filter (fun i => i < k), lam i * ⟪e i, z⟫_ℝ ^ 2) +
+      (∑ i ∈ Finset.univ.filter (fun i => ¬ i < k), lam i * ⟪e i, z⟫_ℝ ^ 2) := by
+    rw [hquad]
+    have h_sub : Finset.filter (fun i => i < k) Finset.univ ⊆ Finset.univ := Finset.filter_subset _ _
+    have h_split := (Finset.sum_sdiff (f := fun i => lam i * ⟪e i, z⟫_ℝ ^ 2) h_sub).symm
+    have h_sdiff : Finset.univ \ Finset.univ.filter (fun i => i < k) = Finset.univ.filter (fun i => ¬ i < k) := by
+      ext i
+      simp
+    rw [h_sdiff] at h_split
+    rw [h_split, add_comm]
+  have h_low_nonneg : 0 ≤ ∑ i ∈ Finset.univ.filter (fun i => i < k), lam i * ⟪e i, z⟫_ℝ ^ 2 := by
+    apply Finset.sum_nonneg
+    intro i _
+    exact mul_nonneg (le_of_lt (hpos i)) (sq_nonneg _)
+  have h_high_bound : lam k * (∑ i ∈ Finset.univ.filter (fun i => ¬ i < k), ⟪e i, z⟫_ℝ ^ 2) ≤
+      ∑ i ∈ Finset.univ.filter (fun i => ¬ i < k), lam i * ⟪e i, z⟫_ℝ ^ 2 := by
+    rw [Finset.mul_sum]
+    apply Finset.sum_le_sum
+    intro i hi
+    rw [Finset.mem_filter] at hi
+    have hik : k ≤ i := not_lt.mp hi.2
+    have h_lam_le : lam k ≤ lam i := hmono hik
+    exact mul_le_mul_of_nonneg_right h_lam_le (sq_nonneg _)
+  have h_lam_delta : lam k * δ^2 ≤ lam k * (∑ i ∈ Finset.univ.filter (fun i => ¬ i < k), ⟪e i, z⟫_ℝ ^ 2) := by
+    rw [← h_norm_zp]
+    exact mul_le_mul_of_nonneg_left h_δ_le (le_of_lt (hpos k))
+  linarith
 
 /-- **Abel counting bound.**  If at most `k` items sit strictly below each
 level `k`, the level-sum of a monotone `f` is at least the extremal
@@ -997,6 +1483,111 @@ lemma sum_level_lower_bound {m : ℕ} {f : Fin (m + 1) → ℝ} (hf : Monotone f
     ((Fintype.card ι : ℝ) - (m + 1)) * f (Fin.last m) + ∑ k, f k ≤
       ∑ x, f (level x) := by
   sorry
+
+open scoped Classical
+
+private lemma sum_inner_sq_eq_one {r : ℕ} {e : Fin r → EuclideanSpace ℝ (Fin r)}
+    (he : Orthonormal ℝ e) (hspan : Submodule.span ℝ (Set.range e) = ⊤)
+    (z : EuclideanSpace ℝ (Fin r)) (hz : ‖z‖ = 1) :
+    ∑ i, ⟪e i, z⟫_ℝ ^ 2 = 1 := by
+  let b : OrthonormalBasis (Fin r) ℝ (EuclideanSpace ℝ (Fin r)) :=
+    OrthonormalBasis.mk he (ge_of_eq hspan)
+  have h_repr (i : Fin r) : (b.repr z).ofLp i = ⟪e i, z⟫_ℝ := by
+    have h1 := b.repr_apply_apply z i
+    have h2 : b i = e i := by
+      change ⇑(OrthonormalBasis.mk he (ge_of_eq hspan)) i = e i
+      rw [OrthonormalBasis.coe_mk]
+    rw [h2] at h1
+    exact h1
+  have h_norm : ‖b.repr z‖ = 1 := by
+    rw [LinearIsometryEquiv.norm_map, hz]
+  have h_sq : ‖b.repr z‖ ^ 2 = 1 := by rw [h_norm, one_pow]
+  have h_norm_sq := EuclideanSpace.real_norm_sq_eq (b.repr z)
+  rw [h_sq] at h_norm_sq
+  simp_rw [h_repr] at h_norm_sq
+  exact h_norm_sq.symm
+
+private lemma forsterQuad_le_top_eigenvalue {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    {e : Fin r → EuclideanSpace ℝ (Fin r)} {lam : Fin r → ℝ}
+    (he : Orthonormal ℝ e) (hspan : Submodule.span ℝ (Set.range e) = ⊤)
+    (hmono : Monotone lam)
+    (hquad : ∀ z, forsterQuad P z = ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2)
+    (m : ℕ) (hr : r = m + 1)
+    (z : EuclideanSpace ℝ (Fin r)) (hz : ‖z‖ = 1) :
+    forsterQuad P z ≤ lam (Fin.cast hr.symm (Fin.last m)) := by
+  rw [hquad z]
+  have h_le (i : Fin r) : lam i ≤ lam (Fin.cast hr.symm (Fin.last m)) := by
+    apply hmono
+    rw [← Fin.val_fin_le]
+    subst hr
+    exact Fin.le_last i
+  have h_sum_le : ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2 ≤ ∑ i, lam (Fin.cast hr.symm (Fin.last m)) * ⟪e i, z⟫_ℝ ^ 2 := by
+    apply Finset.sum_le_sum
+    intro i _
+    exact mul_le_mul_of_nonneg_right (h_le i) (sq_nonneg _)
+  rw [← Finset.mul_sum, sum_inner_sq_eq_one he hspan z hz, mul_one] at h_sum_le
+  exact h_sum_le
+
+private lemma sum_log_lam_eq_zero {r : ℕ} {lam : Fin r → ℝ} (hpos : ∀ i, 0 < lam i)
+    (hprod : ∏ i, lam i = 1) :
+    ∑ i, Real.log (lam i) = 0 := by
+  rw [← Real.log_prod (fun i _ => ne_of_gt (hpos i)), hprod, Real.log_one]
+
+private lemma mem_far_zero {m : ℕ} {e : Fin (m + 1) → EuclideanSpace ℝ (Fin (m + 1))}
+    {u : EuclideanSpace ℝ (Fin (m + 1))} (hu : ‖u‖ = 1) {δ : ℝ} (hδ : δ ≤ 1) :
+    (0 : Fin (m + 1)) ∈ { k : Fin (m + 1) | ∀ p ∈ Submodule.span ℝ (e '' {i | i < k}), δ ≤ ‖u - p‖ } := by
+  simp only [Set.mem_setOf_eq]
+  intro p hp
+  have h_empty : {i : Fin (m + 1) | i < (0 : Fin (m + 1))} = ∅ := by
+    ext i
+    simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false, not_lt]
+    exact Fin.zero_le i
+  rw [h_empty, Set.image_empty, Submodule.span_empty] at hp
+  have hp0 : p = 0 := hp
+  rw [hp0, sub_zero, hu]
+  exact hδ
+
+private lemma level_lt_imp_near {m : ℕ} {ι : Type*}
+    {e : Fin (m + 1) → EuclideanSpace ℝ (Fin (m + 1))}
+    {u : ι → EuclideanSpace ℝ (Fin (m + 1))}
+    {δ : ℝ} (x : ι) (k level_x : Fin (m + 1))
+    (S_x : Set (Fin (m + 1))) (hS : S_x = { k | ∀ p ∈ Submodule.span ℝ (e '' {i | i < k}), δ ≤ ‖u x - p‖ })
+    (hnonempty : (Finset.univ.filter (· ∈ S_x)).Nonempty)
+    (hlevel : level_x = Finset.max' (Finset.univ.filter (· ∈ S_x)) hnonempty)
+    (hlt : level_x < k) :
+    ∃ p ∈ Submodule.span ℝ (e '' {i | i < k}), ‖u x - p‖ < δ := by
+  have hk_not_mem : k ∉ Finset.univ.filter (· ∈ S_x) := by
+    intro hk
+    have h_le := Finset.le_max' (Finset.univ.filter (· ∈ S_x)) k hk
+    rw [← hlevel] at h_le
+    exact not_le.mpr hlt h_le
+  rw [Finset.mem_filter] at hk_not_mem
+  have hk_S : k ∉ S_x := by
+    intro hkS
+    exact hk_not_mem ⟨Finset.mem_univ _, hkS⟩
+  rw [hS, Set.mem_setOf_eq] at hk_S
+  push Not at hk_S
+  exact hk_S
+
+private lemma finrank_span_low_lt {m : ℕ}
+    {e : Fin (m + 1) → EuclideanSpace ℝ (Fin (m + 1))}
+    (k : Fin (m + 1)) :
+    Module.finrank ℝ (Submodule.span ℝ (e '' {i | i < k})) < m + 1 := by
+  have h_span_eq : Submodule.span ℝ (e '' {i | i < k}) =
+      Submodule.span ℝ (Finset.image e (Finset.Iio k) : Set (EuclideanSpace ℝ (Fin (m + 1)))) := by
+    congr 1; ext x; simp
+  rw [h_span_eq]
+  have h_le := finrank_span_le_card (R := ℝ) (s := (Finset.image e (Finset.Iio k) : Set (EuclideanSpace ℝ (Fin (m + 1)))))
+  have h_card_le : (Finset.image e (Finset.Iio k)).card ≤ k.val := by
+    calc
+      (Finset.image e (Finset.Iio k)).card ≤ (Finset.Iio k).card := Finset.card_image_le
+      _ = k.val := by simp
+  have h_le_k : Module.finrank ℝ (Submodule.span ℝ (Finset.image e (Finset.Iio k) : Set (EuclideanSpace ℝ (Fin (m + 1))))) ≤ k.val := by
+    have h_toFinset : (Finset.image e (Finset.Iio k) : Set (EuclideanSpace ℝ (Fin (m + 1)))).toFinset = Finset.image e (Finset.Iio k) := by
+      ext; simp
+    rw [h_toFinset] at h_le
+    exact le_trans h_le h_card_le
+  exact lt_of_le_of_lt h_le_k k.is_lt
 
 /-- **Coercivity of the Forster potential** (PROOFS.md P5.3, quantitative
 form).  Recipe: take `δ` from `card_near_subspace_le_finrank` and, for a
@@ -1026,7 +1617,159 @@ lemma forsterPotential_coercive {r : ℕ} {ι : Type*} [Fintype ι]
           forsterQuad P z ≤ Real.exp
             ((forsterPotential u P - 2 * Fintype.card ι * Real.log δ) /
               (Fintype.card ι - r)) := by
-  sorry
+  obtain ⟨m, hr_eq⟩ : ∃ m, r = m + 1 := Nat.exists_eq_succ_of_ne_zero (ne_of_gt hr)
+  subst hr_eq
+  obtain ⟨δ, hδ0, hδ1, hnear⟩ := card_near_subspace_le_finrank (le_of_lt hcard) hu hgen
+  use δ, hδ0
+  intro P hP hdet z hz
+  obtain ⟨e, lam, he, hspan, hmono, hpos, hprod, hquad⟩ := exists_sorted_eigen_data P hP
+  have hprod_one : ∏ i, lam i = 1 := hprod.trans hdet
+  let S (x : ι) : Set (Fin (m + 1)) :=
+    { k | ∀ p ∈ Submodule.span ℝ (e '' {i | i < k}), δ ≤ ‖u x - p‖ }
+  have hnonempty (x : ι) : (Finset.univ.filter (· ∈ S x)).Nonempty :=
+    ⟨0, Finset.mem_filter.mpr ⟨Finset.mem_univ _, mem_far_zero (hu x) hδ1⟩⟩
+  let level (x : ι) : Fin (m + 1) :=
+    Finset.max' (Finset.univ.filter (· ∈ S x)) (hnonempty x)
+  have hlevel_mem (x : ι) : level x ∈ S x := by
+    have h_mem := Finset.max'_mem (Finset.univ.filter (· ∈ S x)) (hnonempty x)
+    exact (Finset.mem_filter.mp h_mem).2
+  have hfar (x : ι) : ∀ p ∈ Submodule.span ℝ (e '' {i | i < level x}), δ ≤ ‖u x - p‖ :=
+    hlevel_mem x
+  have hquad_ge (x : ι) : lam (level x) * δ ^ 2 ≤ forsterQuad P (u x) :=
+    forsterQuad_ge_of_far he hspan hmono hpos hquad (level x) (le_of_lt hδ0) (hfar x)
+  have hcount (k : Fin (m + 1)) : ({x : ι | level x < k} : Set ι).ncard ≤ (k : ℕ) := by
+    have hsub : {x : ι | level x < k} ⊆ {x : ι | ∃ p ∈ Submodule.span ℝ (e '' {i | i < k}), ‖u x - p‖ < δ} := by
+      intro x hx
+      exact level_lt_imp_near x k (level x) (S x) rfl (hnonempty x) rfl hx
+    have h_ncard_le := Set.ncard_le_ncard hsub (Set.toFinite _)
+    have h_finrank_lt := finrank_span_low_lt (e := e) k
+    have h_near_bound := hnear (Submodule.span ℝ (e '' {i | i < k})) h_finrank_lt
+    have h_finrank_le : Module.finrank ℝ (Submodule.span ℝ (e '' {i | i < k})) ≤ (k : ℕ) := by
+      have h_span_eq : Submodule.span ℝ (e '' {i | i < k}) =
+          Submodule.span ℝ (Finset.image e (Finset.Iio k) : Set (EuclideanSpace ℝ (Fin (m + 1)))) := by
+        congr 1; ext y; simp
+      rw [h_span_eq]
+      have h_le := finrank_span_le_card (R := ℝ) (s := (Finset.image e (Finset.Iio k) : Set (EuclideanSpace ℝ (Fin (m + 1)))))
+      have h_card_le : (Finset.image e (Finset.Iio k)).card ≤ k.val := by
+        calc
+          (Finset.image e (Finset.Iio k)).card ≤ (Finset.Iio k).card := Finset.card_image_le
+          _ = k.val := by simp
+      have h_toFinset : (Finset.image e (Finset.Iio k) : Set (EuclideanSpace ℝ (Fin (m + 1)))).toFinset = Finset.image e (Finset.Iio k) := by
+        ext; simp
+      rw [h_toFinset] at h_le
+      exact le_trans h_le h_card_le
+    exact le_trans (le_trans h_ncard_le h_near_bound) h_finrank_le
+  have hf : Monotone (Real.log ∘ lam) := fun a b hab => Real.log_le_log (hpos a) (hmono hab)
+  have habel := sum_level_lower_bound hf level hcount
+  have hsum_zero : ∑ i, (Real.log ∘ lam) i = 0 := sum_log_lam_eq_zero hpos hprod_one
+  rw [hsum_zero, add_zero] at habel
+  have hlog_quad (x : ι) : Real.log (lam (level x)) + 2 * Real.log δ ≤ Real.log (forsterQuad P (u x)) := by
+    have h1 : Real.log (lam (level x) * δ ^ 2) ≤ Real.log (forsterQuad P (u x)) :=
+      Real.log_le_log (mul_pos (hpos (level x)) (sq_pos_of_ne_zero (ne_of_gt hδ0))) (hquad_ge x)
+    have h2 : Real.log (lam (level x) * δ ^ 2) = Real.log (lam (level x)) + Real.log (δ ^ 2) :=
+      Real.log_mul (ne_of_gt (hpos (level x))) (ne_of_gt (sq_pos_of_ne_zero (ne_of_gt hδ0)))
+    have h3 : Real.log (δ ^ 2) = 2 * Real.log δ := by
+      rw [sq, Real.log_mul (ne_of_gt hδ0) (ne_of_gt hδ0)]
+      ring
+    rw [h2, h3] at h1
+    exact h1
+  have hpot_ge : ((Fintype.card ι : ℝ) - (m + 1)) * Real.log (lam (Fin.last m)) + 2 * Fintype.card ι * Real.log δ ≤ forsterPotential u P := by
+    rw [forsterPotential_eq_sum_log]
+    calc
+      ((Fintype.card ι : ℝ) - (m + 1)) * Real.log (lam (Fin.last m)) + 2 * Fintype.card ι * Real.log δ
+        = ((Fintype.card ι : ℝ) - (m + 1)) * Real.log (lam (Fin.last m)) + ∑ x : ι, (2 * Real.log δ) := by
+          have h_sum_const : ∑ x : ι, (2 * Real.log δ) = (Fintype.card ι : ℝ) * (2 * Real.log δ) := by simp
+          rw [h_sum_const]
+          ring
+      _ ≤ ∑ x, Real.log (lam (level x)) + ∑ x : ι, (2 * Real.log δ) := by
+          have h1 : ((Fintype.card ι : ℝ) - (m + 1)) * Real.log (lam (Fin.last m)) ≤ ∑ x, Real.log (lam (level x)) := habel
+          linarith [h1]
+      _ = ∑ x, (Real.log (lam (level x)) + 2 * Real.log δ) := by rw [Finset.sum_add_distrib]
+      _ ≤ ∑ x, Real.log (forsterQuad P (u x)) := Finset.sum_le_sum (fun x _ => hlog_quad x)
+  have hcard_real : (m + 1 : ℝ) < Fintype.card ι := by exact_mod_cast hcard
+  have hN_r_pos : 0 < (Fintype.card ι : ℝ) - (m + 1) := sub_pos.mpr hcard_real
+  have hlog_top_le : Real.log (lam (Fin.last m)) ≤ (forsterPotential u P - 2 * Fintype.card ι * Real.log δ) / ((Fintype.card ι : ℝ) - (m + 1)) := by
+    rw [le_div_iff₀ hN_r_pos]
+    linarith [hpot_ge]
+  have hquad_z_le := forsterQuad_le_top_eigenvalue he hspan hmono hquad m rfl z hz
+  change forsterQuad P z ≤ lam (Fin.last m) at hquad_z_le
+  have h_top_pos : 0 < lam (Fin.last m) := hpos (Fin.last m)
+  have h_exp_log : Real.exp (Real.log (lam (Fin.last m))) = lam (Fin.last m) := Real.exp_log h_top_pos
+  have h_exp_le : Real.exp (Real.log (lam (Fin.last m))) ≤ Real.exp ((forsterPotential u P - 2 * Fintype.card ι * Real.log δ) / ((Fintype.card ι : ℝ) - (m + 1))) :=
+    Real.exp_le_exp.mpr hlog_top_le
+  rw [h_exp_log] at h_exp_le
+  have h_cast : ((Fintype.card ι : ℝ) - (m + 1 : ℕ)) = ((Fintype.card ι : ℝ) - (m + 1 : ℝ)) := by norm_cast
+  rw [h_cast]
+  exact le_trans hquad_z_le h_exp_le
+
+private lemma dotProduct_mulVec_comm {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    (hsym : ∀ i j, P i j = P j i) (v w : Fin r → ℝ) :
+    v ⬝ᵥ (P *ᵥ w) = w ⬝ᵥ (P *ᵥ v) := by
+  dsimp [dotProduct, mulVec]
+  simp_rw [Finset.mul_sum]
+  rw [Finset.sum_comm]
+  apply Finset.sum_congr rfl
+  intro i _
+  apply Finset.sum_congr rfl
+  intro j _
+  rw [hsym i j]
+  ring
+
+private lemma quad_add_smul_expand {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    (hsym : ∀ i j, P i j = P j i) (z w : Fin r → ℝ) (t : ℝ) (hz : z ⬝ᵥ (P *ᵥ z) = 0) :
+    (z + t • w) ⬝ᵥ (P *ᵥ (z + t • w)) = 2 * t * (w ⬝ᵥ (P *ᵥ z)) + t ^ 2 * (w ⬝ᵥ (P *ᵥ w)) := by
+  rw [mulVec_add, mulVec_smul, add_dotProduct, dotProduct_add, dotProduct_add]
+  rw [dotProduct_smul, smul_dotProduct, smul_dotProduct, dotProduct_smul]
+  rw [dotProduct_mulVec_comm hsym z w]
+  rw [hz]
+  ring
+
+private lemma linear_quad_nonneg_imp_zero (A B : ℝ)
+    (h : ∀ t : ℝ, 0 ≤ 2 * t * A + t ^ 2 * B) : A = 0 := by
+  by_contra hA
+  have hA_abs : 0 < |A| := abs_pos.mpr hA
+  set ε := |A| / (|B| + 1)
+  have hdenom : 0 < |B| + 1 := by positivity
+  have hε_pos : 0 < ε := div_pos hA_abs hdenom
+  let sgn : ℝ := if 0 < A then -1 else 1
+  have hsgn_sq : sgn ^ 2 = 1 := by
+    dsimp [sgn]
+    split_ifs <;> ring
+  have hsgn_A : sgn * A = -|A| := by
+    dsimp [sgn]
+    split_ifs with hpos
+    · rw [neg_one_mul, abs_of_pos hpos]
+    · have hneg : A < 0 := lt_of_le_of_ne (not_lt.mp hpos) hA
+      rw [one_mul, abs_of_neg hneg, neg_neg]
+  have h_spec := h (ε * sgn)
+  have h_exp : 2 * (ε * sgn) * A + (ε * sgn) ^ 2 * B = ε * (2 * (sgn * A) + ε * B) := by
+    calc 2 * (ε * sgn) * A + (ε * sgn) ^ 2 * B
+      _ = 2 * ε * (sgn * A) + ε ^ 2 * (sgn ^ 2) * B := by ring
+      _ = 2 * ε * (sgn * A) + ε ^ 2 * 1 * B := by rw [hsgn_sq]
+      _ = ε * (2 * (sgn * A) + ε * B) := by ring
+  rw [h_exp] at h_spec
+  rw [hsgn_A] at h_spec
+  have h_eps_B : ε * B ≤ |A| := by
+    calc ε * B ≤ ε * |B| := mul_le_mul_of_nonneg_left (le_abs_self B) hε_pos.le
+    _ = (|A| * |B|) / (|B| + 1) := by dsimp [ε]; ring
+    _ ≤ (|A| * (|B| + 1)) / (|B| + 1) := by
+      apply div_le_div_of_nonneg_right _ hdenom.le
+      nlinarith [abs_nonneg A]
+    _ = |A| := mul_div_cancel_right₀ |A| hdenom.ne'
+  have h_inner : 2 * -|A| + ε * B < 0 := by linarith
+  have h_prod : ε * (2 * -|A| + ε * B) < 0 := mul_neg_of_pos_of_neg hε_pos h_inner
+  linarith
+
+private lemma mulVec_eq_zero_of_forall_dotProduct_eq_zero {r : ℕ} {v : Fin r → ℝ}
+    (h : ∀ w : Fin r → ℝ, w ⬝ᵥ v = 0) : v = 0 := by
+  have hvv := h v
+  dsimp [dotProduct] at hvv
+  simp_rw [← sq] at hvv
+  ext i
+  have h_zero : (v i) ^ 2 = 0 := by
+    have h_sum := (Finset.sum_eq_zero_iff_of_nonneg (fun j _ => sq_nonneg (v j))).mp hvv
+    exact h_sum i (Finset.mem_univ i)
+  exact sq_eq_zero_iff.mp h_zero
 
 /-- Symmetric positive-semidefinite matrices with determinant one are
 positive definite.  Recipe: if `z ⬝ᵥ (P *ᵥ z) = 0` for some `z ≠ 0`,
@@ -1038,7 +1781,26 @@ lemma forsterPosDef_of_psd_det_one {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
     (hsym : ∀ i j, P i j = P j i)
     (hpsd : ∀ z : Fin r → ℝ, 0 ≤ z ⬝ᵥ (P *ᵥ z))
     (hdet : P.det = 1) : ForsterPosDef P := by
-  sorry
+  refine ⟨hsym, ?_⟩
+  intro z hz
+  have h_le := hpsd z
+  rcases eq_or_lt_of_le h_le with hz0 | hpos
+  · exfalso
+    have hz0' : z ⬝ᵥ (P *ᵥ z) = 0 := hz0.symm
+    have hPz_dot : ∀ w : Fin r → ℝ, w ⬝ᵥ (P *ᵥ z) = 0 := by
+      intro w
+      have h_quad : ∀ t : ℝ, 0 ≤ 2 * t * (w ⬝ᵥ (P *ᵥ z)) + t ^ 2 * (w ⬝ᵥ (P *ᵥ w)) := by
+        intro t
+        rw [← quad_add_smul_expand hsym z w t hz0']
+        exact hpsd (z + t • w)
+      exact linear_quad_nonneg_imp_zero (w ⬝ᵥ (P *ᵥ z)) (w ⬝ᵥ (P *ᵥ w)) h_quad
+    have hPz : P *ᵥ z = 0 := mulVec_eq_zero_of_forall_dotProduct_eq_zero hPz_dot
+    have hdet0 : P.det = 0 := by
+      rw [← Matrix.exists_mulVec_eq_zero_iff]
+      exact ⟨z, hz, hPz⟩
+    rw [hdet] at hdet0
+    exact one_ne_zero hdet0
+  · exact hpos
 
 /-- A `ForsterPosDef` matrix has nonzero determinant: a vanishing
 determinant gives a nonzero kernel vector
@@ -1046,7 +1808,133 @@ determinant gives a nonzero kernel vector
 positive definiteness. -/
 lemma forsterPosDef_det_ne_zero {r : ℕ} {B : Matrix (Fin r) (Fin r) ℝ}
     (hB : ForsterPosDef B) : B.det ≠ 0 := by
-  sorry
+  intro hdet
+  have h_ex := Matrix.exists_mulVec_eq_zero_iff.mpr hdet
+  obtain ⟨z, hz_ne, hz_zero⟩ := h_ex
+  have h_pos := hB.2 z hz_ne
+  rw [hz_zero, dotProduct_zero] at h_pos
+  exact lt_irrefl 0 h_pos
+
+private theorem norm_sq_eq_local {ι : Type*} [Fintype ι] [DecidableEq ι] (v : ι → ℝ) :
+    ‖(WithLp.equiv 2 _).symm v‖^2 = ∑ i, v i ^ 2 :=
+  EuclideanSpace.real_norm_sq_eq _
+
+private theorem forsterQuad_single {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ) (i : Fin r) :
+    forsterQuad P (EuclideanSpace.single i (1 : ℝ)) = P i i := by
+  dsimp [forsterQuad]
+  have h1 : (WithLp.equiv 2 _ (EuclideanSpace.single i (1 : ℝ))) = (Pi.single i (1 : ℝ) : Fin r → ℝ) := rfl
+  rw [h1]
+  rw [mulVec_single]
+  simp only [MulOpposite.op_one, one_smul]
+  rw [single_dotProduct]
+  dsimp [col]
+  ring
+
+private theorem norm_single_one {r : ℕ} (i : Fin r) :
+    ‖EuclideanSpace.single i (1 : ℝ)‖ = 1 := by
+  have h_sq : ‖EuclideanSpace.single i (1 : ℝ)‖^2 = 1 := by
+    have h_symm : EuclideanSpace.single i (1 : ℝ) = (WithLp.equiv 2 _).symm (Pi.single i (1 : ℝ) : Fin r → ℝ) := rfl
+    rw [h_symm, norm_sq_eq_local]
+    have h_sum : ∑ k, ((Pi.single i (1 : ℝ) : Fin r → ℝ) k) ^ 2 = 1 := by
+      rw [Finset.sum_eq_single i]
+      · simp
+      · intro b _ hb
+        simp [Pi.single_eq_of_ne hb]
+      · intro hb
+        exact False.elim (hb (Finset.mem_univ i))
+    exact h_sum
+  have h_pos : 0 ≤ ‖EuclideanSpace.single i (1 : ℝ)‖ := norm_nonneg _
+  nlinarith
+
+private theorem forsterQuad_pair_add {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
+    (hsym : ∀ i j, P i j = P j i) (i j : Fin r) :
+    forsterQuad P ((Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) + EuclideanSpace.single j (1 : ℝ))) =
+      (P i i + P j j + 2 * P i j) / 2 := by
+  dsimp [forsterQuad]
+  have h1 : (WithLp.equiv 2 (Fin r → ℝ) ((Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) + EuclideanSpace.single j (1 : ℝ))))
+      = (Real.sqrt 2)⁻¹ • ((Pi.single i (1 : ℝ) : Fin r → ℝ) + (Pi.single j (1 : ℝ) : Fin r → ℝ)) := rfl
+  rw [h1]
+  rw [mulVec_smul, dotProduct_smul, smul_dotProduct, mulVec_add, dotProduct_add, add_dotProduct, add_dotProduct]
+  rw [mulVec_single, mulVec_single]
+  simp only [MulOpposite.op_one, one_smul]
+  rw [single_dotProduct, single_dotProduct, single_dotProduct, single_dotProduct]
+  dsimp [col]
+  rw [one_mul, one_mul, one_mul, one_mul]
+  rw [hsym j i]
+  have hsqrt : (Real.sqrt 2)⁻¹ * (Real.sqrt 2)⁻¹ = (1 / 2 : ℝ) := by
+    have h2 : Real.sqrt 2 * Real.sqrt 2 = 2 := Real.mul_self_sqrt (by norm_num)
+    have h3 : (Real.sqrt 2)⁻¹ * (Real.sqrt 2)⁻¹ = (Real.sqrt 2 * Real.sqrt 2)⁻¹ := (mul_inv _ _).symm
+    rw [h3, h2]
+    norm_num
+  calc (Real.sqrt 2)⁻¹ * ((Real.sqrt 2)⁻¹ * (P i i + P i j + (P i j + P j j)))
+    _ = ((Real.sqrt 2)⁻¹ * (Real.sqrt 2)⁻¹) * (P i i + P j j + 2 * P i j) := by ring
+    _ = (1 / 2 : ℝ) * (P i i + P j j + 2 * P i j) := by rw [hsqrt]
+    _ = (P i i + P j j + 2 * P i j) / 2 := by ring
+
+private theorem forsterQuad_pair_sub {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
+    (hsym : ∀ i j, P i j = P j i) (i j : Fin r) :
+    forsterQuad P ((Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) - EuclideanSpace.single j (1 : ℝ))) =
+      (P i i + P j j - 2 * P i j) / 2 := by
+  dsimp [forsterQuad]
+  have h1 : (WithLp.equiv 2 (Fin r → ℝ) ((Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) - EuclideanSpace.single j (1 : ℝ))))
+      = (Real.sqrt 2)⁻¹ • ((Pi.single i (1 : ℝ) : Fin r → ℝ) - (Pi.single j (1 : ℝ) : Fin r → ℝ)) := rfl
+  rw [h1]
+  rw [mulVec_smul, dotProduct_smul, smul_dotProduct, mulVec_sub, dotProduct_sub, sub_dotProduct, sub_dotProduct]
+  rw [mulVec_single, mulVec_single]
+  simp only [MulOpposite.op_one, one_smul]
+  rw [single_dotProduct, single_dotProduct, single_dotProduct, single_dotProduct]
+  dsimp [col]
+  rw [one_mul, one_mul, one_mul, one_mul]
+  rw [hsym j i]
+  have hsqrt : (Real.sqrt 2)⁻¹ * (Real.sqrt 2)⁻¹ = (1 / 2 : ℝ) := by
+    have h2 : Real.sqrt 2 * Real.sqrt 2 = 2 := Real.mul_self_sqrt (by norm_num)
+    have h3 : (Real.sqrt 2)⁻¹ * (Real.sqrt 2)⁻¹ = (Real.sqrt 2 * Real.sqrt 2)⁻¹ := (mul_inv _ _).symm
+    rw [h3, h2]
+    norm_num
+  calc (Real.sqrt 2)⁻¹ * ((Real.sqrt 2)⁻¹ * (P i i - P i j - (P i j - P j j)))
+    _ = ((Real.sqrt 2)⁻¹ * (Real.sqrt 2)⁻¹) * (P i i + P j j - 2 * P i j) := by ring
+    _ = (1 / 2 : ℝ) * (P i i + P j j - 2 * P i j) := by rw [hsqrt]
+    _ = (P i i + P j j - 2 * P i j) / 2 := by ring
+
+private theorem norm_pair_add_one {r : ℕ} (i j : Fin r) (hij : i ≠ j) :
+    ‖(Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) + EuclideanSpace.single j (1 : ℝ))‖ = 1 := by
+  have h_sq : ‖(Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) + EuclideanSpace.single j (1 : ℝ))‖^2 = 1 := by
+    rw [norm_smul, mul_pow, Real.norm_eq_abs, abs_inv, abs_of_nonneg (Real.sqrt_nonneg _), inv_pow]
+    have h2 : Real.sqrt 2 ^ 2 = 2 := Real.sq_sqrt (by norm_num)
+    rw [h2]
+    have h_norm2 : ‖EuclideanSpace.single i (1 : ℝ) + EuclideanSpace.single j (1 : ℝ)‖^2 = 2 := by
+      have h_symm : EuclideanSpace.single i (1 : ℝ) + EuclideanSpace.single j (1 : ℝ) =
+          (WithLp.equiv 2 _).symm ((Pi.single i (1 : ℝ) : Fin r → ℝ) + (Pi.single j (1 : ℝ) : Fin r → ℝ)) := rfl
+      rw [h_symm, norm_sq_eq_local]
+      rw [Finset.sum_eq_add_of_mem i j (Finset.mem_univ i) (Finset.mem_univ j) hij]
+      · simp [hij, hij.symm]
+        ring
+      · intro k _ ⟨hki, hkj⟩
+        simp [Pi.single_eq_of_ne hki, Pi.single_eq_of_ne hkj]
+    rw [h_norm2]
+    norm_num
+  have h_pos : 0 ≤ ‖(Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) + EuclideanSpace.single j (1 : ℝ))‖ := norm_nonneg _
+  nlinarith
+
+private theorem norm_pair_sub_one {r : ℕ} (i j : Fin r) (hij : i ≠ j) :
+    ‖(Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) - EuclideanSpace.single j (1 : ℝ))‖ = 1 := by
+  have h_sq : ‖(Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) - EuclideanSpace.single j (1 : ℝ))‖^2 = 1 := by
+    rw [norm_smul, mul_pow, Real.norm_eq_abs, abs_inv, abs_of_nonneg (Real.sqrt_nonneg _), inv_pow]
+    have h2 : Real.sqrt 2 ^ 2 = 2 := Real.sq_sqrt (by norm_num)
+    rw [h2]
+    have h_norm2 : ‖EuclideanSpace.single i (1 : ℝ) - EuclideanSpace.single j (1 : ℝ)‖^2 = 2 := by
+      have h_symm : EuclideanSpace.single i (1 : ℝ) - EuclideanSpace.single j (1 : ℝ) =
+          (WithLp.equiv 2 _).symm ((Pi.single i (1 : ℝ) : Fin r → ℝ) - (Pi.single j (1 : ℝ) : Fin r → ℝ)) := rfl
+      rw [h_symm, norm_sq_eq_local]
+      rw [Finset.sum_eq_add_of_mem i j (Finset.mem_univ i) (Finset.mem_univ j) hij]
+      · simp [hij, hij.symm]
+        ring
+      · intro k _ ⟨hki, hkj⟩
+        simp [Pi.single_eq_of_ne hki, Pi.single_eq_of_ne hkj]
+    rw [h_norm2]
+    norm_num
+  have h_pos : 0 ≤ ‖(Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) - EuclideanSpace.single j (1 : ℝ))‖ := norm_nonneg _
+  nlinarith
 
 /-- Entry bound from the quadratic form: `P i i = forsterQuad P
 (EuclideanSpace.single i 1)` (a unit vector, `EuclideanSpace.norm_single`),
@@ -1059,7 +1947,59 @@ lemma forster_entry_bound {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ} {C : ℝ}
     (hpsd : ∀ z : Fin r → ℝ, 0 ≤ z ⬝ᵥ (P *ᵥ z))
     (hdiag : ∀ z : EuclideanSpace ℝ (Fin r), ‖z‖ = 1 → forsterQuad P z ≤ C) :
     ∀ i j, |P i j| ≤ C := by
-  sorry
+  intro i j
+  have hPii : P i i ≤ C := by
+    have h_quad := forsterQuad_single P i
+    have h_norm := norm_single_one i
+    have h_bound := hdiag (EuclideanSpace.single i (1 : ℝ)) h_norm
+    rwa [h_quad] at h_bound
+  have hPjj : P j j ≤ C := by
+    have h_quad := forsterQuad_single P j
+    have h_norm := norm_single_one j
+    have h_bound := hdiag (EuclideanSpace.single j (1 : ℝ)) h_norm
+    rwa [h_quad] at h_bound
+  by_cases hij : i = j
+  · rw [hij]
+    have hnonneg : 0 ≤ P j j := by
+      have h_psd := hpsd (Pi.single j (1 : ℝ))
+      rw [mulVec_single] at h_psd
+      simp only [MulOpposite.op_one, one_smul] at h_psd
+      rw [single_dotProduct] at h_psd
+      dsimp [col] at h_psd
+      linarith
+    rw [abs_of_nonneg hnonneg]
+    exact hPjj
+  · have h_add_quad := forsterQuad_pair_add P hsym i j
+    have h_add_norm := norm_pair_add_one i j hij
+    have h_add_bound := hdiag _ h_add_norm
+    rw [h_add_quad] at h_add_bound
+    have h_sub_quad := forsterQuad_pair_sub P hsym i j
+    have h_sub_norm := norm_pair_sub_one i j hij
+    have h_sub_bound := hdiag _ h_sub_norm
+    rw [h_sub_quad] at h_sub_bound
+    have h_add_psd : 0 ≤ (P i i + P j j + 2 * P i j) / 2 := by
+      have h1 : forsterQuad P ((Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) + EuclideanSpace.single j (1 : ℝ))) ≥ 0 := by
+        dsimp [forsterQuad]
+        exact hpsd _
+      rwa [h_add_quad] at h1
+    have h_sub_psd : 0 ≤ (P i i + P j j - 2 * P i j) / 2 := by
+      have h1 : forsterQuad P ((Real.sqrt 2)⁻¹ • (EuclideanSpace.single i (1 : ℝ) - EuclideanSpace.single j (1 : ℝ))) ≥ 0 := by
+        dsimp [forsterQuad]
+        exact hpsd _
+      rwa [h_sub_quad] at h1
+    rw [abs_le]
+    constructor
+    · linarith
+    · linarith
+
+private lemma continuous_forsterQuad {r : ℕ} (z : EuclideanSpace ℝ (Fin r)) :
+    Continuous (fun (P : Matrix (Fin r) (Fin r) ℝ) => forsterQuad P z) := by
+  dsimp [forsterQuad, dotProduct, mulVec]
+  refine continuous_finsetSum _ (fun i _ => ?_)
+  refine Continuous.mul continuous_const ?_
+  refine continuous_finsetSum _ (fun j _ => ?_)
+  refine Continuous.mul ?_ continuous_const
+  exact Continuous.comp (continuous_apply j) (continuous_apply i)
 
 /-- Continuity of the Forster potential where all quadratic values are
 positive: each `P ↦ forsterQuad P (u x)` is a polynomial in the entries of
@@ -1070,7 +2010,11 @@ lemma continuousOn_forsterPotential {r : ℕ} {ι : Type*} [Fintype ι]
     (u : ι → EuclideanSpace ℝ (Fin r)) :
     ContinuousOn (forsterPotential u)
       {P : Matrix (Fin r) (Fin r) ℝ | ∀ x, 0 < forsterQuad P (u x)} := by
-  sorry
+  change ContinuousOn (fun P => ∑ x, Real.log (forsterQuad P (u x))) _
+  refine continuousOn_finsetSum _ (fun x _ => ?_)
+  refine ContinuousOn.comp Real.continuousOn_log (continuous_forsterQuad (u x)).continuousOn ?_
+  intro P hP
+  exact Ne.symm (ne_of_lt (hP x))
 
 /-- **P5.3a (coercivity and attainment).**  For a general-position unit family
 with more vectors than the ambient dimension, the Forster potential is
@@ -1092,6 +2036,12 @@ theorem exists_forsterPotential_minimizer {r : ℕ} {ι : Type*} [Fintype ι]
 /-! ### P5.3b leaf decomposition: first-order condition and the isotropic
 transform -/
 
+private lemma forsterQuad_smul {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
+    (z : EuclideanSpace ℝ (Fin r)) (c : ℝ) :
+    forsterQuad (c • P) z = c * forsterQuad P z := by
+  dsimp [forsterQuad]
+  rw [Matrix.smul_mulVec, dotProduct_smul, smul_eq_mul]
+
 /-- Scaling the matrix shifts the potential by `N * log c`:
 `forsterQuad (c • P) z = c * forsterQuad P z` (`Matrix.smul_mulVec_assoc`,
 `dotProduct_smul`), and `Real.log_mul` term by term (all quadratic values
@@ -1101,7 +2051,20 @@ lemma forsterPotential_smul {r : ℕ} {ι : Type*} [Fintype ι]
     {c : ℝ} (hc : 0 < c) (hq : ∀ x, forsterQuad P (u x) ≠ 0) :
     forsterPotential u (c • P) =
       Fintype.card ι * Real.log c + forsterPotential u P := by
-  sorry
+  rw [forsterPotential_eq_sum_log, forsterPotential_eq_sum_log]
+  have h_log : ∀ x : ι, Real.log (forsterQuad (c • P) (u x)) =
+      Real.log c + Real.log (forsterQuad P (u x)) := by
+    intro x
+    rw [forsterQuad_smul]
+    exact Real.log_mul hc.ne' (hq x)
+  simp_rw [h_log, Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, nsmul_eq_mul]
+
+private lemma continuous_quadForm {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ) :
+    Continuous (fun (u : EuclideanSpace ℝ (Fin r)) => (WithLp.equiv 2 (Fin r → ℝ) u) ⬝ᵥ (P *ᵥ (WithLp.equiv 2 (Fin r → ℝ) u))) := by
+  change Continuous (fun (u : EuclideanSpace ℝ (Fin r)) => ∑ i : Fin r, u.ofLp i * ∑ j : Fin r, P i j * u.ofLp j)
+  refine continuous_finsetSum _ (fun i _ => ?_)
+  refine Continuous.mul (PiLp.continuous_apply 2 _ i) (continuous_finsetSum _ (fun j _ => ?_))
+  exact continuous_const.mul (PiLp.continuous_apply 2 _ j)
 
 /-- Positive definiteness survives small symmetric perturbations: on the
 compact unit sphere (`isCompact_sphere`, nonempty since `z / ‖z‖` reduces
@@ -1112,7 +2075,119 @@ quadratic forms); take `ε := m / (M + 1)`. -/
 lemma forsterPosDef_perturb {r : ℕ} {P X : Matrix (Fin r) (Fin r) ℝ}
     (hP : ForsterPosDef P) (hX : ∀ i j, X i j = X j i) :
     ∃ ε : ℝ, 0 < ε ∧ ∀ t : ℝ, |t| < ε → ForsterPosDef (P + t • X) := by
-  sorry
+  by_cases h_emp : IsEmpty (Fin r)
+  · use 1
+    refine ⟨zero_lt_one, ?_⟩
+    intro t _
+    constructor
+    · intro i
+      exact isEmptyElim i
+    · intro z hz
+      exfalso
+      apply hz
+      ext i
+      exact isEmptyElim i
+  · rw [not_isEmpty_iff] at h_emp
+    haveI : Nonempty (Fin r) := h_emp
+    let S := sphere (0 : EuclideanSpace ℝ (Fin r)) 1
+    have hS_compact : IsCompact S := isCompact_sphere _ _
+    have hS_nonempty : S.Nonempty := by simp [S]
+    let fP := fun (u : EuclideanSpace ℝ (Fin r)) => (WithLp.equiv 2 (Fin r → ℝ) u) ⬝ᵥ (P *ᵥ (WithLp.equiv 2 (Fin r → ℝ) u))
+    let fX := fun (u : EuclideanSpace ℝ (Fin r)) => (WithLp.equiv 2 (Fin r → ℝ) u) ⬝ᵥ (X *ᵥ (WithLp.equiv 2 (Fin r → ℝ) u))
+    obtain ⟨u_m, hu_m_S, hu_m_min⟩ := hS_compact.exists_isMinOn hS_nonempty (continuous_quadForm P).continuousOn
+    obtain ⟨u_M, hu_M_S, hu_M_max⟩ := hS_compact.exists_isMaxOn hS_nonempty (continuous_quadForm X).abs.continuousOn
+    let m := fP u_m
+    let M := |fX u_M|
+    have hm : 0 < m := by
+      have hu_m_norm : ‖u_m‖ = 1 := by simpa [S] using hu_m_S
+      have hz_m_ne : (WithLp.equiv 2 (Fin r → ℝ) u_m) ≠ 0 := by
+        intro h
+        have h_um : u_m = 0 := by
+          rw [← Equiv.symm_apply_apply (WithLp.equiv 2 (Fin r → ℝ)) u_m, h]
+          rfl
+        rw [h_um, norm_zero] at hu_m_norm
+        exact zero_ne_one hu_m_norm
+      exact hP.2 (WithLp.equiv 2 (Fin r → ℝ) u_m) hz_m_ne
+    have hM : 0 ≤ M := abs_nonneg _
+    use m / (M + 1)
+    have hε_pos : 0 < m / (M + 1) := div_pos hm (by linarith)
+    refine ⟨hε_pos, ?_⟩
+    intro t ht
+    constructor
+    · intro i j
+      dsimp [Matrix.add_apply, Matrix.smul_apply]
+      rw [hP.1 i j, hX i j]
+    · intro z hz
+      let v : EuclideanSpace ℝ (Fin r) := (WithLp.equiv 2 (Fin r → ℝ)).symm z
+      have hv_ne : v ≠ 0 := by
+        intro h
+        apply hz
+        have h1 : (WithLp.equiv 2 (Fin r → ℝ)) v = 0 := by rw [h]; rfl
+        rwa [Equiv.apply_symm_apply] at h1
+      have hv_norm_pos : 0 < ‖v‖ := norm_pos_iff.mpr hv_ne
+      have hv_norm_ne : ‖v‖ ≠ 0 := hv_norm_pos.ne'
+      let u : EuclideanSpace ℝ (Fin r) := (‖v‖⁻¹ : ℝ) • v
+      have hu_norm : ‖u‖ = 1 := by
+        dsimp [u]
+        rw [norm_smul, Real.norm_of_nonneg (inv_nonneg.mpr hv_norm_pos.le), inv_mul_cancel₀ hv_norm_ne]
+      have hu_S : u ∈ S := by simpa [S] using hu_norm
+      have hu_P : m ≤ fP u := hu_m_min hu_S
+      have hu_X : |fX u| ≤ M := hu_M_max hu_S
+      have hu_vec : WithLp.equiv 2 (Fin r → ℝ) u = ‖v‖⁻¹ • z := rfl
+      have hP_u : fP u = ‖v‖⁻¹ ^ 2 * (z ⬝ᵥ (P *ᵥ z)) := by
+        dsimp [fP]
+        rw [hu_vec]
+        simp only [Matrix.mulVec_smul, dotProduct_smul, smul_dotProduct]
+        ring
+      have hX_u : fX u = ‖v‖⁻¹ ^ 2 * (z ⬝ᵥ (X *ᵥ z)) := by
+        dsimp [fX]
+        rw [hu_vec]
+        simp only [Matrix.mulVec_smul, dotProduct_smul, smul_dotProduct]
+        ring
+      have h_inv : ‖v‖⁻¹ ^ 2 * ‖v‖ ^ 2 = 1 := by
+        rw [← mul_pow, inv_mul_cancel₀ hv_norm_ne, one_pow]
+      have hP_z : m * ‖v‖ ^ 2 ≤ z ⬝ᵥ (P *ᵥ z) := by
+        rw [hP_u] at hu_P
+        have h_mul := mul_le_mul_of_nonneg_right hu_P (sq_nonneg ‖v‖)
+        have h_eq : (‖v‖⁻¹ ^ 2 * (z ⬝ᵥ (P *ᵥ z))) * ‖v‖ ^ 2 = z ⬝ᵥ (P *ᵥ z) := by
+          calc (‖v‖⁻¹ ^ 2 * (z ⬝ᵥ (P *ᵥ z))) * ‖v‖ ^ 2
+            _ = (‖v‖⁻¹ ^ 2 * ‖v‖ ^ 2) * (z ⬝ᵥ (P *ᵥ z)) := by ring
+            _ = z ⬝ᵥ (P *ᵥ z) := by rw [h_inv, one_mul]
+        rwa [h_eq] at h_mul
+      have hX_z : |z ⬝ᵥ (X *ᵥ z)| ≤ M * ‖v‖ ^ 2 := by
+        rw [hX_u] at hu_X
+        rw [abs_mul, abs_of_nonneg (by positivity)] at hu_X
+        have h_mul := mul_le_mul_of_nonneg_right hu_X (sq_nonneg ‖v‖)
+        have h_eq : (‖v‖⁻¹ ^ 2 * |z ⬝ᵥ (X *ᵥ z)|) * ‖v‖ ^ 2 = |z ⬝ᵥ (X *ᵥ z)| := by
+          calc (‖v‖⁻¹ ^ 2 * |z ⬝ᵥ (X *ᵥ z)|) * ‖v‖ ^ 2
+            _ = (‖v‖⁻¹ ^ 2 * ‖v‖ ^ 2) * |z ⬝ᵥ (X *ᵥ z)| := by ring
+            _ = |z ⬝ᵥ (X *ᵥ z)| := by rw [h_inv, one_mul]
+        rwa [h_eq] at h_mul
+      have h_add : (P + t • X) *ᵥ z = P *ᵥ z + t • (X *ᵥ z) := by
+        rw [Matrix.add_mulVec, smul_mulVec]
+      rw [h_add, dotProduct_add, dotProduct_smul]
+      change 0 < z ⬝ᵥ P *ᵥ z + t * (z ⬝ᵥ X *ᵥ z)
+      have h_bound : - |t| * (M * ‖v‖ ^ 2) ≤ t * (z ⬝ᵥ (X *ᵥ z)) := by
+        have h_abs_z := le_abs_self (z ⬝ᵥ (X *ᵥ z))
+        have h_neg_abs_z := neg_abs_le (z ⬝ᵥ (X *ᵥ z))
+        have ht_le : - |t| ≤ t ∧ t ≤ |t| := ⟨neg_abs_le t, le_abs_self t⟩
+        nlinarith [ht_le.1, ht_le.2, hX_z, h_abs_z, h_neg_abs_z]
+      have h_main : (m - |t| * M) * ‖v‖ ^ 2 ≤ z ⬝ᵥ (P *ᵥ z) + t * (z ⬝ᵥ (X *ᵥ z)) := by
+        linarith
+      have ht_bound : |t| * M < m := by
+        have ht1 : |t| < m / (M + 1) := ht
+        have hM1 : 0 < M + 1 := by linarith
+        have ht2 := (lt_div_iff₀ hM1).mp ht1
+        calc |t| * M ≤ |t| * (M + 1) := by nlinarith [abs_nonneg t]
+        _ < m := ht2
+      have h_coeff : 0 < (m - |t| * M) * ‖v‖ ^ 2 := mul_pos (by linarith) (sq_pos_of_ne_zero hv_norm_ne)
+      linarith
+
+private lemma forsterQuad_add_smul {r : ℕ} (P X : Matrix (Fin r) (Fin r) ℝ)
+    (z : EuclideanSpace ℝ (Fin r)) (t : ℝ) :
+    forsterQuad (P + t • X) z = forsterQuad P z + t * forsterQuad X z := by
+  dsimp [forsterQuad]
+  rw [Matrix.add_mulVec, Matrix.smul_mulVec, dotProduct_add, dotProduct_smul, smul_eq_mul]
 
 /-- Derivative of the potential along a matrix line: each
 `t ↦ forsterQuad (P + t • X) (u x)` is affine in `t` (`forsterQuad` is
@@ -1126,7 +2201,24 @@ lemma hasDerivAt_forsterPotential {r : ℕ} {ι : Type*} [Fintype ι]
     (hq : ∀ x, 0 < forsterQuad P (u x)) :
     HasDerivAt (fun t : ℝ => forsterPotential u (P + t • X))
       (∑ x, forsterQuad X (u x) / forsterQuad P (u x)) 0 := by
-  sorry
+  have h_fun : (fun t : ℝ => forsterPotential u (P + t • X)) =
+      (∑ x, fun t : ℝ => Real.log (forsterQuad (P + t • X) (u x))) := by
+    ext t
+    rw [Finset.sum_apply]
+    rfl
+  rw [h_fun]
+  apply HasDerivAt.sum
+  intro x _
+  simp_rw [forsterQuad_add_smul]
+  have h_lin : HasDerivAt (fun t : ℝ => forsterQuad P (u x) + t * forsterQuad X (u x))
+      (forsterQuad X (u x)) 0 := by
+    have h1 : HasDerivAt (fun t : ℝ => t * forsterQuad X (u x)) (forsterQuad X (u x)) 0 := by
+      simpa using (hasDerivAt_id (0 : ℝ)).mul_const (forsterQuad X (u x))
+    exact h1.const_add (forsterQuad P (u x))
+  have h_ne : forsterQuad P (u x) + 0 * forsterQuad X (u x) ≠ 0 := by
+    rw [zero_mul, add_zero]
+    exact (hq x).ne'
+  simpa using HasDerivAt.log h_lin h_ne
 
 /-- Derivative of the determinant along a matrix line through a
 determinant-one point: `det (P + t • X) = det P * det (1 + t • (P⁻¹ * X))`

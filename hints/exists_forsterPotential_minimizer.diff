@@ -1,0 +1,113 @@
+diff --git a/HeadComplexity/Separations/Forster.lean b/HeadComplexity/Separations/Forster.lean
+index bb67d53..c810e5c 100644
+--- a/HeadComplexity/Separations/Forster.lean
++++ b/HeadComplexity/Separations/Forster.lean
+@@ -1072,6 +1072,95 @@ lemma continuousOn_forsterPotential {r : ℕ} {ι : Type*} [Fintype ι]
+       {P : Matrix (Fin r) (Fin r) ℝ | ∀ x, 0 < forsterQuad P (u x)} := by
+   sorry
+ 
++private lemma forsterQuad_one {r : ℕ} (z : EuclideanSpace ℝ (Fin r)) (hz : ‖z‖ = 1) :
++    forsterQuad (1 : Matrix (Fin r) (Fin r) ℝ) z = 1 := by
++  unfold forsterQuad
++  rw [Matrix.one_mulVec]
++  change ∑ i : Fin r, (z.ofLp i) * (z.ofLp i) = 1
++  have h_eq : (∑ i : Fin r, (z.ofLp i) * (z.ofLp i)) = ∑ i : Fin r, (z.ofLp i) ^ 2 := by
++    congr 1; ext i; ring
++  rw [h_eq]
++  have h_sq := (EuclideanSpace.real_norm_sq_eq z).symm
++  rw [h_sq, hz, one_pow]
++
++private lemma forsterPotential_one {r : ℕ} {ι : Type*} [Fintype ι]
++    (u : ι → EuclideanSpace ℝ (Fin r)) (hu : ∀ x, ‖u x‖ = 1) :
++    forsterPotential u (1 : Matrix (Fin r) (Fin r) ℝ) = 0 := by
++  rw [forsterPotential_eq_sum_log]
++  have h : ∀ x, Real.log (forsterQuad 1 (u x)) = 0 := by
++    intro x
++    rw [forsterQuad_one (u x) (hu x), Real.log_one]
++  simp [h]
++
++private lemma forsterPosDef_one {r : ℕ} :
++    ForsterPosDef (1 : Matrix (Fin r) (Fin r) ℝ) := by
++  constructor
++  · intro i j
++    by_cases h : i = j
++    · rw [h]
++    · rw [Matrix.one_apply_ne h, Matrix.one_apply_ne (Ne.symm h)]
++  · intro z hz
++    rw [Matrix.one_mulVec]
++    change 0 < ∑ i, z i * z i
++    have h_sq : (∑ i, z i * z i) = ∑ i, z i ^ 2 := by
++      congr 1; ext i; ring
++    rw [h_sq]
++    have h_nonneg : ∀ i ∈ Finset.univ, 0 ≤ z i ^ 2 := fun i _ => sq_nonneg _
++    have h_sum_nonneg : 0 ≤ ∑ i, z i ^ 2 := Finset.sum_nonneg h_nonneg
++    rcases h_sum_nonneg.eq_or_lt with h_zero | h_pos
++    · exfalso
++      have h_all_zero : ∀ i ∈ Finset.univ, z i ^ 2 = 0 :=
++        (Finset.sum_eq_zero_iff_of_nonneg h_nonneg).mp h_zero.symm
++      have h_z_zero : z = 0 := by
++        ext i
++        have := h_all_zero i (Finset.mem_univ i)
++        exact sq_eq_zero_iff.mp this
++      exact hz h_z_zero
++    · exact h_pos
++
++private lemma forsterPotential_min_global {r : ℕ} {ι : Type*} [Fintype ι]
++    (u : ι → EuclideanSpace ℝ (Fin r)) (hu : ∀ x, ‖u x‖ = 1)
++    (Pstar : Matrix (Fin r) (Fin r) ℝ)
++    (hPstar : (∀ i j, Pstar i j = Pstar j i) ∧ (∀ z : Fin r → ℝ, 0 ≤ z ⬝ᵥ (Pstar *ᵥ z)) ∧ Pstar.det = 1 ∧ forsterPotential u Pstar ≤ 0)
++    (hmin_K : ∀ Q : Matrix (Fin r) (Fin r) ℝ,
++      ((∀ i j, Q i j = Q j i) ∧ (∀ z : Fin r → ℝ, 0 ≤ z ⬝ᵥ (Q *ᵥ z)) ∧ Q.det = 1 ∧ forsterPotential u Q ≤ 0) →
++      forsterPotential u Pstar ≤ forsterPotential u Q) :
++    ∀ Q : Matrix (Fin r) (Fin r) ℝ,
++      ForsterPosDef Q → Q.det = 1 → forsterPotential u Pstar ≤ forsterPotential u Q := by
++  intro Q hQ hQdet
++  by_cases hQ0 : forsterPotential u Q ≤ 0
++  · have hQ_mem : (∀ i j, Q i j = Q j i) ∧ (∀ z : Fin r → ℝ, 0 ≤ z ⬝ᵥ (Q *ᵥ z)) ∧ Q.det = 1 ∧ forsterPotential u Q ≤ 0 := by
++      refine ⟨hQ.1, fun z => ?_, hQdet, hQ0⟩
++      by_cases hz : z = 0
++      · rw [hz, Matrix.mulVec_zero, dotProduct_zero]
++      · exact (hQ.2 z hz).le
++    exact hmin_K Q hQ_mem
++  · push Not at hQ0
++    have h1_mem : (∀ i j, (1 : Matrix (Fin r) (Fin r) ℝ) i j = (1 : Matrix (Fin r) (Fin r) ℝ) j i) ∧
++        (∀ z : Fin r → ℝ, 0 ≤ z ⬝ᵥ ((1 : Matrix (Fin r) (Fin r) ℝ) *ᵥ z)) ∧
++        (1 : Matrix (Fin r) (Fin r) ℝ).det = 1 ∧
++        forsterPotential u 1 ≤ 0 := by
++      have h1 := forsterPosDef_one (r := r)
++      refine ⟨h1.1, fun z => ?_, Matrix.det_one, ?_⟩
++      · by_cases hz : z = 0
++        · rw [hz, Matrix.mulVec_zero, dotProduct_zero]
++        · exact (h1.2 z hz).le
++      · rw [forsterPotential_one u hu]
++    have hPstar_le_1 : forsterPotential u Pstar ≤ forsterPotential u 1 := hmin_K 1 h1_mem
++    rw [forsterPotential_one u hu] at hPstar_le_1
++    linarith
++
++private lemma exists_forsterPotential_minimizer_reduced {r : ℕ} {ι : Type*} [Fintype ι]
++    (hr : 0 < r) (hcard : r < Fintype.card ι)
++    (u : ι → EuclideanSpace ℝ (Fin r)) (hu : ∀ x, ‖u x‖ = 1)
++    (hgen : InGeneralPosition u) :
++    ∃ Pstar : Matrix (Fin r) (Fin r) ℝ,
++      (∀ i j, Pstar i j = Pstar j i) ∧ (∀ z : Fin r → ℝ, 0 ≤ z ⬝ᵥ (Pstar *ᵥ z)) ∧ Pstar.det = 1 ∧ forsterPotential u Pstar ≤ 0 ∧
++      ∀ Q : Matrix (Fin r) (Fin r) ℝ,
++        ((∀ i j, Q i j = Q j i) ∧ (∀ z : Fin r → ℝ, 0 ≤ z ⬝ᵥ (Q *ᵥ z)) ∧ Q.det = 1 ∧ forsterPotential u Q ≤ 0) →
++        forsterPotential u Pstar ≤ forsterPotential u Q := by
++  sorry
++
+ /-- **P5.3a (coercivity and attainment).**  For a general-position unit family
+ with more vectors than the ambient dimension, the Forster potential is
+ coercive on the positive-definite determinant-one matrices and therefore
+@@ -1087,7 +1176,11 @@ theorem exists_forsterPotential_minimizer {r : ℕ} {ι : Type*} [Fintype ι]
+         ∀ Q : Matrix (Fin r) (Fin r) ℝ,
+           ForsterPosDef Q → Q.det = 1 →
+             forsterPotential u P ≤ forsterPotential u Q := by
+-  sorry
++  obtain ⟨Pstar, hPstar_sym, hPstar_psd, hPstar_det, hPstar_pot, hmin_K⟩ :=
++    exists_forsterPotential_minimizer_reduced hr hcard u hu hgen
++  have hPstar_posdef : ForsterPosDef Pstar := forsterPosDef_of_psd_det_one hPstar_sym hPstar_psd hPstar_det
++  refine ⟨Pstar, hPstar_posdef, hPstar_det, ?_⟩
++  exact forsterPotential_min_global u hu Pstar ⟨hPstar_sym, hPstar_psd, hPstar_det, hPstar_pot⟩ hmin_K
+ 
+ /-! ### P5.3b leaf decomposition: first-order condition and the isotropic
+ transform -/

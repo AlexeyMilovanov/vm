@@ -1,0 +1,159 @@
+diff --git a/HeadComplexity/Separations/Forster.lean b/HeadComplexity/Separations/Forster.lean
+index bb67d53..13198bf 100644
+--- a/HeadComplexity/Separations/Forster.lean
++++ b/HeadComplexity/Separations/Forster.lean
+@@ -1,6 +1,7 @@
+ import Mathlib.Analysis.CStarAlgebra.Matrix
+ import Mathlib.LinearAlgebra.Matrix.Kronecker
+ import Mathlib.Analysis.Calculus.Deriv.Basic
++import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+ import HeadComplexity.Separations.SignRank
+ 
+ set_option linter.style.header false
+@@ -1140,6 +1141,110 @@ lemma hasDerivAt_det_line {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+     HasDerivAt (fun t : ℝ => (P + t • X).det) ((P⁻¹ * X).trace) 0 := by
+   sorry
+ 
++private lemma forsterPosDef_smul {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ} {c : ℝ}
++    (hP : ForsterPosDef P) (hc : 0 < c) : ForsterPosDef (c • P) := by
++  constructor
++  · intro i j
++    dsimp [Matrix.smul_apply]
++    rw [hP.1 i j]
++  · intro z hz
++    have h1 := hP.2 z hz
++    rw [Matrix.smul_mulVec, dotProduct_smul]
++    exact mul_pos hc h1
++
++private lemma det_smul_rpow_inv {r : ℕ} (hr : 0 < r) {A : Matrix (Fin r) (Fin r) ℝ}
++    (hA : 0 < A.det) :
++    (((A.det) ^ (-(1 : ℝ) / (r : ℝ))) • A).det = 1 := by
++  rw [Matrix.det_smul, Fintype.card_fin]
++  have h_r_pos : (0 : ℝ) < r := Nat.cast_pos.mpr hr
++  have h_r_ne : (r : ℝ) ≠ 0 := h_r_pos.ne'
++  have h1 : ((A.det) ^ (-(1 : ℝ) / (r : ℝ))) ^ r = (A.det) ^ (-(1 : ℝ) / (r : ℝ) * (r : ℝ)) := by
++    rw [← Real.rpow_natCast, ← Real.rpow_mul hA.le]
++  have h2 : -(1 : ℝ) / (r : ℝ) * (r : ℝ) = -1 := by
++    rw [div_mul_cancel₀ _ h_r_ne]
++  rw [h2, Real.rpow_neg hA.le, Real.rpow_one] at h1
++  rw [h1, inv_mul_cancel₀ hA.ne']
++
++private lemma forsterPotential_smul_rpow_inv {r : ℕ} {ι : Type*} [Fintype ι]
++    (u : ι → EuclideanSpace ℝ (Fin r)) (A : Matrix (Fin r) (Fin r) ℝ)
++    (hA : 0 < A.det) (hqA : ∀ x, forsterQuad A (u x) ≠ 0) :
++    forsterPotential u (((A.det) ^ (-(1 : ℝ) / (r : ℝ))) • A) =
++      forsterPotential u A - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log A.det := by
++  have hc : 0 < (A.det) ^ (-(1 : ℝ) / (r : ℝ)) := Real.rpow_pos_of_pos hA _
++  rw [forsterPotential_smul u A hc hqA]
++  rw [Real.log_rpow hA]
++  ring
++
++private lemma eventually_det_pos {r : ℕ} {P X : Matrix (Fin r) (Fin r) ℝ} (hdet : P.det = 1) :
++    ∃ ε > 0, ∀ t : ℝ, |t| < ε → 0 < (P + t • X).det := by
++  have h_deriv := hasDerivAt_det_line X hdet
++  have h_cont := h_deriv.continuousAt
++  have h_open : IsOpen {s : ℝ | 0 < s} := isOpen_Ioi
++  have h_mem : (P + (0 : ℝ) • X).det ∈ {s : ℝ | 0 < s} := by
++    simp [hdet]
++  have h_eventually : ∀ᶠ t in nhds (0 : ℝ), 0 < (P + t • X).det :=
++    h_cont.eventually (IsOpen.mem_nhds h_open h_mem)
++  rw [Metric.eventually_nhds_iff] at h_eventually
++  obtain ⟨ε, hε, h_dist⟩ := h_eventually
++  use ε, hε
++  intro t ht
++  apply h_dist
++  rw [Real.dist_0_eq_abs]
++  exact ht
++
++private lemma eventually_forsterPosDef_and_det_pos {r : ℕ} {P X : Matrix (Fin r) (Fin r) ℝ}
++    (hP : ForsterPosDef P) (hdet : P.det = 1) (hX : ∀ i j, X i j = X j i) :
++    ∃ ε > 0, ∀ t : ℝ, |t| < ε → ForsterPosDef (P + t • X) ∧ 0 < (P + t • X).det := by
++  obtain ⟨ε1, hε1, hP1⟩ := forsterPosDef_perturb hP hX
++  obtain ⟨ε2, hε2, hdet2⟩ := eventually_det_pos (P := P) (X := X) hdet
++  use min ε1 ε2, lt_min hε1 hε2
++  intro t ht
++  have ht1 : |t| < ε1 := lt_of_lt_of_le ht (min_le_left _ _)
++  have ht2 : |t| < ε2 := lt_of_lt_of_le ht (min_le_right _ _)
++  exact ⟨hP1 t ht1, hdet2 t ht2⟩
++
++private lemma isLocalMin_g {r : ℕ} {ι : Type*} [Fintype ι]
++    (hr : 0 < r) (u : ι → EuclideanSpace ℝ (Fin r)) (hu : ∀ x, ‖u x‖ = 1)
++    (P : Matrix (Fin r) (Fin r) ℝ) (hP : ForsterPosDef P) (hdet : P.det = 1)
++    (hmin : ∀ Q : Matrix (Fin r) (Fin r) ℝ,
++      ForsterPosDef Q → Q.det = 1 →
++        forsterPotential u P ≤ forsterPotential u Q)
++    (X : Matrix (Fin r) (Fin r) ℝ) (hX : ∀ i j, X i j = X j i) :
++    IsLocalMin (fun (t : ℝ) => forsterPotential u (P + t • X) - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log (P + t • X).det) 0 := by
++  change ∀ᶠ t in nhds (0 : ℝ), forsterPotential u (P + (0 : ℝ) • X) - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log (P + (0 : ℝ) • X).det ≤
++    forsterPotential u (P + t • X) - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log (P + t • X).det
++  rw [Metric.eventually_nhds_iff]
++  obtain ⟨ε, hε, h_prop⟩ := eventually_forsterPosDef_and_det_pos hP hdet hX
++  use ε, hε
++  intro t ht
++  rw [Real.dist_0_eq_abs] at ht
++  have h_t_prop := h_prop t ht
++  have hPt_pos := h_t_prop.1
++  have hdet_pos := h_t_prop.2
++  have hqPt : ∀ x, forsterQuad (P + t • X) (u x) ≠ 0 := by
++    intro x
++    have hu_ne : (WithLp.equiv 2 (Fin r → ℝ) (u x)) ≠ 0 := by
++      intro h
++      have h1 : u x = 0 := by
++        rw [← Equiv.symm_apply_apply (WithLp.equiv 2 (Fin r → ℝ)) (u x), h]
++        rfl
++      have h2 : ‖u x‖ = 0 := by rw [h1, norm_zero]
++      rw [hu x] at h2
++      exact zero_ne_one h2.symm
++    exact (hPt_pos.2 (WithLp.equiv 2 (Fin r → ℝ) (u x)) hu_ne).ne'
++  set c := ((P + t • X).det) ^ (-(1 : ℝ) / (r : ℝ))
++  set Q := c • (P + t • X)
++  have hc_pos : 0 < c := Real.rpow_pos_of_pos hdet_pos _
++  have hQ_pos : ForsterPosDef Q := forsterPosDef_smul hPt_pos hc_pos
++  have hQ_det : Q.det = 1 := det_smul_rpow_inv hr hdet_pos
++  have h_min_Q := hmin Q hQ_pos hQ_det
++  have h_pot_Q := forsterPotential_smul_rpow_inv u (P + t • X) hdet_pos hqPt
++  have h_g0 : forsterPotential u (P + (0 : ℝ) • X) - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log (P + (0 : ℝ) • X).det = forsterPotential u P := by
++    simp [hdet]
++  rw [h_g0]
++  rw [← h_pot_Q]
++  exact h_min_Q
++
+ /-- **First-order condition at the minimizer** (PROOFS.md P5.3).  Recipe:
+ for symmetric `X` consider the normalized line
+ `Q t := ((P + t • X).det) ^ (-(1 : ℝ) / r) • (P + t • X)` (real `rpow`).
+@@ -1164,7 +1269,34 @@ lemma forster_first_order {r : ℕ} {ι : Type*} [Fintype ι]
+     (X : Matrix (Fin r) (Fin r) ℝ) (hX : ∀ i j, X i j = X j i) :
+     ∑ x, forsterQuad X (u x) / forsterQuad P (u x)
+       = (Fintype.card ι : ℝ) / r * (P⁻¹ * X).trace := by
+-  sorry
++  have hq : ∀ x, 0 < forsterQuad P (u x) := by
++    intro x
++    have hu_ne : (WithLp.equiv 2 (Fin r → ℝ) (u x)) ≠ 0 := by
++      intro h
++      have h1 : u x = 0 := by
++        rw [← Equiv.symm_apply_apply (WithLp.equiv 2 (Fin r → ℝ)) (u x), h]
++        rfl
++      have h2 : ‖u x‖ = 0 := by rw [h1, norm_zero]
++      rw [hu x] at h2
++      exact zero_ne_one h2.symm
++    exact hP.2 (WithLp.equiv 2 (Fin r → ℝ) (u x)) hu_ne
++
++  have h_deriv_fp := hasDerivAt_forsterPotential u P X hq
++  have h_deriv_det := hasDerivAt_det_line X hdet
++  have h_det_0 : (P + (0 : ℝ) • X).det = 1 := by
++    rw [zero_smul, add_zero, hdet]
++  have h_deriv_log : HasDerivAt (fun (t : ℝ) => Real.log (P + t • X).det) ((P⁻¹ * X).trace) 0 := by
++    have h_log := HasDerivAt.log h_deriv_det (by rw [h_det_0]; exact one_ne_zero)
++    rw [h_det_0, div_one] at h_log
++    exact h_log
++
++  have h_deriv_g : HasDerivAt (fun (t : ℝ) => forsterPotential u (P + t • X) - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log (P + t • X).det)
++      ((∑ x, forsterQuad X (u x) / forsterQuad P (u x)) - ((Fintype.card ι : ℝ) / (r : ℝ)) * (P⁻¹ * X).trace) 0 := by
++    exact h_deriv_fp.sub (h_deriv_log.const_mul _)
++
++  have h_is_min := isLocalMin_g hr u hu P hP hdet hmin X hX
++  have h_zero := IsLocalMin.hasDerivAt_eq_zero h_is_min h_deriv_g
++  linarith
+ 
+ /-- The first-order condition for all symmetric `X` packages into the
+ moment identity `∑ₓ (uₓ uₓᵀ) / (uₓᵀ P uₓ) = (N/r) • P⁻¹`.  Recipe: test

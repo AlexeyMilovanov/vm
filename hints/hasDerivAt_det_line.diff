@@ -1,0 +1,65 @@
+diff --git a/HeadComplexity/Separations/Forster.lean b/HeadComplexity/Separations/Forster.lean
+index bb67d53..873ff93 100644
+--- a/HeadComplexity/Separations/Forster.lean
++++ b/HeadComplexity/Separations/Forster.lean
+@@ -1,8 +1,13 @@
+ import Mathlib.Analysis.CStarAlgebra.Matrix
+ import Mathlib.LinearAlgebra.Matrix.Kronecker
+ import Mathlib.Analysis.Calculus.Deriv.Basic
++import Mathlib.LinearAlgebra.Matrix.Charpoly.Coeff
++import Mathlib.Analysis.Calculus.Deriv.Polynomial
++import Mathlib.Analysis.Calculus.Deriv.Pow
+ import HeadComplexity.Separations.SignRank
+ 
++open Polynomial
++
+ set_option linter.style.header false
+ 
+ /-!
+@@ -1128,6 +1133,30 @@ lemma hasDerivAt_forsterPotential {r : ℕ} {ι : Type*} [Fintype ι]
+       (∑ x, forsterQuad X (u x) / forsterQuad P (u x)) 0 := by
+   sorry
+ 
++private lemma hasDerivAt_det_one_add_smul {r : ℕ} (M : Matrix (Fin r) (Fin r) ℝ) :
++    HasDerivAt (fun t : ℝ => (1 + t • M).det) (M.trace) 0 := by
++  have h_eq : (fun t : ℝ => (1 + t • M).det) =
++      fun t : ℝ => 1 + M.trace * t + eval t (1 + (X : ℝ[X]) • M.map (C : ℝ →+* ℝ[X])).det.divX.divX * t ^ 2 := by
++    ext t
++    exact Matrix.det_one_add_smul t M
++  rw [h_eq]
++  have h_lin : HasDerivAt (fun t : ℝ => 1 + M.trace * t) (M.trace) 0 := by
++    have h1 : HasDerivAt (fun t : ℝ => M.trace * t) (M.trace * 1) 0 := hasDerivAt_id' 0 |>.const_mul M.trace
++    rw [mul_one] at h1
++    exact h1.const_add 1
++  have h_quad : HasDerivAt (fun t : ℝ => eval t (1 + (X : ℝ[X]) • M.map (C : ℝ →+* ℝ[X])).det.divX.divX * t ^ 2) 0 0 := by
++    have h_p : HasDerivAt (fun t : ℝ => eval t (1 + (X : ℝ[X]) • M.map (C : ℝ →+* ℝ[X])).det.divX.divX)
++        (eval 0 (derivative (1 + (X : ℝ[X]) • M.map (C : ℝ →+* ℝ[X])).det.divX.divX)) 0 :=
++      Polynomial.hasDerivAt _ 0
++    have h_sq : HasDerivAt (fun t : ℝ => t ^ 2) (2 * 0 ^ (2 - 1)) 0 := hasDerivAt_pow 2 0
++    have h_prod := h_p.mul h_sq
++    change HasDerivAt (fun t : ℝ => eval t (1 + (X : ℝ[X]) • M.map (C : ℝ →+* ℝ[X])).det.divX.divX * t ^ 2) _ 0 at h_prod
++    ring_nf at h_prod ⊢
++    exact h_prod
++  have h_sum := h_lin.add h_quad
++  rw [add_zero] at h_sum
++  exact h_sum
++
+ /-- Derivative of the determinant along a matrix line through a
+ determinant-one point: `det (P + t • X) = det P * det (1 + t • (P⁻¹ * X))`
+ (factor `P` on the left; `P` is invertible since `P.det = 1`,
+@@ -1138,7 +1167,14 @@ in `t`; differentiate with `Polynomial`-free calculus
+ lemma hasDerivAt_det_line {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+     (X : Matrix (Fin r) (Fin r) ℝ) (hdet : P.det = 1) :
+     HasDerivAt (fun t : ℝ => (P + t • X).det) ((P⁻¹ * X).trace) 0 := by
+-  sorry
++  have h_inv : IsUnit P.det := by rw [hdet]; exact isUnit_one
++  have h_eq : (fun t : ℝ => (P + t • X).det) = fun t : ℝ => (1 + t • (P⁻¹ * X)).det := by
++    ext t
++    have h_split : (P + t • X) = P * (1 + t • (P⁻¹ * X)) := by
++      rw [Matrix.mul_add, Matrix.mul_one, Matrix.mul_smul, ← mul_assoc, Matrix.mul_nonsing_inv _ h_inv, one_mul]
++    rw [h_split, Matrix.det_mul, hdet, one_mul]
++  rw [h_eq]
++  exact hasDerivAt_det_one_add_smul (P⁻¹ * X)
+ 
+ /-- **First-order condition at the minimizer** (PROOFS.md P5.3).  Recipe:
+ for symmetric `X` consider the normalized line

@@ -1,0 +1,75 @@
+diff --git a/HeadComplexity/Separations/Forster.lean b/HeadComplexity/Separations/Forster.lean
+index bb67d53..3277cc0 100644
+--- a/HeadComplexity/Separations/Forster.lean
++++ b/HeadComplexity/Separations/Forster.lean
+@@ -1,6 +1,7 @@
+ import Mathlib.Analysis.CStarAlgebra.Matrix
+ import Mathlib.LinearAlgebra.Matrix.Kronecker
+ import Mathlib.Analysis.Calculus.Deriv.Basic
++import Mathlib.Analysis.Matrix.Spectrum
+ import HeadComplexity.Separations.SignRank
+ 
+ set_option linter.style.header false
+@@ -941,6 +942,52 @@ lemma card_near_subspace_le_finrank {r : ℕ} {ι : Type*} [Fintype ι]
+           Module.finrank ℝ W := by
+   sorry
+ 
++/-- Standalone helper lemma: sorting unsorted spectral data via `Tuple.sort` yields
++sorted spectral data while preserving orthonormality, span, positivity, determinant product,
++and the quadratic form representation (using `Equiv.sum_comp` and `Equiv.prod_comp`). -/
++private lemma sorted_eigen_data_of_unsorted {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
++    (e : Fin r → EuclideanSpace ℝ (Fin r)) (lam : Fin r → ℝ)
++    (he : Orthonormal ℝ e) (hspan : Submodule.span ℝ (Set.range e) = ⊤)
++    (hpos : ∀ i, 0 < lam i) (hdet : ∏ i, lam i = P.det)
++    (hquad : ∀ z : EuclideanSpace ℝ (Fin r), forsterQuad P z = ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2) :
++    ∃ (e' : Fin r → EuclideanSpace ℝ (Fin r)) (lam' : Fin r → ℝ),
++      Orthonormal ℝ e' ∧ Submodule.span ℝ (Set.range e') = ⊤ ∧
++      Monotone lam' ∧ (∀ i, 0 < lam' i) ∧ ∏ i, lam' i = P.det ∧
++      ∀ z : EuclideanSpace ℝ (Fin r),
++        forsterQuad P z = ∑ i, lam' i * ⟪e' i, z⟫_ℝ ^ 2 := by
++  let σ := Tuple.sort lam
++  use e ∘ σ, lam ∘ σ
++  refine ⟨?_, ?_, Tuple.monotone_sort lam, ?_, ?_, ?_⟩
++  · rw [orthonormal_iff_ite] at he ⊢
++    intro i j
++    dsimp
++    rw [he (σ i) (σ j)]
++    simp only [Equiv.apply_eq_iff_eq]
++  · rw [Set.range_comp]
++    have h_range : Set.range (σ : Fin r → Fin r) = Set.univ := Equiv.range_eq_univ _
++    rw [h_range, Set.image_univ]
++    exact hspan
++  · intro i
++    exact hpos (σ i)
++  · change (∏ i, lam (σ i)) = P.det
++    rw [Equiv.prod_comp σ lam]
++    exact hdet
++  · intro z
++    rw [hquad z]
++    change ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2 = ∑ i, lam (σ i) * ⟪e (σ i), z⟫_ℝ ^ 2
++    exact (Equiv.sum_comp σ (fun i => lam i * ⟪e i, z⟫_ℝ ^ 2)).symm
++
++/-- Unsorted spectral data for a positive-definite matrix `P` obtained from
++Mathlib's `Matrix.IsHermitian` spectral decomposition. -/
++private lemma exists_unsorted_eigen_data {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
++    (hP : ForsterPosDef P) :
++    ∃ (e : Fin r → EuclideanSpace ℝ (Fin r)) (lam : Fin r → ℝ),
++      Orthonormal ℝ e ∧ Submodule.span ℝ (Set.range e) = ⊤ ∧
++      (∀ i, 0 < lam i) ∧ ∏ i, lam i = P.det ∧
++      ∀ z : EuclideanSpace ℝ (Fin r),
++        forsterQuad P z = ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2 := by
++  sorry
++
+ /-- Sorted spectral data for a `ForsterPosDef` matrix: an orthonormal
+ spanning eigen-family with nondecreasing positive eigenvalues whose product
+ is the determinant, diagonalizing the quadratic form.  Recipe: `hP.1` makes
+@@ -960,7 +1007,8 @@ lemma exists_sorted_eigen_data {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
+       Monotone lam ∧ (∀ i, 0 < lam i) ∧ ∏ i, lam i = P.det ∧
+       ∀ z : EuclideanSpace ℝ (Fin r),
+         forsterQuad P z = ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2 := by
+-  sorry
++  obtain ⟨e, lam, he, hspan, hpos, hdet, hquad⟩ := exists_unsorted_eigen_data P hP
++  exact sorted_eigen_data_of_unsorted P e lam he hspan hpos hdet hquad
+ 
+ /-- If `z` is `δ`-far from the span of the low eigenvectors `{i | i < k}`,
+ the quadratic form at `z` is at least `lam k * δ²`.  Recipe: the orthogonal

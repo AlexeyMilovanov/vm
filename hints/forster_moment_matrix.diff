@@ -1,0 +1,147 @@
+diff --git a/HeadComplexity/Separations/Forster.lean b/HeadComplexity/Separations/Forster.lean
+index bb67d53..12ce9cf 100644
+--- a/HeadComplexity/Separations/Forster.lean
++++ b/HeadComplexity/Separations/Forster.lean
+@@ -1166,6 +1166,67 @@ lemma forster_first_order {r : ℕ} {ι : Type*} [Fintype ι]
+       = (Fintype.card ι : ℝ) / r * (P⁻¹ * X).trace := by
+   sorry
+ 
++private theorem my_trace_mul_single {r : ℕ} (A : Matrix (Fin r) (Fin r) ℝ) (i j : Fin r) (c : ℝ) :
++    (A * single i j c).trace = A j i * c := by
++  change (∑ l, (A * single i j c) l l) = A j i * c
++  have h_diag : ∀ l, (A * single i j c) l l = if j = l then A j i * c else 0 := by
++    intro l
++    rw [mul_apply]
++    split_ifs with hl
++    · subst hl
++      rw [Finset.sum_eq_single i]
++      · rw [single_apply, if_pos ⟨rfl, rfl⟩]
++      · intro b _ hb
++        rw [single_apply]
++        have h_cond : ¬(i = b ∧ j = j) := fun h => hb h.1.symm
++        rw [if_neg h_cond, mul_zero]
++      · intro hb; exact False.elim (hb (Finset.mem_univ i))
++    · rw [Finset.sum_eq_zero]
++      intro b _
++      rw [single_apply]
++      have h_cond : ¬(i = b ∧ j = l) := fun h => hl h.2
++      rw [if_neg h_cond, mul_zero]
++  simp_rw [h_diag]
++  rw [Finset.sum_eq_single j]
++  · rw [if_pos rfl]
++  · intro b _ hb
++    rw [if_neg (Ne.symm hb)]
++  · intro hb; exact False.elim (hb (Finset.mem_univ j))
++
++private theorem forsterQuad_single {r : ℕ} (i j : Fin r) (c : ℝ) (z : EuclideanSpace ℝ (Fin r)) :
++    forsterQuad (single i j c) z = c * (WithLp.equiv 2 _ z i) * (WithLp.equiv 2 _ z j) := by
++  change ∑ x, (WithLp.equiv 2 _ z) x * ∑ y, (single i j c) x y * (WithLp.equiv 2 _ z) y = _
++  have h1 : ∀ x, (∑ y, (single i j c) x y * WithLp.equiv 2 (Fin r → ℝ) z y) =
++      if i = x then c * WithLp.equiv 2 (Fin r → ℝ) z j else 0 := by
++    intro x
++    split_ifs with hx
++    · rw [Finset.sum_eq_single j]
++      · rw [single_apply, if_pos ⟨hx, rfl⟩]
++      · intro b _ hb
++        rw [single_apply]
++        have h_cond : ¬(i = x ∧ j = b) := fun h => hb h.2.symm
++        rw [if_neg h_cond, zero_mul]
++      · intro hb; exact False.elim (hb (Finset.mem_univ j))
++    · rw [Finset.sum_eq_zero]
++      intro b _
++      rw [single_apply]
++      have h_cond : ¬(i = x ∧ j = b) := fun h => hx h.1
++      rw [if_neg h_cond, zero_mul]
++  simp_rw [h1]
++  rw [Finset.sum_eq_single i]
++  · rw [if_pos rfl]; ring
++  · intro b _ hb
++    rw [if_neg (Ne.symm hb), mul_zero]
++  · intro hb; exact False.elim (hb (Finset.mem_univ i))
++
++private theorem forsterQuad_add {r : ℕ} (X Y : Matrix (Fin r) (Fin r) ℝ) (z : EuclideanSpace ℝ (Fin r)) :
++    forsterQuad (X + Y) z = forsterQuad X z + forsterQuad Y z := by
++  change ∑ x, (WithLp.equiv 2 _ z) x * ∑ y, (X + Y) x y * (WithLp.equiv 2 _ z) y =
++    (∑ x, (WithLp.equiv 2 _ z) x * ∑ y, X x y * (WithLp.equiv 2 _ z) y) +
++    (∑ x, (WithLp.equiv 2 _ z) x * ∑ y, Y x y * (WithLp.equiv 2 _ z) y)
++  simp_rw [Matrix.add_apply, add_mul, Finset.sum_add_distrib, mul_add]
++  rw [Finset.sum_add_distrib]
++
+ /-- The first-order condition for all symmetric `X` packages into the
+ moment identity `∑ₓ (uₓ uₓᵀ) / (uₓᵀ P uₓ) = (N/r) • P⁻¹`.  Recipe: test
+ `X := Matrix.single i i 1` and, for `i ≠ j`,
+@@ -1185,7 +1246,73 @@ lemma forster_moment_matrix {r : ℕ} {ι : Type*} [Fintype ι]
+     ∑ x, (forsterQuad P (u x))⁻¹ •
+         Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))
+       = ((Fintype.card ι : ℝ) / r) • P⁻¹ := by
+-  sorry
++  ext i j
++  have hP_inv_symm : P⁻¹ j i = P⁻¹ i j := by
++    have h_symm : Pᵀ = P := by
++      ext a b
++      exact hP.1 b a
++    have h1 : P⁻¹ᵀ = Pᵀ⁻¹ := transpose_nonsing_inv P
++    rw [h_symm] at h1
++    have h2 := congr_fun (congr_fun h1 i) j
++    exact h2
++  rw [Matrix.smul_apply, smul_eq_mul]
++  have h_sum_entry : (∑ x, (forsterQuad P (u x))⁻¹ •
++        Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))) i j =
++      ∑ x, ((forsterQuad P (u x))⁻¹ •
++        Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))) i j := by
++    exact Matrix.sum_apply i j Finset.univ _
++  rw [h_sum_entry]
++  simp_rw [Matrix.smul_apply, smul_eq_mul, vecMulVec_apply]
++  by_cases hij : i = j
++  · subst hij
++    have hX_symm : ∀ a b, (single i i (1 : ℝ)) a b = (single i i (1 : ℝ)) b a := by
++      intro a b
++      have h_trans : (single i i (1 : ℝ))ᵀ = single i i (1 : ℝ) := transpose_single i i (1 : ℝ)
++      have h_eq := congr_fun (congr_fun h_trans b) a
++      exact h_eq
++    have h1 := hfo (single i i 1) hX_symm
++    have h_q_i : ∀ x, forsterQuad (single i i 1) (u x) = (WithLp.equiv 2 (Fin r → ℝ) (u x) i) * (WithLp.equiv 2 (Fin r → ℝ) (u x) i) := by
++      intro x
++      rw [forsterQuad_single i i 1, one_mul]
++    have h_tr : (P⁻¹ * single i i 1).trace = P⁻¹ i i := by
++      rw [my_trace_mul_single P⁻¹ i i 1, mul_one]
++    rw [h_tr] at h1
++    simp_rw [h_q_i] at h1
++    have h_lhs : ∀ x, (forsterQuad P (u x))⁻¹ * (WithLp.equiv 2 (Fin r → ℝ) (u x) i * WithLp.equiv 2 (Fin r → ℝ) (u x) i) =
++        (WithLp.equiv 2 (Fin r → ℝ) (u x) i * WithLp.equiv 2 (Fin r → ℝ) (u x) i) / forsterQuad P (u x) := by
++      intro x; ring
++    simp_rw [h_lhs]
++    exact h1
++  · have hX_symm : ∀ a b, (single i j (1 : ℝ) + single j i (1 : ℝ)) a b = (single i j (1 : ℝ) + single j i (1 : ℝ)) b a := by
++      intro a b
++      rw [Matrix.add_apply, Matrix.add_apply]
++      have h1 : single i j (1 : ℝ) a b = single j i (1 : ℝ) b a := by
++        have h_trans : (single i j (1 : ℝ))ᵀ = single j i (1 : ℝ) := transpose_single i j (1 : ℝ)
++        have h_eq := congr_fun (congr_fun h_trans b) a
++        exact h_eq
++      have h2 : single j i (1 : ℝ) a b = single i j (1 : ℝ) b a := by
++        have h_trans : (single j i (1 : ℝ))ᵀ = single i j (1 : ℝ) := transpose_single j i (1 : ℝ)
++        have h_eq := congr_fun (congr_fun h_trans b) a
++        exact h_eq
++      rw [h1, h2, add_comm]
++    have h1 := hfo (single i j 1 + single j i 1) hX_symm
++    have h_quad : ∀ z, forsterQuad (single i j 1 + single j i 1) z = 2 * (WithLp.equiv 2 _ z i * WithLp.equiv 2 _ z j) := by
++      intro z
++      rw [forsterQuad_add, forsterQuad_single, forsterQuad_single]
++      ring
++    have h_trace : (P⁻¹ * (single i j 1 + single j i 1)).trace = 2 * P⁻¹ i j := by
++      rw [mul_add, trace_add, my_trace_mul_single P⁻¹, my_trace_mul_single P⁻¹, mul_one, mul_one, hP_inv_symm]
++      ring
++    rw [h_trace] at h1
++    simp_rw [h_quad] at h1
++    have h_term : ∀ x, 2 * (WithLp.equiv 2 (Fin r → ℝ) (u x) i * WithLp.equiv 2 (Fin r → ℝ) (u x) j) / forsterQuad P (u x) =
++        2 * ((forsterQuad P (u x))⁻¹ * (WithLp.equiv 2 (Fin r → ℝ) (u x) i * WithLp.equiv 2 (Fin r → ℝ) (u x) j)) := by
++      intro x; ring
++    simp_rw [h_term] at h1
++    rw [← Finset.mul_sum] at h1
++    have h_rhs : (Fintype.card ι : ℝ) / r * (2 * P⁻¹ i j) = 2 * (((Fintype.card ι : ℝ) / r) * P⁻¹ i j) := by ring
++    rw [h_rhs] at h1
++    linarith
+ 
+ /-- Positive-definite square root via the spectral theorem: write
+ `P = U * diagonal lam * Uᴴ` (`Matrix.IsHermitian.spectral_theorem` for the

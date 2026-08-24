@@ -1,0 +1,28 @@
+diff --git a/scratch.lean b/scratch.lean
+new file mode 100644
+index 0000000..a1fe012
+--- /dev/null
++++ b/scratch.lean
+@@ -0,0 +1,22 @@
++import Mathlib
++
++open Finset
++
++lemma sum_level_lower_bound_zero {f : Fin 1 → ℝ} (hf : Monotone f)
++    {ι : Type*} [Fintype ι] (level : ι → Fin 1)
++    (hcount : ∀ k : Fin 1,
++      ({x : ι | level x < k} : Set ι).ncard ≤ (k : ℕ)) :
++    ((Fintype.card ι : ℝ) - (0 + 1)) * f (Fin.last 0) + ∑ k, f k ≤
++      ∑ x, f (level x) := by
++  have h_level : ∀ x : ι, level x = 0 := fun x => Subsingleton.elim (level x) 0
++  have h_sum_k : ∑ k : Fin 1, f k = f 0 := by
++    rw [Fin.sum_univ_one]
++  have h_sum_x : ∑ x : ι, f (level x) = (Fintype.card ι : ℝ) * f 0 := by
++    simp_rw [h_level]
++    simp
++  rw [h_sum_k, h_sum_x]
++  have h_last : Fin.last 0 = 0 := rfl
++  rw [h_last]
++  ring_nf
++  rfl
++
