@@ -1,5 +1,6 @@
 import Mathlib.Analysis.CStarAlgebra.Matrix
 import Mathlib.LinearAlgebra.Matrix.Kronecker
+import Mathlib.Analysis.Calculus.Deriv.Basic
 import HeadComplexity.Separations.SignRank
 
 set_option linter.style.header false
@@ -686,6 +687,147 @@ def InGeneralPosition {r : ℕ} {ι : Type*}
     (u : ι → EuclideanSpace ℝ (Fin r)) : Prop :=
   ∀ g : Fin r → ι, Function.Injective g → LinearIndependent ℝ (fun i => u (g i))
 
+/-- Real symmetric positive definiteness, stated locally to keep the P5.3
+decomposition independent of the heavier matrix spectral-theory imports. -/
+def ForsterPosDef {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ) : Prop :=
+  (∀ i j, P i j = P j i) ∧
+    ∀ z : Fin r → ℝ, z ≠ 0 → 0 < z ⬝ᵥ (P *ᵥ z)
+
+/-- The log--quadratic potential used in Forster's isotropic-position argument
+(PROOFS.md P5.3).  On a positive-definite matrix `P`, every summand is the
+logarithm of the positive quadratic value `uₓᵀ P uₓ`. -/
+noncomputable def forsterPotential {r : ℕ} {ι : Type*} [Fintype ι]
+    (u : ι → EuclideanSpace ℝ (Fin r)) (P : Matrix (Fin r) (Fin r) ℝ) : ℝ :=
+  ∑ x, Real.log
+    ((WithLp.equiv 2 _ (u x)) ⬝ᵥ (P *ᵥ (WithLp.equiv 2 _ (u x))))
+
+/-! ### P5.2 leaf decomposition: perturbation into general position -/
+
+/-- Partial general position along `T`: every subset of `T` of size at most
+`r` indexes a linearly independent subfamily.  Established by induction in
+`exists_partialGP_mem` and upgraded to `InGeneralPosition` at `T = univ` by
+`inGeneralPosition_of_partialGP_univ`. -/
+def PartialGP {r : ℕ} {ι : Type*} (u : ι → EuclideanSpace ℝ (Fin r))
+    (T : Finset ι) : Prop :=
+  ∀ S : Finset ι, S ⊆ T → S.card ≤ r → LinearIndepOn ℝ u (S : Set ι)
+
+/-- A proper subspace of Euclidean space has empty interior: a nonempty
+interior would force the subspace to be everything
+(`Submodule.eq_top_of_nonempty_interior'`). -/
+lemma interior_empty_of_ne_top {r : ℕ}
+    (W : Submodule ℝ (EuclideanSpace ℝ (Fin r))) (hW : W ≠ ⊤) :
+    interior (W : Set (EuclideanSpace ℝ (Fin r))) = ∅ := by
+  sorry
+
+/-- A nonempty open set is not covered by finitely many proper subspaces:
+each is closed (`Submodule.closed_of_finiteDimensional`) with empty interior
+(`interior_empty_of_ne_top`), so peel them off one at a time
+(`Finset.induction_on` on `𝒲`, applying the inductive hypothesis to the
+open set `U \ W`, which is nonempty because `U ⊆ W` would put `U` inside
+the empty `interior W`). -/
+lemma exists_mem_avoiding_subspaces {r : ℕ}
+    (𝒲 : Finset (Submodule ℝ (EuclideanSpace ℝ (Fin r))))
+    (h𝒲 : ∀ W ∈ 𝒲, W ≠ ⊤) :
+    ∀ U : Set (EuclideanSpace ℝ (Fin r)), IsOpen U → U.Nonempty →
+      ∃ z ∈ U, ∀ W ∈ 𝒲, z ∉ W := by
+  sorry
+
+/-- The one-coordinate slice of an open set of families is open:
+`z ↦ Function.update w x₀ z` is continuous (coordinatewise it is either the
+identity or a constant). -/
+lemma isOpen_update_slice {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
+    {U : Set (ι → EuclideanSpace ℝ (Fin r))} (hU : IsOpen U)
+    (w : ι → EuclideanSpace ℝ (Fin r)) (x₀ : ι) :
+    IsOpen {z : EuclideanSpace ℝ (Fin r) | Function.update w x₀ z ∈ U} := by
+  sorry
+
+/-- The span of fewer than `r` vectors is a proper subspace of `ℝ^r`:
+its finrank is at most the cardinality of the spanning image
+(`finrank_span_le_card`), which is less than
+`finrank (EuclideanSpace ℝ (Fin r)) = r` (`finrank_euclideanSpace_fin`). -/
+lemma span_ne_top_of_card_lt {r : ℕ} {ι : Type*}
+    (w : ι → EuclideanSpace ℝ (Fin r)) (S : Finset ι) (hS : S.card < r) :
+    Submodule.span ℝ (w '' (S : Set ι)) ≠ ⊤ := by
+  sorry
+
+/-- Extending partial general position by one index: a subset of
+`insert x₀ T` of size at most `r` either avoids `x₀` (use `hT`) or is
+`insert x₀ S'` with `S' = S.erase x₀ ⊆ T` of size `< r`, where `hT` on `S'`
+together with `havoid` and the `LinearIndepOn` insert API
+(`LinearIndepOn.insert` / `linearIndepOn_insert`) applies. -/
+lemma partialGP_insert {r : ℕ} {ι : Type*} [DecidableEq ι]
+    {u : ι → EuclideanSpace ℝ (Fin r)} {T : Finset ι} {x₀ : ι} (hx₀ : x₀ ∉ T)
+    (hT : PartialGP u T)
+    (havoid : ∀ S : Finset ι, S ⊆ T → S.card < r →
+      u x₀ ∉ Submodule.span ℝ (u '' (S : Set ι))) :
+    PartialGP u (insert x₀ T) := by
+  sorry
+
+/-- Partial general position only reads the family on `T`
+(`LinearIndepOn` congruence on the base set). -/
+lemma partialGP_congr {r : ℕ} {ι : Type*}
+    {u w : ι → EuclideanSpace ℝ (Fin r)} {T : Finset ι}
+    (h : ∀ i ∈ T, u i = w i) (hw : PartialGP w T) : PartialGP u T := by
+  sorry
+
+/-- Induction core of P5.2: inside any nonempty open set of families one can
+reach partial general position on any finite `T`, replacing one coordinate
+at a time (`Finset.induction_on` on `T`).  Step at `x₀ ∉ T`, given
+`w ∈ U` with `PartialGP w T`: the slice `{z | Function.update w x₀ z ∈ U}`
+is open (`isOpen_update_slice`) and contains `w x₀`
+(`Function.update_eq_self`); the spans of images of subsets `S ⊆ T` with
+`S.card < r` form the finite family
+`(T.powerset.filter (fun S => S.card < r)).image
+  (fun S => Submodule.span ℝ (w '' (S : Set ι)))`
+of proper subspaces (`span_ne_top_of_card_lt`); pick an avoiding `z`
+(`exists_mem_avoiding_subspaces`) and set `w' := Function.update w x₀ z`.
+Then `w' ∈ U`, `w'` agrees with `w` on `T` (`Function.update_of_ne`,
+`x₀ ∉ T`), so `PartialGP w' T` (`partialGP_congr`) and the avoided spans are
+also the `w'`-spans; conclude with `partialGP_insert`. -/
+lemma exists_partialGP_mem {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
+    {U : Set (ι → EuclideanSpace ℝ (Fin r))} (hU : IsOpen U)
+    {u : ι → EuclideanSpace ℝ (Fin r)} (hu : u ∈ U) (T : Finset ι) :
+    ∃ w ∈ U, PartialGP w T := by
+  sorry
+
+/-- At `T = univ`, partial general position upgrades to general position: an
+injective selection `g : Fin r → ι` has image of size `r`, `LinearIndepOn`
+on the image is linear independence of the subtype family, and composing
+with the injection `Fin r → ↑(Finset.univ.image g)`, `i ↦ ⟨g i, _⟩`
+(`LinearIndependent.comp`) yields independence of `fun i => u (g i)`. -/
+lemma inGeneralPosition_of_partialGP_univ {r : ℕ} {ι : Type*} [Fintype ι]
+    {u : ι → EuclideanSpace ℝ (Fin r)} (h : PartialGP u Finset.univ) :
+    InGeneralPosition u := by
+  sorry
+
+lemma exists_inGeneralPosition_of_isOpen_nonempty {r : ℕ} {ι : Type*} [Fintype ι]
+    (_hr : 0 < r) (U : Set (ι → EuclideanSpace ℝ (Fin r))) (hU_open : IsOpen U)
+    (u : ι → EuclideanSpace ℝ (Fin r)) (hu : u ∈ U) :
+    ∃ w ∈ U, InGeneralPosition w := by
+  classical
+  obtain ⟨w, hwU, hgp⟩ := exists_partialGP_mem hU_open hu Finset.univ
+  exact ⟨w, hwU, inGeneralPosition_of_partialGP_univ hgp⟩
+
+lemma isOpen_strict_sign_margin_pullback {r : ℕ} {ι : Type*} [Fintype ι]
+    (v : ι → EuclideanSpace ℝ (Fin r)) (s : ι → ι → ℝ) :
+    IsOpen {w : ι → EuclideanSpace ℝ (Fin r) | (∀ x, w x ≠ 0) ∧ ∀ x y, 0 < s x y * ⟪(‖w x‖⁻¹ : ℝ) • w x, v y⟫_ℝ} := by
+  sorry
+
+lemma inGeneralPosition_smul {r : ℕ} {ι : Type*} [Fintype ι]
+    {u : ι → EuclideanSpace ℝ (Fin r)} (hu : InGeneralPosition u)
+    {c : ι → ℝ} (hc : ∀ x, c x ≠ 0) :
+    InGeneralPosition (fun x ↦ c x • u x) := by
+  sorry
+
+lemma norm_normalize_eq_one {r : ℕ}
+    {x : EuclideanSpace ℝ (Fin r)} (hx : x ≠ 0) :
+    ‖(‖x‖⁻¹ : ℝ) • x‖ = 1 := by
+  sorry
+
+lemma inv_norm_ne_zero {r : ℕ} {x : EuclideanSpace ℝ (Fin r)} (hx : x ≠ 0) :
+    (‖x‖⁻¹ : ℝ) ≠ 0 := by
+  sorry
+
 /-- **P5.2 (general position).**  Unit vectors `u` with a strict sign margin
 against `v` can be perturbed by an arbitrarily small amount into unit vectors
 `u₁` that are in general position, without changing any of the (finitely many,
@@ -699,17 +841,396 @@ theorem exists_generalPosition_reposition {r : ℕ} {ι : Type*} [Fintype ι]
     ∃ u₁ : ι → EuclideanSpace ℝ (Fin r),
       (∀ x, ‖u₁ x‖ = 1) ∧ (∀ x y, 0 < s x y * ⟪u₁ x, v y⟫_ℝ) ∧
       InGeneralPosition u₁ := by
+  let U := {w : ι → EuclideanSpace ℝ (Fin r) | (∀ x, w x ≠ 0) ∧ ∀ x y, 0 < s x y * ⟪(‖w x‖⁻¹ : ℝ) • w x, v y⟫_ℝ}
+  have hU_open : IsOpen U := isOpen_strict_sign_margin_pullback v s
+  have hu_ne : ∀ x, u x ≠ 0 := by
+    intro x h
+    have := hu x
+    rw [h, norm_zero] at this
+    exact zero_ne_one this
+  have hu_in_U : u ∈ U := by
+    refine ⟨hu_ne, ?_⟩
+    intro x y
+    have h_norm : ‖u x‖⁻¹ = 1 := by rw [hu x, inv_one]
+    have h_smul : (‖u x‖⁻¹ : ℝ) • u x = u x := by rw [h_norm, one_smul]
+    rw [h_smul]
+    exact hs x y
+  obtain ⟨w, hwU, hwGen⟩ := exists_inGeneralPosition_of_isOpen_nonempty hr U hU_open u hu_in_U
+  use fun x ↦ (‖w x‖⁻¹ : ℝ) • w x
+  refine ⟨?_, hwU.2, ?_⟩
+  · intro x
+    exact norm_normalize_eq_one (hwU.1 x)
+  · apply inGeneralPosition_smul hwGen
+    intro x
+    exact inv_norm_ne_zero (hwU.1 x)
+
+/-! ### P5.3a leaf decomposition: coercivity of the Forster potential -/
+
+/-- The quadratic form `z ↦ zᵀ P z` on Euclidean space; `forsterPotential`
+is the sum of its logarithms over the family
+(`forsterPotential_eq_sum_log`). -/
+noncomputable def forsterQuad {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
+    (z : EuclideanSpace ℝ (Fin r)) : ℝ :=
+  (WithLp.equiv 2 _ z) ⬝ᵥ (P *ᵥ (WithLp.equiv 2 _ z))
+
+lemma forsterPotential_eq_sum_log {r : ℕ} {ι : Type*} [Fintype ι]
+    (u : ι → EuclideanSpace ℝ (Fin r)) (P : Matrix (Fin r) (Fin r) ℝ) :
+    forsterPotential u P = ∑ x, Real.log (forsterQuad P (u x)) := rfl
+
+/-- An `ℓ¹`-normalized combination of linearly independent vectors is
+bounded away from zero.  Recipe: for `k = 0` there is no admissible `c`
+(the empty sum is `0 ≠ 1`), so take `η = 1`; otherwise the coefficient
+sphere `{c | ∑ i, |c i| = 1}` is compact (closed by continuity of
+`c ↦ ∑ i, |c i|`, bounded since each `|c i| ≤ 1`), the map
+`c ↦ ‖∑ i, c i • v i‖` is continuous and attains a minimum
+(`IsCompact.exists_isMinOn`), and the minimum is positive because a
+vanishing combination with `∑ |c i| = 1 ≠ 0` contradicts
+`linearIndependent_iff'` applied to `hv`. -/
+lemma exists_l1_min_of_linearIndependent {k r : ℕ}
+    {v : Fin k → EuclideanSpace ℝ (Fin r)} (hv : LinearIndependent ℝ v) :
+    ∃ η : ℝ, 0 < η ∧
+      ∀ c : Fin k → ℝ, ∑ i, |c i| = 1 → η ≤ ‖∑ i, c i • v i‖ := by
+  sorry
+
+/-- More vectors than the dimension of their ambient subspace admit an
+`ℓ¹`-normalized linear relation: `w + 1 > finrank W` vectors in `W` are
+linearly dependent (transport a dependency of the subtype family, e.g. via
+`Module.finrank`-based `not_linearIndependent_iff` on `W`), and any
+nontrivial relation can be divided by its positive `ℓ¹`-norm
+`∑ i, |c i| ≠ 0`. -/
+lemma exists_l1_relation_of_finrank_lt {w r : ℕ}
+    (W : Submodule ℝ (EuclideanSpace ℝ (Fin r))) (hW : Module.finrank ℝ W ≤ w)
+    (p : Fin (w + 1) → EuclideanSpace ℝ (Fin r)) (hp : ∀ i, p i ∈ W) :
+    ∃ c : Fin (w + 1) → ℝ, ∑ i, |c i| = 1 ∧ ∑ i, c i • p i = 0 := by
+  sorry
+
+/-- Sub-selections of a general-position family are linearly independent:
+extend the injection `e : Fin k → ι` to an injective `g : Fin r → ι` —
+possible since the complement of the image of `e` has at least `r - k`
+elements when `r ≤ card ι` — apply `hgen g`, and restrict along the first
+`k` coordinates (`Fin.castLE hk`, `LinearIndependent.comp`). -/
+lemma linearIndependent_selection_of_inGeneralPosition {r : ℕ} {ι : Type*}
+    [Fintype ι] {u : ι → EuclideanSpace ℝ (Fin r)}
+    (hgen : InGeneralPosition u) (hcard : r ≤ Fintype.card ι)
+    {k : ℕ} (hk : k ≤ r) (e : Fin k → ι) (he : Function.Injective e) :
+    LinearIndependent ℝ (u ∘ e) := by
+  sorry
+
+/-- **Quantitative general position.**  There is a margin `δ > 0` such that
+every proper subspace `W` has at most `finrank W` of the unit vectors
+`δ`-close to it.  Recipe: for each subset of indices of size `≤ r` the
+selected subfamily is independent
+(`linearIndependent_selection_of_inGeneralPosition`), so
+`exists_l1_min_of_linearIndependent` gives a positive margin; let `δ` be the
+minimum of `1` and half the minimum of these finitely many margins.  If some
+`w + 1` distinct indices (with `w := Module.finrank ℝ W < r`) were `δ`-close
+to `W`, pick approximants `q i ∈ W` with `‖u (x i) - q i‖ < δ`, take an
+`ℓ¹`-normalized relation `c` of the `q`s
+(`exists_l1_relation_of_finrank_lt`), and estimate
+`‖∑ i, c i • u (x i)‖ = ‖∑ i, c i • (u (x i) - q i)‖ ≤ ∑ i, |c i| * δ = δ`,
+contradicting the margin.  Only the finitely many index subsets matter; get
+the `w + 1` distinct near indices from `Set.ncard` exceeding `w`
+(`Set.exists_subset_card_eq` style extraction on a finite type). -/
+lemma card_near_subspace_le_finrank {r : ℕ} {ι : Type*} [Fintype ι]
+    (hcard : r ≤ Fintype.card ι)
+    {u : ι → EuclideanSpace ℝ (Fin r)} (hu : ∀ x, ‖u x‖ = 1)
+    (hgen : InGeneralPosition u) :
+    ∃ δ : ℝ, 0 < δ ∧ δ ≤ 1 ∧
+      ∀ W : Submodule ℝ (EuclideanSpace ℝ (Fin r)), Module.finrank ℝ W < r →
+        ({x : ι | ∃ p ∈ W, ‖u x - p‖ < δ} : Set ι).ncard ≤
+          Module.finrank ℝ W := by
+  sorry
+
+/-- Sorted spectral data for a `ForsterPosDef` matrix: an orthonormal
+spanning eigen-family with nondecreasing positive eigenvalues whose product
+is the determinant, diagonalizing the quadratic form.  Recipe: `hP.1` makes
+`P` Hermitian over `ℝ` (`Matrix.IsHermitian`, real conjugation is trivial);
+use `Matrix.IsHermitian.eigenvectorBasis` and
+`Matrix.IsHermitian.eigenvalues` with `mulVec_eigenvectorBasis` for the
+diagonalization, `Matrix.IsHermitian.det_eq_prod_eigenvalues` for the
+determinant, and positivity of each eigenvalue by evaluating `hP.2` at the
+eigenvector.  Sort by composing with the permutation produced by
+`Tuple.sort` (all conjuncts are invariant under a simultaneous permutation:
+`Equiv.sum_comp`, `Equiv.prod_comp`); spanning comes from `Basis.span_eq` of
+the orthonormal basis. -/
+lemma exists_sorted_eigen_data {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
+    (hP : ForsterPosDef P) :
+    ∃ (e : Fin r → EuclideanSpace ℝ (Fin r)) (lam : Fin r → ℝ),
+      Orthonormal ℝ e ∧ Submodule.span ℝ (Set.range e) = ⊤ ∧
+      Monotone lam ∧ (∀ i, 0 < lam i) ∧ ∏ i, lam i = P.det ∧
+      ∀ z : EuclideanSpace ℝ (Fin r),
+        forsterQuad P z = ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2 := by
+  sorry
+
+/-- If `z` is `δ`-far from the span of the low eigenvectors `{i | i < k}`,
+the quadratic form at `z` is at least `lam k * δ²`.  Recipe: the orthogonal
+projection `p := ∑ i ∈ Finset.univ.filter (· < k), ⟪e i, z⟫_ℝ • e i` lies in
+the span, and `‖z - p‖² = ∑ i ∈ Finset.univ.filter (¬ · < k), ⟪e i, z⟫_ℝ ^ 2`
+by the orthonormal expansion of `z` (spanning hypothesis; Parseval); each
+high term of `hquad` carries `lam i ≥ lam k` (`hmono`), so
+`forsterQuad P z ≥ lam k * ∑_{i ≥ k} ⟪e i, z⟫² = lam k * ‖z - p‖² ≥
+lam k * δ²` using `hfar p`. -/
+lemma forsterQuad_ge_of_far {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    {e : Fin r → EuclideanSpace ℝ (Fin r)} {lam : Fin r → ℝ}
+    (he : Orthonormal ℝ e) (hspan : Submodule.span ℝ (Set.range e) = ⊤)
+    (hmono : Monotone lam) (hpos : ∀ i, 0 < lam i)
+    (hquad : ∀ z, forsterQuad P z = ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2)
+    (k : Fin r) {z : EuclideanSpace ℝ (Fin r)} {δ : ℝ} (hδ : 0 ≤ δ)
+    (hfar : ∀ p ∈ Submodule.span ℝ (e '' {i | i < k}), δ ≤ ‖z - p‖) :
+    lam k * δ ^ 2 ≤ forsterQuad P z := by
+  sorry
+
+/-- **Abel counting bound.**  If at most `k` items sit strictly below each
+level `k`, the level-sum of a monotone `f` is at least the extremal
+configuration: one item at each level below the top, everything else at the
+top.  Recipe: write
+`f (level x) = f (Fin.last m) - ∑ k ∈ Finset.univ.filter (level x < ·), d k`
+where `d k := f k - f (k.pred-style predecessor)` telescopes over
+successors; swap the two sums, bound each inner count via `hcount` and
+`d k ≥ 0` (`hf`); the resulting identity
+`∑_{k=1}^{m} (f k - f (k-1)) * k = m * f (Fin.last m) - ∑_{k<m} f k`
+finishes.  Alternatively induct on `m`. -/
+lemma sum_level_lower_bound {m : ℕ} {f : Fin (m + 1) → ℝ} (hf : Monotone f)
+    {ι : Type*} [Fintype ι] (level : ι → Fin (m + 1))
+    (hcount : ∀ k : Fin (m + 1),
+      ({x : ι | level x < k} : Set ι).ncard ≤ (k : ℕ)) :
+    ((Fintype.card ι : ℝ) - (m + 1)) * f (Fin.last m) + ∑ k, f k ≤
+      ∑ x, f (level x) := by
+  sorry
+
+/-- **Coercivity of the Forster potential** (PROOFS.md P5.3, quantitative
+form).  Recipe: take `δ` from `card_near_subspace_le_finrank` and, for a
+given `P`, sorted eigen-data from `exists_sorted_eigen_data`; for each `x`
+let `level x : Fin r` be the largest `k` such that `u x` is `δ`-far from
+`Submodule.span ℝ (e '' {i | i < k})` (the far set contains `k = 0`, where
+the span is `⊥` and `δ ≤ 1 = ‖u x‖`; farness is antitone in `k`, so
+`level x < k` implies `δ`-nearness at `k`).  Then
+`forsterQuad P (u x) ≥ lam (level x) * δ²` (`forsterQuad_ge_of_far`), so
+`forsterPotential u P ≥ ∑ x, Real.log (lam (level x)) + N * Real.log (δ²)`;
+the level count matches `card_near_subspace_le_finrank` because the span at
+`k` has finrank `≤ k < r` (`finrank_span_le_card`), so
+`sum_level_lower_bound` with the monotone `f := Real.log ∘ lam` and
+`∑ i, Real.log (lam i) = Real.log (∏ i, lam i) = Real.log P.det = 0` gives
+`forsterPotential u P ≥ (N - r) * Real.log (lam (Fin.last _)) +
+2 * N * Real.log δ`.  Finally `forsterQuad P z ≤ lam (Fin.last _)` for unit
+`z` (Parseval with `hquad` and monotonicity), and `N - r > 0` lets one pass
+to the exponential bound (`Real.exp_log`, `Real.exp_le_exp`,
+`div_le_iff`). Obtain `Fin.last` from `0 < r` by `cases r`. -/
+lemma forsterPotential_coercive {r : ℕ} {ι : Type*} [Fintype ι]
+    (hr : 0 < r) (hcard : r < Fintype.card ι)
+    {u : ι → EuclideanSpace ℝ (Fin r)} (hu : ∀ x, ‖u x‖ = 1)
+    (hgen : InGeneralPosition u) :
+    ∃ δ : ℝ, 0 < δ ∧
+      ∀ P : Matrix (Fin r) (Fin r) ℝ, ForsterPosDef P → P.det = 1 →
+        ∀ z : EuclideanSpace ℝ (Fin r), ‖z‖ = 1 →
+          forsterQuad P z ≤ Real.exp
+            ((forsterPotential u P - 2 * Fintype.card ι * Real.log δ) /
+              (Fintype.card ι - r)) := by
+  sorry
+
+/-- Symmetric positive-semidefinite matrices with determinant one are
+positive definite.  Recipe: if `z ⬝ᵥ (P *ᵥ z) = 0` for some `z ≠ 0`,
+polarize — `0 ≤ (z + t • w) ⬝ᵥ (P *ᵥ (z + t • w)) = 2 * t * (w ⬝ᵥ (P *ᵥ z))
++ t ^ 2 * (w ⬝ᵥ (P *ᵥ w))` for every `t` (symmetry of `P`) forces
+`w ⬝ᵥ (P *ᵥ z) = 0` for every `w`, i.e. `P *ᵥ z = 0` — so `P` is singular
+(`Matrix.exists_mulVec_eq_zero_iff`), contradicting `P.det = 1 ≠ 0`. -/
+lemma forsterPosDef_of_psd_det_one {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    (hsym : ∀ i j, P i j = P j i)
+    (hpsd : ∀ z : Fin r → ℝ, 0 ≤ z ⬝ᵥ (P *ᵥ z))
+    (hdet : P.det = 1) : ForsterPosDef P := by
+  sorry
+
+/-- A `ForsterPosDef` matrix has nonzero determinant: a vanishing
+determinant gives a nonzero kernel vector
+(`Matrix.exists_mulVec_eq_zero_iff`), whose quadratic value `0` contradicts
+positive definiteness. -/
+lemma forsterPosDef_det_ne_zero {r : ℕ} {B : Matrix (Fin r) (Fin r) ℝ}
+    (hB : ForsterPosDef B) : B.det ≠ 0 := by
+  sorry
+
+/-- Entry bound from the quadratic form: `P i i = forsterQuad P
+(EuclideanSpace.single i 1)` (a unit vector, `EuclideanSpace.norm_single`),
+and evaluating the form at the unit vectors
+`(Real.sqrt 2)⁻¹ • (EuclideanSpace.single i 1 ± EuclideanSpace.single j 1)`
+(for `i ≠ j`) gives `(P i i + P j j ± 2 * P i j) / 2 ∈ [0, C]`, whence
+`|P i j| ≤ C`. -/
+lemma forster_entry_bound {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ} {C : ℝ}
+    (hsym : ∀ i j, P i j = P j i)
+    (hpsd : ∀ z : Fin r → ℝ, 0 ≤ z ⬝ᵥ (P *ᵥ z))
+    (hdiag : ∀ z : EuclideanSpace ℝ (Fin r), ‖z‖ = 1 → forsterQuad P z ≤ C) :
+    ∀ i j, |P i j| ≤ C := by
+  sorry
+
+/-- Continuity of the Forster potential where all quadratic values are
+positive: each `P ↦ forsterQuad P (u x)` is a polynomial in the entries of
+`P` (finite sums of products), hence continuous; `Real.log` is continuous
+at nonzero points; combine `ContinuousOn.sum`, `ContinuousAt.continuousOn`,
+`Real.continuousAt_log`. -/
+lemma continuousOn_forsterPotential {r : ℕ} {ι : Type*} [Fintype ι]
+    (u : ι → EuclideanSpace ℝ (Fin r)) :
+    ContinuousOn (forsterPotential u)
+      {P : Matrix (Fin r) (Fin r) ℝ | ∀ x, 0 < forsterQuad P (u x)} := by
+  sorry
+
+/-- **P5.3a (coercivity and attainment).**  For a general-position unit family
+with more vectors than the ambient dimension, the Forster potential is
+coercive on the positive-definite determinant-one matrices and therefore
+attains a global minimum there.  This is the compactness/coercivity half of
+PROOFS.md P5.3; the first-order and normalization half is isolated in
+`exists_isotropic_of_forsterPotential_minimizer`. -/
+theorem exists_forsterPotential_minimizer {r : ℕ} {ι : Type*} [Fintype ι]
+    (hr : 0 < r) (hcard : r < Fintype.card ι)
+    (u : ι → EuclideanSpace ℝ (Fin r)) (hu : ∀ x, ‖u x‖ = 1)
+    (hgen : InGeneralPosition u) :
+    ∃ P : Matrix (Fin r) (Fin r) ℝ,
+      ForsterPosDef P ∧ P.det = 1 ∧
+        ∀ Q : Matrix (Fin r) (Fin r) ℝ,
+          ForsterPosDef Q → Q.det = 1 →
+            forsterPotential u P ≤ forsterPotential u Q := by
+  sorry
+
+/-! ### P5.3b leaf decomposition: first-order condition and the isotropic
+transform -/
+
+/-- Scaling the matrix shifts the potential by `N * log c`:
+`forsterQuad (c • P) z = c * forsterQuad P z` (`Matrix.smul_mulVec_assoc`,
+`dotProduct_smul`), and `Real.log_mul` term by term (all quadratic values
+are nonzero). -/
+lemma forsterPotential_smul {r : ℕ} {ι : Type*} [Fintype ι]
+    (u : ι → EuclideanSpace ℝ (Fin r)) (P : Matrix (Fin r) (Fin r) ℝ)
+    {c : ℝ} (hc : 0 < c) (hq : ∀ x, forsterQuad P (u x) ≠ 0) :
+    forsterPotential u (c • P) =
+      Fintype.card ι * Real.log c + forsterPotential u P := by
+  sorry
+
+/-- Positive definiteness survives small symmetric perturbations: on the
+compact unit sphere (`isCompact_sphere`, nonempty since `z / ‖z‖` reduces
+the general case to it by homogeneity of degree `2`) the form of `P` has a
+positive minimum `m` and the form of `X` a finite maximum absolute value
+`M` (`IsCompact.exists_isMinOn` / `exists_isMaxOn` with continuity of the
+quadratic forms); take `ε := m / (M + 1)`. -/
+lemma forsterPosDef_perturb {r : ℕ} {P X : Matrix (Fin r) (Fin r) ℝ}
+    (hP : ForsterPosDef P) (hX : ∀ i j, X i j = X j i) :
+    ∃ ε : ℝ, 0 < ε ∧ ∀ t : ℝ, |t| < ε → ForsterPosDef (P + t • X) := by
+  sorry
+
+/-- Derivative of the potential along a matrix line: each
+`t ↦ forsterQuad (P + t • X) (u x)` is affine in `t` (`forsterQuad` is
+linear in the matrix argument: `Matrix.add_mulVec`, `Matrix.smul_mulVec_assoc`,
+`dotProduct_add`), so its `log` has derivative
+`forsterQuad X (u x) / forsterQuad P (u x)` at `0` (`HasDerivAt.log` on the
+affine `HasDerivAt` with positive value at `0`); sum with
+`HasDerivAt.sum`. -/
+lemma hasDerivAt_forsterPotential {r : ℕ} {ι : Type*} [Fintype ι]
+    (u : ι → EuclideanSpace ℝ (Fin r)) (P X : Matrix (Fin r) (Fin r) ℝ)
+    (hq : ∀ x, 0 < forsterQuad P (u x)) :
+    HasDerivAt (fun t : ℝ => forsterPotential u (P + t • X))
+      (∑ x, forsterQuad X (u x) / forsterQuad P (u x)) 0 := by
+  sorry
+
+/-- Derivative of the determinant along a matrix line through a
+determinant-one point: `det (P + t • X) = det P * det (1 + t • (P⁻¹ * X))`
+(factor `P` on the left; `P` is invertible since `P.det = 1`,
+`Matrix.invOf`/`Matrix.nonsing_inv` API), and `Matrix.det_one_add_smul`
+expands the latter as `1 + t * (P⁻¹ * X).trace + t ^ 2 * (…)`, a polynomial
+in `t`; differentiate with `Polynomial`-free calculus
+(`HasDerivAt.const_add`, `HasDerivAt.mul` on monomials). -/
+lemma hasDerivAt_det_line {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    (X : Matrix (Fin r) (Fin r) ℝ) (hdet : P.det = 1) :
+    HasDerivAt (fun t : ℝ => (P + t • X).det) ((P⁻¹ * X).trace) 0 := by
+  sorry
+
+/-- **First-order condition at the minimizer** (PROOFS.md P5.3).  Recipe:
+for symmetric `X` consider the normalized line
+`Q t := ((P + t • X).det) ^ (-(1 : ℝ) / r) • (P + t • X)` (real `rpow`).
+For small `t`: `P + t • X` is `ForsterPosDef` (`forsterPosDef_perturb`) and
+its determinant is positive and continuous in `t` (near `1`,
+`hasDerivAt_det_line`.continuousAt), so `Q t` is `ForsterPosDef` with
+`(Q t).det = 1` (`Matrix.det_smul`, `Real.rpow_natCast` bookkeeping:
+`(d ^ (-(1:ℝ)/r)) ^ r * d = 1` for `d > 0`).  Minimality of `P` gives a
+local minimum at `t = 0` of `g t := forsterPotential u (Q t) =
+forsterPotential u (P + t • X) - (N / r) * Real.log ((P + t • X).det)`
+(`forsterPotential_smul`, `Real.log_rpow`).  `g` is differentiable at `0`
+(`hasDerivAt_forsterPotential`, `hasDerivAt_det_line`, `Real.log`,
+chain rule) with derivative
+`∑ x, forsterQuad X (u x) / forsterQuad P (u x) - (N / r) * (P⁻¹ * X).trace`,
+which must vanish (`IsLocalMin.hasDerivAt_eq_zero`). -/
+lemma forster_first_order {r : ℕ} {ι : Type*} [Fintype ι]
+    (hr : 0 < r) (u : ι → EuclideanSpace ℝ (Fin r)) (hu : ∀ x, ‖u x‖ = 1)
+    (P : Matrix (Fin r) (Fin r) ℝ) (hP : ForsterPosDef P) (hdet : P.det = 1)
+    (hmin : ∀ Q : Matrix (Fin r) (Fin r) ℝ,
+      ForsterPosDef Q → Q.det = 1 →
+        forsterPotential u P ≤ forsterPotential u Q)
+    (X : Matrix (Fin r) (Fin r) ℝ) (hX : ∀ i j, X i j = X j i) :
+    ∑ x, forsterQuad X (u x) / forsterQuad P (u x)
+      = (Fintype.card ι : ℝ) / r * (P⁻¹ * X).trace := by
+  sorry
+
+/-- The first-order condition for all symmetric `X` packages into the
+moment identity `∑ₓ (uₓ uₓᵀ) / (uₓᵀ P uₓ) = (N/r) • P⁻¹`.  Recipe: test
+`X := Matrix.single i i 1` and, for `i ≠ j`,
+`X := Matrix.single i j 1 + Matrix.single j i 1` (symmetric);
+`forsterQuad X z` picks out `z i ^ 2` resp. `2 * z i * z j`, and
+`(P⁻¹ * X).trace` picks out `P⁻¹ i i` resp. `P⁻¹ j i + P⁻¹ i j`; conclude
+entrywise (`Matrix.ext`), using that `P⁻¹` is symmetric
+(`Matrix.transpose_nonsing_inv` with `hP.1`) and that both sides are
+symmetric.  (If `Matrix.single` is named differently in this mathlib, use
+`Matrix.stdBasisMatrix i j 1`.) -/
+lemma forster_moment_matrix {r : ℕ} {ι : Type*} [Fintype ι]
+    (hr : 0 < r) (u : ι → EuclideanSpace ℝ (Fin r)) (hu : ∀ x, ‖u x‖ = 1)
+    (P : Matrix (Fin r) (Fin r) ℝ) (hP : ForsterPosDef P)
+    (hfo : ∀ X : Matrix (Fin r) (Fin r) ℝ, (∀ i j, X i j = X j i) →
+      ∑ x, forsterQuad X (u x) / forsterQuad P (u x)
+        = (Fintype.card ι : ℝ) / r * (P⁻¹ * X).trace) :
+    ∑ x, (forsterQuad P (u x))⁻¹ •
+        Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))
+      = ((Fintype.card ι : ℝ) / r) • P⁻¹ := by
+  sorry
+
+/-- Positive-definite square root via the spectral theorem: write
+`P = U * diagonal lam * Uᴴ` (`Matrix.IsHermitian.spectral_theorem` for the
+Hermitian matrix given by `hP.1`; real entries), with positive eigenvalues
+(evaluate `hP.2` at the eigenvectors), and set
+`B := U * diagonal (fun i => Real.sqrt (lam i)) * Uᴴ`; then `B * B = P`
+(`diagonal_mul_diagonal`, `Real.mul_self_sqrt`, unitarity of `U`), `B` is
+symmetric, and `B`'s quadratic form is positive (its eigenvalues are the
+positive `Real.sqrt (lam i)`). -/
+lemma exists_forster_sqrt {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
+    (hP : ForsterPosDef P) :
+    ∃ B : Matrix (Fin r) (Fin r) ℝ, ForsterPosDef B ∧ B * B = P := by
+  sorry
+
+/-- **P5.3b (first-order condition and normalization).**  A global minimizer
+of the Forster potential yields the isotropic repositioning: take its
+positive-definite square root `B`, normalize `B uₓ`, transform the dual vectors
+by `B⁻ᵀ`, and use the determinant-one first-order condition to obtain
+`∑ₓ ⟪u'ₓ,w⟫² = (N/r)‖w‖²`.  The paired transformations preserve every strict
+inner-product sign. -/
+theorem exists_isotropic_of_forsterPotential_minimizer
+    {r : ℕ} {ι : Type*} [Fintype ι]
+    (hr : 0 < r) (hcard : r < Fintype.card ι)
+    (u v : ι → EuclideanSpace ℝ (Fin r))
+    (hu : ∀ x, ‖u x‖ = 1) (hv : ∀ y, ‖v y‖ = 1)
+    (s : ι → ι → ℝ) (hs : ∀ x y, 0 < s x y * ⟪u x, v y⟫_ℝ)
+    (P : Matrix (Fin r) (Fin r) ℝ) (hP : ForsterPosDef P) (hdet : P.det = 1)
+    (hmin : ∀ Q : Matrix (Fin r) (Fin r) ℝ,
+      ForsterPosDef Q → Q.det = 1 → forsterPotential u P ≤ forsterPotential u Q) :
+    ∃ u' v' : ι → EuclideanSpace ℝ (Fin r),
+      (∀ x, ‖u' x‖ = 1) ∧ (∀ y, ‖v' y‖ = 1) ∧
+      (∀ x y, 0 < s x y * ⟪u' x, v' y⟫_ℝ) ∧
+      ∀ w : EuclideanSpace ℝ (Fin r),
+        ∑ x, ⟪u' x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
   sorry
 
 /-- **P5.3 (isotropic position — the analytic kernel).**  Unit vectors `u` in
 general position, with a strict sign margin against unit vectors `v`, can be
 brought to isotropic position: there are unit vectors `u'`, `v'` preserving every
 sign with `∑_x u'_x u'_xᵀ = (N/r)·I` (stated as the quadratic-form identity
-`∑_x ⟪u'_x, w⟫² = (N/r)‖w‖²`).  Proof: minimize `Φ(P) = ∑_x log(u_xᵀ P u_x)` over
-`{P ≻ 0, det P = 1}`; general position and `r < N` give coercivity (every
-degenerating subspace loses fewer than its share of vectors), so a minimizer
-`P* = B²` exists, and its first-order/Lagrange condition is exactly the isotropy
-of `û_x = B u_x/‖B u_x‖`, with `v'_y` the matching `(B⁻¹)`-adjoint image. -/
+`∑_x ⟪u'_x, w⟫² = (N/r)‖w‖²`).  **Assembly** (PROOFS.md P5.3):
+`exists_forsterPotential_minimizer` supplies the positive-definite,
+determinant-one minimizer using general position and coercivity;
+`exists_isotropic_of_forsterPotential_minimizer` applies the first-order
+condition and the paired square-root/dual transformations. -/
 theorem exists_isotropic_of_generalPosition {r : ℕ} {ι : Type*} [Fintype ι]
     (hr : 0 < r) (hcard : r < Fintype.card ι)
     (u v : ι → EuclideanSpace ℝ (Fin r))
@@ -721,7 +1242,10 @@ theorem exists_isotropic_of_generalPosition {r : ℕ} {ι : Type*} [Fintype ι]
       (∀ x y, 0 < s x y * ⟪u' x, v' y⟫_ℝ) ∧
       ∀ w : EuclideanSpace ℝ (Fin r),
         ∑ x, ⟪u' x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
-  sorry
+  obtain ⟨P, hP, hdet, hmin⟩ :=
+    exists_forsterPotential_minimizer hr hcard u hu hgen
+  exact exists_isotropic_of_forsterPotential_minimizer
+    hr hcard u v hu hv s hs P hP hdet hmin
 
 /-- P5.2 + P5.3 (the analytic kernel): unit vectors with a strict sign margin
 can be perturbed into general position and then brought to isotropic position

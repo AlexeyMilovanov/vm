@@ -1,46 +1,242 @@
 {
   "entries": [
     {
-      "name": "warren_sign_patterns",
-      "file": "HeadComplexity/Separations/Warren.lean",
+      "name": "warren_sign_patterns_weak",
+      "file": "HeadComplexity/Separations/Forster.lean",
       "status": "external",
       "pref": "P9",
-      "note": "Cite-level monument; DO NOT ATTEMPT (real algebraic geometry: components plus Milnor/Warren bounds). pow_le_of_leftShatters is fully proved modulo only this leaf."
+      "note": "Cite-level monument; DO NOT ATTEMPT (real algebraic geometry: Milnor/Warren component bounds, weak constant (8(dk+1))^m). Being proven by the parallel warren-lean-28 pipeline."
     },
     {
-      "name": "clearedForm_eq_headSubsetExpansion",
-      "file": "HeadComplexity/Separations/SignRankBridge.lean",
+      "name": "interior_empty_of_ne_top",
+      "file": "HeadComplexity/Separations/Forster.lean",
       "status": "jules_ready",
-      "pref": "P2.3a",
-      "note": "Exact Finset.powerset expansion of the cleared head score. Expand each product of A_h(x)+B_h(y) with Finset.prod_add, group by the A-side subset T, and separate numerator choices into headSubsetLeftDeriv and headSubsetRightDeriv. Parent assembly: exists_clearedForm_outerProduct_decomp first rewrites by this identity, then applies exists_headSubsetExpansion_outerProduct_decomp."
+      "pref": "P5.2-GP1",
+      "note": "Proper submodule of Euclidean space has empty interior. by_contra + Submodule.eq_top_of_nonempty_interior' (topological vector space instances are available)."
     },
     {
-      "name": "exists_headSubsetExpansion_outerProduct_decomp",
-      "file": "HeadComplexity/Separations/SignRankBridge.lean",
+      "name": "exists_mem_avoiding_subspaces",
+      "file": "HeadComplexity/Separations/Forster.lean",
       "status": "jules_ready",
-      "pref": "P2.3b",
-      "note": "Boundary merge/count for the P2.3 subset expansion. Use two tagged copies of powerset univ; omit the zero left term at T=empty, fold the right term at T=univ into the left term, and keep two terms for interior T. The empty-set right piece has constant left factor. Count with card_powerset and two_mul_two_pow_sub. Consumed by the sorry-free exists_clearedForm_outerProduct_decomp parent."
+      "pref": "P5.2-GP2",
+      "note": "Nonempty open set escapes finitely many proper subspaces. Finset.induction_on over the family; the statement is already universally quantified over U, so the inductive hypothesis applies to U \\ W; W is closed (Submodule.closed_of_finiteDimensional) and interior_empty_of_ne_top shows U is not inside W."
     },
     {
-      "name": "signRank_le_of_multilinear_signRepr",
-      "file": "HeadComplexity/Separations/SignRankBridge.lean",
-      "status": "hard",
-      "pref": "P3.2-P3.3",
-      "note": "Factor eval(cubePoint(blockJoin x y)) P as a sum over left supports mu with |mu|<=d, then apply signRank_le_card_of_signRepr_sum and card_subsets_card_le. Multilinearity must be used to identify each monomial with its squarefree support; the empty support supplies the constant factor."
+      "name": "isOpen_update_slice",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.2-GP3",
+      "note": "Slice of an open set of families is open: preimage under the continuous map z => Function.update w x0 z (coordinatewise identity or constant; continuous_update or continuous_pi + Function.update_apply case split)."
     },
     {
-      "name": "exists_generalPosition_reposition",
+      "name": "span_ne_top_of_card_lt",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.2-GP4",
+      "note": "Span of < r vectors is proper: finrank of span <= card of the finite image (finrank_span_le_card / finrank_span_finset_le_card) < r = finrank (finrank_euclideanSpace_fin); a top submodule has finrank r."
+    },
+    {
+      "name": "partialGP_insert",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.2-GP5",
+      "note": "Extend PartialGP by one avoided index. S subset of insert x0 T with card <= r: if x0 not in S use hT; else S = insert x0 (S.erase x0), erase has card < r, use hT on it and the avoidance hypothesis with the LinearIndepOn insert API (linearIndepOn_insert / LinearIndepOn.insert; note u x0 not in span(u '' erase) also gives u x0 not in u '' erase)."
+    },
+    {
+      "name": "partialGP_congr",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.2-GP6",
+      "note": "PartialGP only reads the family on T: for S subset T the subtype families of u and w agree pointwise; LinearIndepOn congruence (LinearIndepOn.congr or unfold to LinearIndependent and use Function funext on the subtype)."
+    },
+    {
+      "name": "exists_partialGP_mem",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.2-GP7",
+      "note": "Induction core; the docstring carries the complete step-by-step recipe (Finset.induction_on on T, isOpen_update_slice + Function.update_eq_self for the slice, T.powerset.filter image for the proper spans, exists_mem_avoiding_subspaces, partialGP_congr + partialGP_insert; Function.update_of_ne since x0 not in T)."
+    },
+    {
+      "name": "inGeneralPosition_of_partialGP_univ",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.2-GP8",
+      "note": "PartialGP univ => InGeneralPosition: image of the injective g : Fin r -> iota has card r (Finset.card_image_of_injective), LinearIndepOn on it is subtype independence, compose with i => <g i, mem> via LinearIndependent.comp (injective by he)."
+    },
+    {
+      "name": "isOpen_strict_sign_margin_pullback",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.2-a",
+      "note": "Openness of the strict sign-margin set. Simplification: on w x != 0 the condition 0 < s x y * <normalize (w x), v y> is equivalent to 0 < s x y * <w x, v y> (positive scalar); so the set is the finite intersection over x of {w | w x != 0} (open: preimage of complement of a point under continuous eval) and over (x,y) of preimages of (0, inf) under the continuous w => s x y * inner (w x) (v y). Prove the set equality first, then isOpen_iInter_of_finite/IsOpen.inter."
+    },
+    {
+      "name": "inGeneralPosition_smul",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.2-b",
+      "note": "General position is preserved by nonzero scalings: (fun i => c (g i) . u (g i)) = fun i => (c (g i)) . (u (g i)); LinearIndependent.units_smul with the units (Units.mk0 (c _) (hc _)), or linearIndependent_smul_iff-style lemma."
+    },
+    {
+      "name": "norm_normalize_eq_one",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.2-c",
+      "note": "norm of inv-norm-scaled vector is 1: norm_smul, Real.norm_eq_abs, abs_inv, abs_norm, inv_mul_cancel0 with norm_ne_zero_iff. An identical computation already appears verbatim inside forster (the refine block around line 660) - copy it."
+    },
+    {
+      "name": "inv_norm_ne_zero",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.2-d",
+      "note": "inv_ne_zero (norm_ne_zero_iff.mpr hx)."
+    },
+    {
+      "name": "exists_l1_min_of_linearIndependent",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3a-M1",
+      "note": "Positive l1-margin of an independent family. k = 0: no admissible c (empty sum is 0), pick eta = 1. Else: the l1 sphere is compact (closed by continuity of c => sum |c i|; bounded: each |c i| <= 1 so it sits in a closed ball), the norm of the combination is continuous, IsCompact.exists_isMinOn; the min is positive since a zero combination with sum |c i| = 1 contradicts linearIndependent_iff' (some c i != 0)."
+    },
+    {
+      "name": "exists_l1_relation_of_finrank_lt",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3a-M2",
+      "note": "w+1 vectors in a subspace of finrank <= w admit an l1-normalized relation. View p as a family into the module W (restrict codomain: fun i => (<p i, hp i> : W)); it cannot be linearly independent (finrank W < w+1; LinearIndependent.fintype_card_le_finrank or Module.finrank arguments), extract a nontrivial relation (not-linearIndependent via Fintype.not_linearIndependent_iff), push back to the ambient space, divide by sum |c i| > 0 (abs sums, smul distributes)."
+    },
+    {
+      "name": "linearIndependent_selection_of_inGeneralPosition",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3a-M3",
+      "note": "Sub-selections of a general-position family are independent. Extend the injection e : Fin k -> iota to an injective g : Fin r -> iota: the complement of the image of e has card >= r - k (card counting), choose an injection Fin (r-k) into it (Finset equivalents / Function.Embedding of a Finset with enough elements), define g by Fin.append-style case split on i < k; then hgen g and LinearIndependent.comp with Fin.castLE hk (injective)."
+    },
+    {
+      "name": "card_near_subspace_le_finrank",
       "file": "HeadComplexity/Separations/Forster.lean",
       "status": "hard",
-      "pref": "P5.2",
-      "note": "Perturb the finite unit family inside its strict sign-margin neighborhood so every injective Fin r selection is linearly independent. The excluded dependent configurations form a finite union of measure-zero subsets of the product of spheres. Consumed by exists_isotropic_reposition."
+      "pref": "P5.3a-M4",
+      "note": "Quantitative general position (the docstring carries the full recipe: margins from exists_l1_min_of_linearIndependent over the finitely many index subsets of size <= r via linearIndependent_selection_of_inGeneralPosition, delta = min(1, half the min margin); a violating W with w = finrank W < r would give w+1 distinct delta-near indices, approximants q i in W, an l1 relation from exists_l1_relation_of_finrank_lt, and the estimate ||sum c i . u (x i)|| <= delta beating the margin). Extraction of w+1 distinct indices from Set.ncard > w: Set.ncard on a finite type, obtain an injection Fin (w+1) into the near set."
     },
     {
-      "name": "exists_isotropic_of_generalPosition",
+      "name": "exists_sorted_eigen_data",
       "file": "HeadComplexity/Separations/Forster.lean",
       "status": "hard",
-      "pref": "P5.3",
-      "note": "Deepest analytic kernel. From general position and r<card, minimize the log quadratic-form potential over positive-definite determinant-one matrices; prove coercivity, obtain a minimizer, and derive the isotropy identity from the first-order condition. Consumed by exists_isotropic_reposition."
+      "pref": "P5.3a-M5",
+      "note": "Sorted spectral data (docstring has the recipe: Matrix.IsHermitian from symmetry with trivial real conjugation, eigenvectorBasis / eigenvalues / mulVec_eigenvectorBasis / det_eq_prod_eigenvalues from Mathlib.Analysis.Matrix.Spectrum, positivity from hP.2 at eigenvectors, sorting via Tuple.sort composition with Equiv.sum_comp / Equiv.prod_comp invariance, spanning via Basis.span_eq). Helper sorries are acceptable if the sorting bookkeeping needs isolating."
+    },
+    {
+      "name": "forsterQuad_ge_of_far",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3a-M6",
+      "note": "Far from the low-eigenvector span => quadratic form >= lam k * delta^2. Project p = sum over filter (. < k) of <e i, z> . e i (mem span by Submodule.sum_mem + subset_span of the image); expand z in the orthonormal spanning family, ||z - p||^2 = sum over filter (not . < k) of <e i, z>^2 (Parseval for orthonormal families: inner_sum, Orthonormal.inner_right_finsupp-style lemmas or OrthonormalBasis via Basis.mk); bound hquad termwise by hmono."
+    },
+    {
+      "name": "sum_level_lower_bound",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3a-M7",
+      "note": "Abel counting bound; self-contained discrete inequality. Either induct on m, or use the telescoping in the docstring: f (level x) = f (Fin.last m) - sum over k in filter (fun k => level x < k) of (f k - f (pred k)) where pred k = k - 1 on positives (each difference >= 0 by hf), swap sums (Finset.sum_comm on the incidence set), bound the count of {x | level x < k} by hcount (convert Set.ncard to Finset card via Set.ncard_coe_Finset / Set.ncard_eq_toFinset_card), and finish with the Abel identity sum_{k=1}^{m} (f k - f (k-1)) * k = m * f (Fin.last m) - sum_{k < m} f k (provable by induction on m or Finset.sum_range_succ_comm manipulations)."
+    },
+    {
+      "name": "forsterPotential_coercive",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "hard",
+      "pref": "P5.3a-M8",
+      "note": "Coercivity assembly (docstring has the complete chain: delta from card_near_subspace_le_finrank, eigen data from exists_sorted_eigen_data, level x = max far index via Finset.max' of the nonempty far set, per-term bound forsterQuad_ge_of_far, Real.log_le_log / Real.log_mul splitting log(lam * delta^2), sum_level_lower_bound with f = Real.log . lam, sum of log lam = log prod = log det = 0, Parseval upper bound forsterQuad P z <= lam (Fin.last _) on unit z, division by N - r > 0 and Real.exp_log). Helper sorries acceptable."
+    },
+    {
+      "name": "forsterPosDef_of_psd_det_one",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3a-M9",
+      "note": "psd + symmetric + det 1 => posdef. If z != 0 with z . P z = 0: for all w and t, 0 <= (z + t.w) . P (z + t.w) = 2 t (w . P z) + t^2 (w . P w) (expand dotProduct_add, mulVec_add, use symmetry to merge cross terms); a nonzero linear coefficient with quadratic remainder violates nonnegativity for small t of the right sign (take t = -eps * sign); so P *v z = 0, Matrix.exists_mulVec_eq_zero_iff gives det = 0, contradiction."
+    },
+    {
+      "name": "forsterPosDef_det_ne_zero",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3a-M10",
+      "note": "Posdef => det != 0: Matrix.exists_mulVec_eq_zero_iff would give z != 0 with B *v z = 0, so z . B z = 0 contradicting hB.2 z."
+    },
+    {
+      "name": "forster_entry_bound",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3a-M11",
+      "note": "Entries bounded by the sup of the quadratic form on unit vectors. Diagonal: forsterQuad P (EuclideanSpace.single i 1) = P i i (compute dotProduct of single; EuclideanSpace.norm_single for the unit norm... norm of single i 1 is |1| = 1). Off-diagonal i != j: evaluate at (Real.sqrt 2)^-1 . (single i 1 + single j 1) and the minus version; both are unit vectors (orthogonal singles, Pythagoras); the values are (P i i + P j j +- 2 P i j)/2, nonneg (hpsd) and <= C (hdiag), so |P i j| <= C by linarith."
+    },
+    {
+      "name": "continuousOn_forsterPotential",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3a-M12",
+      "note": "Potential is continuous where the quadratic values are positive. P => forsterQuad P (u x) is continuous (finite sum of products of entry evaluations: continuous_apply composed twice, Continuous.sum, Continuous.mul); Real.log is continuous at nonzero points (Real.continuousAt_log); assemble with ContinuousOn.sum and ContinuousAt.continuousWithinAt at each point of the set."
+    },
+    {
+      "name": "forsterPotential_smul",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3b-F1",
+      "note": "Phi(c.P) = N log c + Phi(P): forsterQuad (c.P) z = c * forsterQuad P z (Matrix.smul_mulVec_assoc, dotProduct_smul), Real.log_mul (c != 0, quad != 0), Finset.sum_add_distrib and card_univ."
+    },
+    {
+      "name": "forsterPosDef_perturb",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3b-F2",
+      "note": "Posdef is stable under small symmetric perturbations. Sphere compactness route in the docstring; alternatively avoid compactness entirely: quadratic forms on a finite-dimensional space, bound |z . X z| <= (sum of |X i j|) * ||z||_inf^2 <= C * ||z||^2 termwise (dotProduct as a double sum, abs_sum_le_sum_abs, coordinates bounded by the euclidean norm via EuclideanSpace.norm_eq / single-coordinate bounds), and z . P z >= m ||z||^2 with m from... if the compactness route is simpler, use it: sphere r-1 is compact (isCompact_sphere), continuous forms attain min m > 0 (hP.2) and max |.| M, epsilon = m/(M+1), extend by homogeneity (z = ||z|| . unit)."
+    },
+    {
+      "name": "hasDerivAt_forsterPotential",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3b-F3",
+      "note": "Derivative of the potential along a matrix line at t = 0. forsterQuad (P + t.X) z = forsterQuad P z + t * forsterQuad X z (add_mulVec, smul_mulVec_assoc, dotProduct_add, dotProduct_smul); each log-term: HasDerivAt.log of the affine hasDerivAt (hasDerivAt_id.const_mul plus const_add) with value forsterQuad P (u x) > 0; sum with HasDerivAt.sum; the derivative sum matches term by term."
+    },
+    {
+      "name": "hasDerivAt_det_line",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3b-F4",
+      "note": "Derivative of t => det(P + t.X) at 0 equals trace(P^-1 * X) when det P = 1. Factor: P + t.X = P * (1 + t . (P^-1 * X)) (P invertible from det = 1: isUnit_iff_isUnit_det / invertibleOfIsUnitDet; Matrix.mul_nonsing_inv cancellations), det_mul and hdet reduce to d/dt det(1 + t.M) = trace M at 0; Matrix.det_one_add_smul (Mathlib/LinearAlgebra/Matrix/Charpoly/Coeff.lean) writes det(1 + t.M) = 1 + t * trace M + t^2 * f(t) with f polynomial-in-t (check its exact shape), differentiate the explicit expression (HasDerivAt.const_add, HasDerivAt.mul, hasDerivAt_pow)."
+    },
+    {
+      "name": "forster_first_order",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "hard",
+      "pref": "P5.3b-F5",
+      "note": "First-order condition at the constrained minimizer (docstring carries the full recipe: normalized line Q t = det(P+tX)^(-1/r) . (P+tX) via Real.rpow, admissibility for small t from forsterPosDef_perturb + continuity of det near 1, det(Q t) = 1 from det_smul and rpow arithmetic on positive det, g t = Phi(P+tX) - (N/r) log det(P+tX) via forsterPotential_smul + Real.log_rpow, local min at 0, derivative from hasDerivAt_forsterPotential + hasDerivAt_det_line + HasDerivAt.log, IsLocalMin.hasDerivAt_eq_zero). Helper sorries acceptable."
+    },
+    {
+      "name": "forster_moment_matrix",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3b-F6",
+      "note": "Package the first-order condition into the moment matrix identity. Matrix.ext; entry (i,j): test hfo at X = Matrix.single i i 1 (diagonal) and X = Matrix.single i j 1 + Matrix.single j i 1 (off-diagonal; use Matrix.stdBasisMatrix if single is absent); compute forsterQuad X z explicitly (dotProduct with a single picks coordinates: z i * z j terms), and (P^-1 * X).trace picks the entries of P^-1; P^-1 is symmetric (Matrix.transpose_nonsing_inv with hP.1 => P^T = P); vecMulVec_apply gives the left side entries."
+    },
+    {
+      "name": "exists_forster_sqrt",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "jules_ready",
+      "pref": "P5.3b-F7",
+      "note": "Posdef square root via Matrix.IsHermitian.spectral_theorem (Mathlib.Analysis.Matrix.Spectrum): P = U * diagonal (eigenvalues) * U^H with U = eigenvectorUnitary; eigenvalues positive from hP.2; B = U * diagonal (sqrt eigenvalues) * U^H; B * B = P by diagonal_mul_diagonal + Real.mul_self_sqrt + unitarity (U^H * U = 1); symmetry of B by conjTranspose computation (real conjugation trivial); positivity of B's form: for z != 0, z . B z = sum over i of sqrt(lam i) * |(U^H z) i|^2 > 0 (the transformed vector is nonzero since U is invertible)."
+    },
+    {
+      "name": "exists_forsterPotential_minimizer",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "hard",
+      "pref": "P5.3a",
+      "note": "ASSEMBLY of the P5.3a-M* leaves; do not re-derive analysis here. K := {P | symmetric and (forall z, 0 <= z . P z) and det P = 1 and Phi(P) <= 0}. (1) 1 (identity) lies in K: quad at u x is ||u x||^2 = 1 (one_mulVec; EuclideanSpace norm identity as in norm_sq_eq at the top of this file), so Phi(1) = 0. (2) Every element of K is ForsterPosDef (forsterPosDef_of_psd_det_one). (3) K is closed: C := {symmetric, psd, det = 1} is closed (intersections of preimages of closed sets under continuous entry/det/quadratic maps; psd = intersection over z of closed conditions); on C the potential is continuous (continuousOn_forsterPotential restricted along (2): quad values positive since u x != 0 from ||u x|| = 1), so K = C inter preimage of Iic 0 is closed by ContinuousOn.preimage_isClosed_of_isClosed. (4) K is bounded: forsterPotential_coercive at Phi <= 0 bounds forsterQuad P z on unit z by the constant C0 = exp((0 - 2 N log delta)/(N - r)), so |P i j| <= C0 (forster_entry_bound); K embeds in a compact box (entrywise Icc, isCompact_univ_pi of isCompact_Icc, transported through the continuous entrywise equiv Matrix <-> pi type), and a closed subset of a compact set is compact. (5) IsCompact.exists_isMinOn gives P* in K minimizing Phi on K; ForsterPosDef P* by (2). (6) Global minimality: for admissible Q either Phi(Q) <= 0 - then Q in K (its form is nonneg: posdef) and hmin applies - or Phi(Q) > 0 >= Phi(1) >= Phi(P*) since 1 in K."
+    },
+    {
+      "name": "exists_isotropic_of_forsterPotential_minimizer",
+      "file": "HeadComplexity/Separations/Forster.lean",
+      "status": "hard",
+      "pref": "P5.3b",
+      "note": "ASSEMBLY of the P5.3b-F* leaves; do not re-derive analysis here. From hmin: forster_first_order gives the tested condition, forster_moment_matrix packages it as S := sum over x of quad(P, u x)^-1 . vecMulVec (u x) (u x) = (N/r) . P^-1. Take B with ForsterPosDef B and B * B = P (exists_forster_sqrt); B.det != 0 (forsterPosDef_det_ne_zero) so B is invertible. Define u' x := normalize (toEuclidean (B *v (u x))), v' y := normalize (toEuclidean (B^-1 *v (v y))) where toEuclidean = (WithLp.equiv 2 _).symm and normalize w = ||w||^-1 . w. (a) Nonvanishing: B *v u x != 0 (mulVec injective for invertible B: Matrix.mulVec_injective_iff_isUnit or via nonsing inv cancel; u x != 0 from norm 1), same for B^-1; norms 1 via norm_normalize_eq_one. (b) Signs: <u' x, v' y> = (pos scalar) * <B u x, B^-1 v y> and (B *v a) . (B^-1 *v b) = a . ((B * B^-1) *v b)... careful: real inner on EuclideanSpace is dotProduct; use B symmetric (hB.1): (B *v a) . (B^-1 *v b) = a . (B^T *v (B^-1 *v b))? cleanest: dotProduct_mulVec and vecMul vs mulVec with symmetry: (B *v a) . (B^-1 *v b) = a . (B *v (B^-1 *v b)) = a . b (Matrix.mulVec_mulVec, mul_nonsing_inv). Positive scalar times original sign preserves hs. (c) Isotropy: <u' x, w>^2 = <B u x, w>^2 / quad(P, u x) since ||B *v u x||^2 = (B u x).(B u x) = u x . (B*B) u x = quad(P, u x) (symmetry of B); sum over x: sum quad(P,u x)^-1 * (u x . (B w))^2 = (B w) . S (B w)... unfold vecMulVec: z . (vecMulVec a a *v z) = (a . z)^2; apply the moment identity S = (N/r) P^-1: (B w).((N/r) P^-1 *v (B w)) = (N/r) * (w . (B P^-1 B) w) = (N/r) ||w||^2 because B * P^-1 * B = 1 (from B*B = P: P^-1 = B^-1 * B^-1). Norm-squared on EuclideanSpace as dotProduct via the norm_sq_eq lemma at the top of this file."
     }
   ]
 }

@@ -50,7 +50,7 @@ GEMINI_MODEL = "gemini-3.1-pro-high"
 CLAUDE_MODEL = "claude-opus-4-8"
 CODEX_MODEL = "gpt-5.6-sol"
 
-EXTERNAL = {"warren_sign_patterns"}
+EXTERNAL = {"warren_sign_patterns_weak"}
 MIN_QUEUE = 10
 STAGE_TIMEOUT = 5400
 BUILD_TIMEOUT = 2400

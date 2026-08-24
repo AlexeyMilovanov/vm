@@ -37,14 +37,33 @@ can be absorbed by doubling the exponent. -/
 private theorem weak_warren_pow_le (H k : ℕ) (hH : 1 ≤ H) (hkH : 2 * H ≤ k) :
     (8 * ((H : ℝ) * k + 1)) ^ (2 * H) ≤
       (8 * (k : ℝ)) ^ (4 * H) := by
-  sorry
+  have hHk : (H : ℝ) ≤ (k : ℝ) := by exact_mod_cast (by omega : H ≤ k)
+  have hk1 : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast (by omega : 1 ≤ k)
+  -- the RHS base squared dominates the LHS base (`H ≤ k`, `1 ≤ k`)
+  have hbase : 8 * ((H : ℝ) * k + 1) ≤ (8 * (k : ℝ)) ^ 2 := by
+    have h1 : (H : ℝ) * k ≤ (k : ℝ) * k :=
+      mul_le_mul_of_nonneg_right hHk (by linarith)
+    have h2 : (1 : ℝ) ≤ (k : ℝ) * k := by nlinarith
+    nlinarith [h1, h2]
+  -- `(8k)^(4H) = ((8k)^2)^(2H)`, then compare bases at the common exponent `2H`
+  have hexp : (8 * (k : ℝ)) ^ (4 * H) = ((8 * (k : ℝ)) ^ 2) ^ (2 * H) := by
+    rw [← pow_mul]; congr 1; ring
+  rw [hexp]
+  exact pow_le_pow_left₀ (by positivity) hbase (2 * H)
 
 /-- The `k < 2H` branch does not need Warren: the deliberately loose consumer
 base dominates `2`, and the exponent dominates `k`. -/
 private theorem pow_le_weak_of_lt_two_mul_H {H k : ℕ} (hk : 1 ≤ k)
     (hkH : k < 2 * H) :
     (2 : ℝ) ^ k ≤ (8 * (k : ℝ)) ^ (4 * H) := by
-  sorry
+  have hbase : (2 : ℝ) ≤ 8 * (k : ℝ) := by
+    have hk1 : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+    nlinarith
+  have hpow1 : (2 : ℝ) ^ k ≤ (2 : ℝ) ^ (4 * H) :=
+    pow_le_pow_right₀ (by norm_num) (by omega)
+  have hpow2 : (2 : ℝ) ^ (4 * H) ≤ (8 * (k : ℝ)) ^ (4 * H) :=
+    pow_le_pow_left₀ (by norm_num) hbase (4 * H)
+  exact hpow1.trans hpow2
 
 /-- `NDISJ_m` left-shatters `m` points: the indicator left blocks `e_j`
 satisfy `NDISJ(e_j, w) = w j`. -/

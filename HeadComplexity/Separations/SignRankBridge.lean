@@ -275,16 +275,275 @@ theorem exists_multilinear_signRepr {n d : ℕ} {f : (Fin n → Bool) → Bool}
 
 end Multilinearization
 
+/-! ### P3.2 left-monomial factorization — decomposition of
+`signRank_le_of_multilinear_signRepr`.  The degree-half core splits into the
+factorization identity `eval_blockJoin_eq_leftSupport_sum` (P3.2, `M = ∑_μ x^μ
+c_μ(y)`) and the degree vanishing `rightCoeff_eq_zero_of_totalDegree_lt`; the
+parent assembles these with the already-proved count `card_subsets_card_le` and
+strictification `signRank_le_card_of_signRepr_sum`. -/
+section LeftMonomialFactorization
+open MvPolynomial
+
+/-- Left support of a monomial exponent vector `c` (PROOFS.md P3.2): the
+left-block coordinates `Fin a` on which `c` is nonzero, read off through
+`Fin.castAdd`. -/
+def leftSupport {a b : ℕ} (c : Fin (a + b) →₀ ℕ) : Finset (Fin a) :=
+  Finset.univ.filter (fun i => c (Fin.castAdd b i) ≠ 0)
+
+/-- Right support of a monomial exponent vector `c`: the right-block
+coordinates `Fin b` on which `c` is nonzero, through `Fin.natAdd`. -/
+def rightSupport {a b : ℕ} (c : Fin (a + b) →₀ ℕ) : Finset (Fin b) :=
+  Finset.univ.filter (fun j => c (Fin.natAdd a j) ≠ 0)
+
+/-- The aggregated right-block coefficient `c_μ(y)` of PROOFS.md P3.2: the sum,
+over the monomials of `P` whose left support is exactly `μ`, of the coefficient
+times the right-block cube indicator `[rightSupport c ⊆ onesSet y]`. -/
+noncomputable def rightCoeff {a b : ℕ} (P : MvPolynomial (Fin (a + b)) ℝ)
+    (μ : Finset (Fin a)) (y : Fin b → Bool) : ℝ :=
+  ∑ c ∈ P.support.filter (fun c => leftSupport c = μ),
+    P.coeff c * (if rightSupport c ⊆ onesSet y then 1 else 0)
+
+/-- A `∏` of cube coordinates over a left sub-monomial is the indicator that it
+sits in the ones-set: `∏_{i∈μ} boolToReal (x i) = [μ ⊆ onesSet x]`. -/
+theorem prod_boolToReal_eq_ite {a : ℕ} (μ : Finset (Fin a)) (x : Fin a → Bool) :
+    (∏ i ∈ μ, boolToReal (x i)) = if μ ⊆ onesSet x then 1 else 0 := by
+  by_cases h : μ ⊆ onesSet x
+  · rw [if_pos h]
+    apply Finset.prod_eq_one
+    intro i hi
+    have : x i = true := mem_onesSet.mp (h hi)
+    simp [boolToReal, this]
+  · rw [if_neg h]
+    obtain ⟨i, hiμ, hix⟩ : ∃ i ∈ μ, i ∉ onesSet x := by
+      by_contra hcon; push_neg at hcon; exact h (fun i hi => hcon i hi)
+    apply Finset.prod_eq_zero hiμ
+    have : x i = false := by
+      cases hc : x i with
+      | true => exact absurd (mem_onesSet.mpr hc) hix
+      | false => rfl
+    simp [boolToReal, this]
+
+/-- The `blockJoin` ones-set splits along the two blocks: a monomial support sits
+in `onesSet (blockJoin x y)` iff its left support sits in `onesSet x` and its
+right support in `onesSet y`. -/
+theorem support_subset_onesSet_blockJoin_iff {a b : ℕ}
+    (c : Fin (a + b) →₀ ℕ) (x : Fin a → Bool) (y : Fin b → Bool) :
+    c.support ⊆ onesSet (blockJoin x y)
+      ↔ leftSupport c ⊆ onesSet x ∧ rightSupport c ⊆ onesSet y := by
+  constructor
+  · intro h
+    refine ⟨fun i hi => ?_, fun j hj => ?_⟩
+    · have hci : c (Fin.castAdd b i) ≠ 0 := by simpa [leftSupport] using hi
+      have hmem : Fin.castAdd b i ∈ onesSet (blockJoin x y) :=
+        h (Finsupp.mem_support_iff.mpr hci)
+      have : blockJoin x y (Fin.castAdd b i) = true := mem_onesSet.mp hmem
+      rw [blockJoin_castAdd] at this
+      exact mem_onesSet.mpr this
+    · have hcj : c (Fin.natAdd a j) ≠ 0 := by simpa [rightSupport] using hj
+      have hmem : Fin.natAdd a j ∈ onesSet (blockJoin x y) :=
+        h (Finsupp.mem_support_iff.mpr hcj)
+      have : blockJoin x y (Fin.natAdd a j) = true := mem_onesSet.mp hmem
+      rw [blockJoin_natAdd] at this
+      exact mem_onesSet.mpr this
+  · rintro ⟨hL, hR⟩ k hk
+    have hck : c k ≠ 0 := Finsupp.mem_support_iff.mp hk
+    refine mem_onesSet.mpr ?_
+    induction k using Fin.addCases with
+    | left i =>
+        have : i ∈ leftSupport c := by simp [leftSupport, hck]
+        have : x i = true := mem_onesSet.mp (hL this)
+        rw [blockJoin_castAdd]; exact this
+    | right j =>
+        have : j ∈ rightSupport c := by simp [rightSupport, hck]
+        have : y j = true := mem_onesSet.mp (hR this)
+        rw [blockJoin_natAdd]; exact this
+
+/-- **P3.2 (left-monomial factorization identity).**  The cube value of `P` at
+`blockJoin x y`, grouped by the left sub-monomial `μ`, is `∑_μ (∏_{i∈μ} x_i) ·
+c_μ(y)` (PROOFS.md P3.2, `M = ∑_μ x^μ c_μ(y)`).  Proof route:
+`eval_cube_eq_subset_sum` writes the value as a support-indicator sum over
+`P.support`; the `blockJoin` ones-set splits along the two blocks, so each
+indicator `[c.support ⊆ onesSet (blockJoin x y)]` factors as
+`[leftSupport c ⊆ onesSet x] · [rightSupport c ⊆ onesSet y]`, the left factor
+equals `∏_{i∈leftSupport c} boolToReal (x i)`, and regrouping `P.support` by
+`leftSupport` collects the terms into `rightCoeff P μ y`. -/
+theorem eval_blockJoin_eq_leftSupport_sum {a b : ℕ}
+    (P : MvPolynomial (Fin (a + b)) ℝ) (x : Fin a → Bool) (y : Fin b → Bool) :
+    eval (cubePoint (blockJoin x y)) P
+      = ∑ μ ∈ (Finset.univ : Finset (Fin a)).powerset,
+          (∏ i ∈ μ, boolToReal (x i)) * rightCoeff P μ y := by
+  classical
+  -- rewrite each cube-indicator term as (left monomial) · (coeff · right indicator)
+  have hstep : ∀ c ∈ P.support,
+      P.coeff c * (if c.support ⊆ onesSet (blockJoin x y) then (1 : ℝ) else 0)
+        = (∏ i ∈ leftSupport c, boolToReal (x i)) *
+            (P.coeff c * (if rightSupport c ⊆ onesSet y then 1 else 0)) := by
+    intro c _
+    rw [prod_boolToReal_eq_ite]
+    have hiff := support_subset_onesSet_blockJoin_iff c x y
+    by_cases hL : leftSupport c ⊆ onesSet x <;> by_cases hR : rightSupport c ⊆ onesSet y
+    · have hj : c.support ⊆ onesSet (blockJoin x y) := hiff.mpr ⟨hL, hR⟩
+      simp [hL, hR, hj]
+    · have hj : ¬ c.support ⊆ onesSet (blockJoin x y) := fun h => hR (hiff.mp h).2
+      simp [hL, hR, hj]
+    · have hj : ¬ c.support ⊆ onesSet (blockJoin x y) := fun h => hL (hiff.mp h).1
+      simp [hL, hR, hj]
+    · have hj : ¬ c.support ⊆ onesSet (blockJoin x y) := fun h => hL (hiff.mp h).1
+      simp [hL, hR, hj]
+  -- regroup the right-hand side by the fibers of `leftSupport`
+  have hmaps : ∀ c ∈ P.support, leftSupport c ∈ (Finset.univ : Finset (Fin a)).powerset :=
+    fun c _ => Finset.mem_powerset.mpr (Finset.subset_univ _)
+  have hRHS : (∑ μ ∈ (Finset.univ : Finset (Fin a)).powerset,
+        (∏ i ∈ μ, boolToReal (x i)) * rightCoeff P μ y)
+      = ∑ μ ∈ (Finset.univ : Finset (Fin a)).powerset,
+          ∑ c ∈ P.support.filter (fun c => leftSupport c = μ),
+            (∏ i ∈ leftSupport c, boolToReal (x i)) *
+              (P.coeff c * (if rightSupport c ⊆ onesSet y then 1 else 0)) := by
+    refine Finset.sum_congr rfl (fun μ _ => ?_)
+    rw [rightCoeff, Finset.mul_sum]
+    refine Finset.sum_congr rfl (fun c hc => ?_)
+    rw [(Finset.mem_filter.mp hc).2]
+  rw [eval_cube_eq_subset_sum, Finset.sum_congr rfl hstep, hRHS,
+    Finset.sum_fiberwise_of_maps_to hmaps]
+
+/-- **P3.2 (degree vanishing).**  A left sub-monomial bigger than the total
+degree contributes nothing: if `d < μ.card` and `P.totalDegree ≤ d` then
+`rightCoeff P μ = 0`.  Every monomial `c ∈ P.support` has
+`(leftSupport c).card ≤ c.support.card ≤ (c.sum fun _ e => e) ≤ P.totalDegree ≤
+d < μ.card`, so no `c` has left support `μ` and the defining filter is empty.
+This restricts the factorization sum to the `∑_{i≤d} C(a,i)` sub-monomials of
+size `≤ d`. -/
+theorem rightCoeff_eq_zero_of_totalDegree_lt {a b d : ℕ}
+    (P : MvPolynomial (Fin (a + b)) ℝ) (hdeg : P.totalDegree ≤ d)
+    {μ : Finset (Fin a)} (hμ : d < μ.card) (y : Fin b → Bool) :
+    rightCoeff P μ y = 0 := by
+  classical
+  have hempty : P.support.filter (fun c => leftSupport c = μ) = ∅ := by
+    rw [Finset.filter_eq_empty_iff]
+    intro c hc hcontra
+    -- `|leftSupport c| ≤ |c.support| ≤ (deg of c) ≤ totalDegree ≤ d < |μ|`
+    have h1 : (leftSupport c).card ≤ c.support.card := by
+      apply Finset.card_le_card_of_injOn (fun i => Fin.castAdd b i)
+      · intro i hi
+        have hci : c (Fin.castAdd b i) ≠ 0 := by simpa [leftSupport] using hi
+        exact Finsupp.mem_support_iff.mpr hci
+      · intro i _ j _ h
+        have hv : (i : ℕ) = (j : ℕ) := by simpa using congrArg Fin.val h
+        exact Fin.ext hv
+    have h2 : c.support.card ≤ (c.sum fun _ e => e) := by
+      rw [Finsupp.sum, Finset.card_eq_sum_ones]
+      exact Finset.sum_le_sum
+        (fun i hi => Nat.one_le_iff_ne_zero.mpr (Finsupp.mem_support_iff.mp hi))
+    have h3 : (c.sum fun _ e => e) ≤ P.totalDegree := le_totalDegree hc
+    rw [hcontra] at h1
+    omega
+  simp only [rightCoeff, hempty, Finset.sum_empty]
+
+end LeftMonomialFactorization
+
+/-- **P2.4 strictification (η-shift), reusable for both P2 and P3.** A real
+matrix presented as a finite sum of outer products `E x y = ∑ᵢ uᵢ(x)·vᵢ(y)` that
+already contains a *constant* left factor (`u i₀ = 1`, `i₀ ∈ s`) and sign-
+represents `f` on the cube (`0 < E x y ↔ f (blockJoin x y)`) has
+`signRank (signMatrix a b f) ≤ s.card`.  The constant piece absorbs the strictifying
+shift `−η`: pick `η > 0` below every positive (true-side) entry, set
+`v' i₀ := v i₀ − η` (unchanged elsewhere), and `E − η = ∑ᵢ uᵢ·v'ᵢ` still has
+`≤ s.card` outer products while now matching signs strictly.  Bounds
+`rank ≤ s.card` via `rank_le_card_of_sum_vecMulVec`. -/
+theorem signRank_le_card_of_signRepr_sum {a b : ℕ} {f : (Fin (a + b) → Bool) → Bool}
+    {ι : Type*} (s : Finset ι) (u : ι → (Fin a → Bool) → ℝ)
+    (v : ι → (Fin b → Bool) → ℝ) (i₀ : ι) (hi₀ : i₀ ∈ s) (hu₀ : u i₀ = fun _ => 1)
+    (hrepr : ∀ x y, (0 < ∑ i ∈ s, u i x * v i y) ↔ f (blockJoin x y) = true) :
+    signRank (signMatrix a b f) ≤ s.card := by
+  classical
+  -- a positive shift `η` strictly below every "true"-entry value of the sum
+  set T : Finset ((Fin a → Bool) × (Fin b → Bool)) :=
+    Finset.univ.filter (fun p => f (blockJoin p.1 p.2) = true) with hT
+  obtain ⟨η, hηpos, hηlt⟩ :
+      ∃ η : ℝ, 0 < η ∧ ∀ x y, f (blockJoin x y) = true → η < ∑ i ∈ s, u i x * v i y := by
+    by_cases hTne : T.Nonempty
+    · refine ⟨T.inf' hTne (fun p => ∑ i ∈ s, u i p.1 * v i p.2) / 2, ?_, ?_⟩
+      · refine half_pos ?_
+        rw [Finset.lt_inf'_iff]
+        intro p hp
+        rw [hT, Finset.mem_filter] at hp
+        exact (hrepr p.1 p.2).mpr hp.2
+      · intro x y hxy
+        have hxT : (x, y) ∈ T := by
+          rw [hT, Finset.mem_filter]; exact ⟨Finset.mem_univ _, hxy⟩
+        have hle : T.inf' hTne (fun p => ∑ i ∈ s, u i p.1 * v i p.2) ≤ ∑ i ∈ s, u i x * v i y :=
+          Finset.inf'_le (fun p => ∑ i ∈ s, u i p.1 * v i p.2) hxT
+        have hpos : (0 : ℝ) < T.inf' hTne (fun p => ∑ i ∈ s, u i p.1 * v i p.2) := by
+          rw [Finset.lt_inf'_iff]; intro q hq
+          rw [hT, Finset.mem_filter] at hq; exact (hrepr q.1 q.2).mpr hq.2
+        linarith
+    · refine ⟨1, one_pos, fun x y hxy => ?_⟩
+      exact absurd (⟨(x, y), by rw [hT, Finset.mem_filter]; exact ⟨Finset.mem_univ _, hxy⟩⟩ :
+        T.Nonempty) hTne
+  -- shift the `i₀` (constant) right factor down by `η`; keep every outer product
+  set v' : ι → (Fin b → Bool) → ℝ :=
+    fun i y => v i y - (if i = i₀ then η else 0) with hv'
+  set Amat : Matrix (Fin a → Bool) (Fin b → Bool) ℝ :=
+    ∑ i ∈ s, Matrix.vecMulVec (u i) (v' i) with hAmat
+  have hApp : ∀ x y, Amat x y = (∑ i ∈ s, u i x * v i y) - η := by
+    intro x y
+    have e1 : Amat x y = ∑ i ∈ s, (u i x * v i y - u i x * (if i = i₀ then η else 0)) := by
+      rw [hAmat, Matrix.sum_apply]
+      refine Finset.sum_congr rfl (fun i _ => ?_)
+      rw [Matrix.vecMulVec_apply, hv']; ring
+    rw [e1, Finset.sum_sub_distrib]
+    congr 1
+    rw [Finset.sum_eq_single_of_mem i₀ hi₀ (fun i _ hne => by rw [if_neg hne, mul_zero])]
+    rw [if_pos rfl, hu₀]; simp
+  -- `Amat` matches `signMatrix a b f` in sign strictly, with `≤ s.card` outer products
+  have hmatch : SignMatches (signMatrix a b f) Amat := by
+    intro x y
+    show 0 < signMatrix a b f x y * Amat x y
+    rw [hApp]; unfold signMatrix
+    split_ifs with h
+    · rw [one_mul]; linarith [hηlt x y h]
+    · have hle : (∑ i ∈ s, u i x * v i y) ≤ 0 := not_lt.mp (fun hlt => h ((hrepr x y).mp hlt))
+      rw [neg_one_mul]; linarith
+  have hrank : Amat.rank ≤ s.card := by
+    rw [hAmat]; exact rank_le_card_of_sum_vecMulVec s u v'
+  refine le_trans ?_ hrank
+  exact Nat.sInf_le ⟨Amat, hmatch, rfl⟩
+
 /-- P3.2 + η-shift: a multilinear degree-`d` sign representation exhibits the
 sign matrix as a sum of one outer product per left sub-monomial of degree
 `≤ d` (grouping `P = ∑_μ x^μ c_μ(y)`), plus the strictifying constant folded
-into the `μ = ∅` term; hence the rank bound by the monomial count. -/
+into the `μ = ∅` term; hence the rank bound by the monomial count.
+**Assembly** (PROOFS.md P3.2-P3.3): rewrite the cube values with
+`eval_blockJoin_eq_leftSupport_sum`, drop the `μ.card > d` terms with
+`rightCoeff_eq_zero_of_totalDegree_lt`, and feed the resulting outer-product sum
+(index set `{μ : μ.card ≤ d}`, constant left factor at `μ = ∅`,
+`card_subsets_card_le` count) to `signRank_le_card_of_signRepr_sum`. -/
 theorem signRank_le_of_multilinear_signRepr {a b d : ℕ}
     {f : (Fin (a + b) → Bool) → Bool} (P : MvPolynomial (Fin (a + b)) ℝ)
     (hdeg : P.totalDegree ≤ d) (hml : ∀ i, P.degreeOf i ≤ 1)
     (hsr : SignRepresents P f) :
     signRank (signMatrix a b f) ≤ ∑ i ∈ Finset.range (d + 1), a.choose i := by
-  sorry
+  classical
+  rw [← card_subsets_card_le a d]
+  refine signRank_le_card_of_signRepr_sum
+    ((Finset.univ : Finset (Fin a)).powerset.filter (fun μ => μ.card ≤ d))
+    (fun μ x => ∏ i ∈ μ, boolToReal (x i)) (fun μ y => rightCoeff P μ y)
+    ∅ ?_ ?_ ?_
+  · exact Finset.mem_filter.mpr ⟨Finset.mem_powerset.mpr (Finset.empty_subset _), by simp⟩
+  · funext x; simp
+  · intro x y
+    have hfac : (∑ μ ∈ (Finset.univ : Finset (Fin a)).powerset.filter (fun μ => μ.card ≤ d),
+          (∏ i ∈ μ, boolToReal (x i)) * rightCoeff P μ y)
+        = MvPolynomial.eval (cubePoint (blockJoin x y)) P := by
+      rw [eval_blockJoin_eq_leftSupport_sum P x y]
+      refine Finset.sum_subset (Finset.filter_subset _ _) ?_
+      intro μ hμ hμs
+      have hcard : d < μ.card := by
+        by_contra hle
+        exact hμs (Finset.mem_filter.mpr ⟨hμ, not_lt.mp hle⟩)
+      rw [rightCoeff_eq_zero_of_totalDegree_lt P hdeg hcard, mul_zero]
+    rw [hfac]
+    exact hsr (blockJoin x y)
 
 /-- Multilinearization & left-monomial factorization core of the degree half
 (PROOFS.md P3.1–P3.2): a degree-`d` sign representation `P` multilinearizes on
@@ -363,74 +622,6 @@ theorem cleared_score_iff {H : ℕ} (τ : ℝ) (u D : Fin H → ℝ)
       linarith
     exact lt_of_mul_lt_mul_right h1 (le_of_lt hP)
 
-/-- **P2.4 strictification (η-shift), reusable for both P2 and P3.** A real
-matrix presented as a finite sum of outer products `E x y = ∑ᵢ uᵢ(x)·vᵢ(y)` that
-already contains a *constant* left factor (`u i₀ = 1`, `i₀ ∈ s`) and sign-
-represents `f` on the cube (`0 < E x y ↔ f (blockJoin x y)`) has
-`signRank (signMatrix a b f) ≤ s.card`.  The constant piece absorbs the strictifying
-shift `−η`: pick `η > 0` below every positive (true-side) entry, set
-`v' i₀ := v i₀ − η` (unchanged elsewhere), and `E − η = ∑ᵢ uᵢ·v'ᵢ` still has
-`≤ s.card` outer products while now matching signs strictly.  Bounds
-`rank ≤ s.card` via `rank_le_card_of_sum_vecMulVec`. -/
-theorem signRank_le_card_of_signRepr_sum {a b : ℕ} {f : (Fin (a + b) → Bool) → Bool}
-    {ι : Type*} (s : Finset ι) (u : ι → (Fin a → Bool) → ℝ)
-    (v : ι → (Fin b → Bool) → ℝ) (i₀ : ι) (hi₀ : i₀ ∈ s) (hu₀ : u i₀ = fun _ => 1)
-    (hrepr : ∀ x y, (0 < ∑ i ∈ s, u i x * v i y) ↔ f (blockJoin x y) = true) :
-    signRank (signMatrix a b f) ≤ s.card := by
-  classical
-  -- a positive shift `η` strictly below every "true"-entry value of the sum
-  set T : Finset ((Fin a → Bool) × (Fin b → Bool)) :=
-    Finset.univ.filter (fun p => f (blockJoin p.1 p.2) = true) with hT
-  obtain ⟨η, hηpos, hηlt⟩ :
-      ∃ η : ℝ, 0 < η ∧ ∀ x y, f (blockJoin x y) = true → η < ∑ i ∈ s, u i x * v i y := by
-    by_cases hTne : T.Nonempty
-    · refine ⟨T.inf' hTne (fun p => ∑ i ∈ s, u i p.1 * v i p.2) / 2, ?_, ?_⟩
-      · refine half_pos ?_
-        rw [Finset.lt_inf'_iff]
-        intro p hp
-        rw [hT, Finset.mem_filter] at hp
-        exact (hrepr p.1 p.2).mpr hp.2
-      · intro x y hxy
-        have hxT : (x, y) ∈ T := by
-          rw [hT, Finset.mem_filter]; exact ⟨Finset.mem_univ _, hxy⟩
-        have hle : T.inf' hTne (fun p => ∑ i ∈ s, u i p.1 * v i p.2) ≤ ∑ i ∈ s, u i x * v i y :=
-          Finset.inf'_le (fun p => ∑ i ∈ s, u i p.1 * v i p.2) hxT
-        have hpos : (0 : ℝ) < T.inf' hTne (fun p => ∑ i ∈ s, u i p.1 * v i p.2) := by
-          rw [Finset.lt_inf'_iff]; intro q hq
-          rw [hT, Finset.mem_filter] at hq; exact (hrepr q.1 q.2).mpr hq.2
-        linarith
-    · refine ⟨1, one_pos, fun x y hxy => ?_⟩
-      exact absurd (⟨(x, y), by rw [hT, Finset.mem_filter]; exact ⟨Finset.mem_univ _, hxy⟩⟩ :
-        T.Nonempty) hTne
-  -- shift the `i₀` (constant) right factor down by `η`; keep every outer product
-  set v' : ι → (Fin b → Bool) → ℝ :=
-    fun i y => v i y - (if i = i₀ then η else 0) with hv'
-  set Amat : Matrix (Fin a → Bool) (Fin b → Bool) ℝ :=
-    ∑ i ∈ s, Matrix.vecMulVec (u i) (v' i) with hAmat
-  have hApp : ∀ x y, Amat x y = (∑ i ∈ s, u i x * v i y) - η := by
-    intro x y
-    have e1 : Amat x y = ∑ i ∈ s, (u i x * v i y - u i x * (if i = i₀ then η else 0)) := by
-      rw [hAmat, Matrix.sum_apply]
-      refine Finset.sum_congr rfl (fun i _ => ?_)
-      rw [Matrix.vecMulVec_apply, hv']; ring
-    rw [e1, Finset.sum_sub_distrib]
-    congr 1
-    rw [Finset.sum_eq_single_of_mem i₀ hi₀ (fun i _ hne => by rw [if_neg hne, mul_zero])]
-    rw [if_pos rfl, hu₀]; simp
-  -- `Amat` matches `signMatrix a b f` in sign strictly, with `≤ s.card` outer products
-  have hmatch : SignMatches (signMatrix a b f) Amat := by
-    intro x y
-    show 0 < signMatrix a b f x y * Amat x y
-    rw [hApp]; unfold signMatrix
-    split_ifs with h
-    · rw [one_mul]; linarith [hηlt x y h]
-    · have hle : (∑ i ∈ s, u i x * v i y) ≤ 0 := not_lt.mp (fun hlt => h ((hrepr x y).mp hlt))
-      rw [neg_one_mul]; linarith
-  have hrank : Amat.rank ≤ s.card := by
-    rw [hAmat]; exact rank_le_card_of_sum_vecMulVec s u v'
-  refine le_trans ?_ hrank
-  exact Nat.sInf_le ⟨Amat, hmatch, rfl⟩
-
 /-! The four functions below are the left/right factors in the P2.3
 head-subset expansion.  For a subset `T` of heads, `T` records the denominator
 factors taken from the left block.  The two "derivative" sums record whether
@@ -461,6 +652,139 @@ def headSubsetExpansionTerm {a b H : ℕ} (τ : ℝ)
     headSubsetLeftProd A T x *
       (headSubsetRightDeriv B B' T y - τ * headSubsetRightProd B T y)
 
+private theorem sum_leftDeriv_prod_add {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (a b a' : ι → ℝ) :
+    (∑ h, a' h * ∏ h' ∈ (Finset.univ : Finset ι).erase h, (a h' + b h')) =
+      ∑ T ∈ (Finset.univ : Finset ι).powerset,
+        (∑ h ∈ T, a' h * ∏ h' ∈ T.erase h, a h') *
+          ∏ h ∈ (Finset.univ : Finset ι) \ T, b h := by
+  classical
+  calc
+    (∑ h, a' h * ∏ h' ∈ (Finset.univ : Finset ι).erase h, (a h' + b h')) =
+        ∑ h, ∑ S ∈ ((Finset.univ : Finset ι).erase h).powerset,
+          a' h * ((∏ h' ∈ S, a h') *
+            ∏ h' ∈ (Finset.univ : Finset ι).erase h \ S, b h') := by
+      apply Finset.sum_congr rfl
+      intro h _
+      rw [Finset.prod_add, Finset.mul_sum]
+    _ = ∑ p ∈ (Finset.univ : Finset ι).sigma
+          (fun h => ((Finset.univ : Finset ι).erase h).powerset),
+          a' p.1 * ((∏ h' ∈ p.2, a h') *
+            ∏ h' ∈ (Finset.univ : Finset ι).erase p.1 \ p.2, b h') := by
+      rw [Finset.sum_sigma]
+    _ = ∑ p ∈ (Finset.univ : Finset ι).powerset.sigma (fun T => T),
+          (a' p.2 * ∏ h' ∈ p.1.erase p.2, a h') *
+            ∏ h' ∈ (Finset.univ : Finset ι) \ p.1, b h' := by
+      apply Finset.sum_bij'
+          (fun ⟨h, S⟩ _ => ⟨insert h S, h⟩)
+          (fun ⟨T, h⟩ _ => ⟨h, T.erase h⟩)
+      · rintro ⟨h, S⟩ hp
+        simp only [Finset.mem_sigma, Finset.mem_univ, true_and,
+          Finset.mem_powerset] at hp
+        have hh : h ∉ S := by grind
+        apply Sigma.ext
+        · rfl
+        · simp [hh]
+      · rintro ⟨T, h⟩ hp
+        simp only [Finset.mem_sigma, Finset.mem_powerset] at hp
+        apply Sigma.ext
+        · exact Finset.insert_erase hp.2
+        · rfl
+      · rintro ⟨h, S⟩ hp
+        simp only [Finset.mem_sigma, Finset.mem_univ, true_and,
+          Finset.mem_powerset] at hp
+        have hh : h ∉ S := by grind
+        have hdiff : (Finset.univ : Finset ι) \ insert h S =
+            (Finset.univ : Finset ι).erase h \ S := by
+          ext z
+          simp only [Finset.mem_sdiff, Finset.mem_univ, true_and,
+            Finset.mem_insert, Finset.mem_erase]
+          tauto
+        rw [Finset.erase_insert_eq_erase, Finset.erase_eq_of_notMem hh, hdiff]
+        ring
+      · rintro ⟨h, S⟩ hp
+        simp only [Finset.mem_sigma, Finset.mem_univ, true_and,
+          Finset.mem_powerset] at hp ⊢
+        grind
+      · rintro ⟨T, h⟩ hp
+        simp only [Finset.mem_sigma, Finset.mem_univ, true_and,
+          Finset.mem_powerset] at hp ⊢
+        grind
+    _ = ∑ T ∈ (Finset.univ : Finset ι).powerset,
+          ∑ h ∈ T, (a' h * ∏ h' ∈ T.erase h, a h') *
+            ∏ h' ∈ (Finset.univ : Finset ι) \ T, b h' := by
+      rw [Finset.sum_sigma]
+    _ = ∑ T ∈ (Finset.univ : Finset ι).powerset,
+        (∑ h ∈ T, a' h * ∏ h' ∈ T.erase h, a h') *
+          ∏ h ∈ (Finset.univ : Finset ι) \ T, b h := by
+      apply Finset.sum_congr rfl
+      intro T _
+      rw [Finset.sum_mul]
+
+private theorem sum_rightDeriv_prod_add {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (a b b' : ι → ℝ) :
+    (∑ h, b' h * ∏ h' ∈ (Finset.univ : Finset ι).erase h, (a h' + b h')) =
+      ∑ T ∈ (Finset.univ : Finset ι).powerset,
+        (∏ h ∈ T, a h) *
+          (∑ h ∈ (Finset.univ : Finset ι) \ T,
+            b' h * ∏ h' ∈ ((Finset.univ : Finset ι) \ T).erase h, b h') := by
+  classical
+  calc
+    (∑ h, b' h * ∏ h' ∈ (Finset.univ : Finset ι).erase h, (a h' + b h')) =
+        ∑ h, ∑ S ∈ ((Finset.univ : Finset ι).erase h).powerset,
+          b' h * ((∏ h' ∈ S, a h') *
+            ∏ h' ∈ (Finset.univ : Finset ι).erase h \ S, b h') := by
+      apply Finset.sum_congr rfl
+      intro h _
+      rw [Finset.prod_add, Finset.mul_sum]
+    _ = ∑ p ∈ (Finset.univ : Finset ι).sigma
+          (fun h => ((Finset.univ : Finset ι).erase h).powerset),
+          b' p.1 * ((∏ h' ∈ p.2, a h') *
+            ∏ h' ∈ (Finset.univ : Finset ι).erase p.1 \ p.2, b h') := by
+      rw [Finset.sum_sigma]
+    _ = ∑ p ∈ (Finset.univ : Finset ι).powerset.sigma
+          (fun T => (Finset.univ : Finset ι) \ T),
+          (∏ h' ∈ p.1, a h') *
+            (b' p.2 * ∏ h' ∈ ((Finset.univ : Finset ι) \ p.1).erase p.2, b h') := by
+      apply Finset.sum_bij'
+          (fun ⟨h, S⟩ _ => ⟨S, h⟩)
+          (fun ⟨T, h⟩ _ => ⟨h, T⟩)
+      · rintro ⟨h, S⟩ _
+        rfl
+      · rintro ⟨T, h⟩ _
+        rfl
+      · rintro ⟨h, S⟩ hp
+        simp only [Finset.mem_sigma, Finset.mem_univ, true_and,
+          Finset.mem_powerset] at hp
+        have hdiff : (Finset.univ : Finset ι).erase h \ S =
+            ((Finset.univ : Finset ι) \ S).erase h := by
+          ext z
+          simp only [Finset.mem_sdiff, Finset.mem_erase, Finset.mem_univ,
+            true_and]
+          tauto
+        rw [hdiff]
+        ring
+      · rintro ⟨h, S⟩ hp
+        simp only [Finset.mem_sigma, Finset.mem_univ, true_and,
+          Finset.mem_powerset] at hp ⊢
+        grind
+      · rintro ⟨T, h⟩ hp
+        simp only [Finset.mem_sigma, Finset.mem_univ, true_and,
+          Finset.mem_powerset, Finset.mem_sdiff] at hp ⊢
+        grind
+    _ = ∑ T ∈ (Finset.univ : Finset ι).powerset,
+          ∑ h ∈ (Finset.univ : Finset ι) \ T,
+            (∏ h' ∈ T, a h') *
+              (b' h * ∏ h' ∈ ((Finset.univ : Finset ι) \ T).erase h, b h') := by
+      rw [Finset.sum_sigma]
+    _ = ∑ T ∈ (Finset.univ : Finset ι).powerset,
+        (∏ h ∈ T, a h) *
+          (∑ h ∈ (Finset.univ : Finset ι) \ T,
+            b' h * ∏ h' ∈ ((Finset.univ : Finset ι) \ T).erase h, b h') := by
+      apply Finset.sum_congr rfl
+      intro T _
+      rw [Finset.mul_sum]
+
 /-- **P2.3a (head-subset expansion).** Expanding every denominator factor
 `A_h(x) + B_h(y)` and grouping by the subset `T` of factors taken from the
 left gives the exact two-outer-product expression indexed by all head subsets.
@@ -476,7 +800,20 @@ theorem clearedForm_eq_headSubsetExpansion {a b H : ℕ} (τ : ℝ)
         - τ * ∏ h, (A h x + B h y) =
       ∑ T ∈ (Finset.univ : Finset (Fin H)).powerset,
         headSubsetExpansionTerm τ A B A' B' T x y := by
-  sorry
+  classical
+  have hleft := sum_leftDeriv_prod_add
+    (fun h => A h x) (fun h => B h y) (fun h => A' h x)
+  have hright := sum_rightDeriv_prod_add
+    (fun h => A h x) (fun h => B h y) (fun h => B' h y)
+  have hprod := Finset.prod_add
+    (fun h : Fin H => A h x) (fun h => B h y) Finset.univ
+  simp only [headSubsetExpansionTerm, headSubsetLeftDeriv, headSubsetRightProd,
+    headSubsetLeftProd, headSubsetRightDeriv]
+  simp_rw [mul_sub, add_mul, Finset.sum_add_distrib, Finset.sum_sub_distrib,
+    Finset.mul_sum]
+  rw [hleft, hright, hprod]
+  simp_rw [Finset.mul_sum]
+  ring_nf
 
 /-- **P2.3b (boundary merge and rank-one count).** Package the head-subset
 expansion into outer products.  The zero left-derivative term at `T = ∅` is
@@ -495,7 +832,89 @@ theorem exists_headSubsetExpansion_outerProduct_decomp {a b H : ℕ}
         (∑ T ∈ (Finset.univ : Finset (Fin H)).powerset,
           headSubsetExpansionTerm τ A B A' B' T x y) =
           ∑ i ∈ s, u i x * v i y := by
-  sorry
+  classical
+  let U : Finset (Fin H) := Finset.univ
+  let L : Finset (Finset (Fin H)) := U.powerset.erase ∅
+  let R : Finset (Finset (Fin H)) := U.powerset.erase U
+  let ι := (↥L) ⊕ (↥R)
+  let u : ι → (Fin a → Bool) → ℝ := fun i =>
+    match i with
+    | Sum.inl T =>
+        if T.1 = U then
+          fun x => headSubsetLeftDeriv A A' T.1 x - τ * headSubsetLeftProd A T.1 x
+        else fun x => headSubsetLeftDeriv A A' T.1 x
+    | Sum.inr T => fun x => headSubsetLeftProd A T.1 x
+  let v : ι → (Fin b → Bool) → ℝ := fun i =>
+    match i with
+    | Sum.inl T => fun y => headSubsetRightProd B T.1 y
+    | Sum.inr T =>
+        fun y => headSubsetRightDeriv B B' T.1 y - τ * headSubsetRightProd B T.1 y
+  have hU : U.Nonempty := by
+    refine ⟨⟨0, hH⟩, Finset.mem_univ _⟩
+  have hEmpty_ne_U : (∅ : Finset (Fin H)) ≠ U :=
+    Ne.symm (Finset.nonempty_iff_ne_empty.mp hU)
+  have hi₀ : (∅ : Finset (Fin H)) ∈ R := by
+    simp [R, hEmpty_ne_U]
+  let i₀ : ι := Sum.inr ⟨∅, hi₀⟩
+  refine ⟨ι, Finset.univ, u, v, i₀, Finset.mem_univ _, ?_, ?_, ?_⟩
+  · funext x
+    simp [i₀, u, headSubsetLeftProd]
+  · change Fintype.card ι ≤ 2 ^ (H + 1) - 2
+    simp only [ι, Fintype.card_sum, Fintype.card_coe]
+    change (U.powerset.erase ∅).card + (U.powerset.erase U).card ≤ _
+    rw [Finset.card_erase_of_mem (by simp),
+      Finset.card_erase_of_mem (Finset.mem_powerset_self U),
+      Finset.card_powerset]
+    simp only [U, Finset.card_univ, Fintype.card_fin, pow_succ]
+    have hp : 1 ≤ 2 ^ H := one_le_pow₀ (by omega : 1 ≤ (2 : ℕ))
+    omega
+  · intro x y
+    let lterm : Finset (Fin H) → ℝ := fun T =>
+      headSubsetLeftDeriv A A' T x * headSubsetRightProd B T y
+    let rterm : Finset (Fin H) → ℝ := fun T =>
+      headSubsetLeftProd A T x *
+        (headSubsetRightDeriv B B' T y - τ * headSubsetRightProd B T y)
+    let folded : Finset (Fin H) → ℝ := fun T =>
+      (if T = U then
+        fun x => headSubsetLeftDeriv A A' T x - τ * headSubsetLeftProd A T x
+      else fun x => headSubsetLeftDeriv A A' T x) x *
+        headSubsetRightProd B T y
+    conv_rhs => simp [ι, u, v]
+    unfold headSubsetExpansionTerm
+    change (∑ T ∈ U.powerset, (lterm T + rterm T)) =
+      (∑ T : ↥L, folded T.1) + (∑ T : ↥R, rterm T.1)
+    rw [Finset.univ_eq_attach, Finset.sum_attach, Finset.univ_eq_attach,
+      Finset.sum_attach]
+    change (∑ T ∈ U.powerset, (lterm T + rterm T)) =
+      (∑ T ∈ U.powerset.erase ∅, folded T) +
+        (∑ T ∈ U.powerset.erase U, rterm T)
+    have hl0 : lterm ∅ = 0 := by
+      simp [lterm, headSubsetLeftDeriv]
+    have hUmem : U ∈ U.powerset := Finset.mem_powerset.mpr (fun _ h => h)
+    have hUerase : U ∈ U.powerset.erase ∅ := by
+      exact Finset.mem_erase.mpr ⟨Ne.symm hEmpty_ne_U, hUmem⟩
+    have hfold :
+        (∑ T ∈ U.powerset.erase ∅, folded T) =
+        (∑ T ∈ U.powerset.erase ∅, lterm T) + rterm U := by
+      calc
+        _ = ∑ T ∈ U.powerset.erase ∅,
+              (lterm T + if T = U then rterm U else 0) := by
+            apply Finset.sum_congr rfl
+            intro T hT
+            simp only [folded]
+            split_ifs with hTU
+            · subst T
+              simp [lterm, rterm, headSubsetRightProd, headSubsetRightDeriv]
+              ring
+            · simp [lterm]
+        _ = (∑ T ∈ U.powerset.erase ∅, lterm T) +
+              ∑ T ∈ U.powerset.erase ∅, (if T = U then rterm U else 0) := by
+            rw [Finset.sum_add_distrib]
+        _ = (∑ T ∈ U.powerset.erase ∅, lterm T) + rterm U := by
+            rw [Finset.sum_ite_eq', if_pos hUerase]
+    rw [Finset.sum_add_distrib, ← Finset.sum_erase U.powerset hl0,
+      ← Finset.sum_erase_add U.powerset rterm hUmem, hfold]
+    ring
 
 /-- **P2.3 subset regrouping (the head-subset rank decomposition).** The cleared
 head-form score `Q(x,y) = ∑ₕ (A'ₕx+B'ₕy)·∏_{h'≠h}(Aₕ'x+Bₕ'y) − τ·∏ₕ(Aₕx+Bₕy)`

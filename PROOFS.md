@@ -914,13 +914,19 @@ halves of P2.3):
     cleared score exactly over `T ∈ powerset univ`.  The summand is
     `α_T(x)ψ_T(y) + φ_T(x)(β_T(y) − τψ_T(y))`, expressed by the reusable
     `headSubset*` factor definitions.  This is the pure `Finset.prod_add` and
-    regrouping step, independent of rank counting.  `jules_ready`.
+    regrouping step, independent of rank counting.  **PROVED** in the
+    20260824T113249Z s4 Codex audit by two explicit `Finset.sigma` bijections:
+    `(h,S⊆univ.erase h) ↦ (insert h S,h)` for the left numerator choice and
+    `(h,S) ↦ (S,h)` for the right choice, followed by `Finset.prod_add`.
 35. `exists_headSubsetExpansion_outerProduct_decomp` (P2.3b, SignRankBridge) —
     package the expansion from item 34 into outer products: omit the zero
     `T=∅` left-derivative term, fold the `T=univ` right term into its left term,
     retain two terms for each interior subset, and use `two_mul_two_pow_sub` for
     the bound `2^(H+1)−2`.  It also exposes the constant-left `T=∅` term needed
-    by the proved η-shift helper.  `jules_ready`.
+    by the proved η-shift helper.  **PROVED** in the 20260824T113249Z s4 Codex
+    audit using the disjoint sum of the nonempty powerset (left pieces) and the
+    powerset with `univ` erased (right pieces); the `univ` right piece is folded
+    into its left piece and the `∅` right piece supplies the constant-left factor.
 36. `exists_unit_sign_factorization` (P5.1, Forster) — **PROVED**.  Realize the
     minimum in the natural-number `sInf`, choose a basis of the resulting
     matrix's column space indexed by `Fin (signRank M)`, and use basis values
@@ -937,3 +943,54 @@ Endpoints CLOSED this pass:
 * **`exists_isotropic_reposition`** (P5.2–P5.3) and **`forster_main_chain`** (P5.4) —
   now compiling assemblies of items 30–33; the only residual debts in this chain
   are items 30 and 31.
+
+**Decomposition leaves surfaced by the s1_opus_audit pass, run 20260824T113249Z**
+(the P3.2 factorization; both PROVED, so the degree half now carries no residual
+debt):
+
+37. `eval_blockJoin_eq_leftSupport_sum` (P3.2, SignRankBridge) — PROVED: the
+    left-monomial factorization identity `eval(cubePoint(blockJoin x y)) P =
+    ∑_{μ⊆Fin a} (∏_{i∈μ} boolToReal(x i))·rightCoeff P μ y`.  Route:
+    `eval_cube_eq_subset_sum`; the `blockJoin` ones-set splits along the two blocks
+    (`support_subset_onesSet_blockJoin_iff`, new PROVED) so each indicator factors
+    as `[leftSupport c ⊆ onesSet x]·[rightSupport c ⊆ onesSet y]`, the left factor
+    is `∏_{i∈leftSupport c} boolToReal(x i)` (`prod_boolToReal_eq_ite`, new PROVED);
+    `Finset.sum_fiberwise_of_maps_to` regroups `P.support` by `leftSupport`.  New
+    defs `leftSupport`, `rightSupport`, `rightCoeff`.
+38. `rightCoeff_eq_zero_of_totalDegree_lt` (P3.2, SignRankBridge) — PROVED: the
+    degree vanishing `d < μ.card ⇒ rightCoeff P μ = 0`, from
+    `(leftSupport c).card ≤ c.support.card ≤ (c.sum ·) ≤ totalDegree ≤ d < μ.card`.
+
+Endpoints CLOSED this pass:
+
+* **`signRank_le_of_multilinear_signRepr`** (P3.2-P3.3) — PROVED by assembling
+  items 37 + 38 with the proved count `card_subsets_card_le` and strictification
+  `signRank_le_card_of_signRepr_sum`.  So the FROZEN **`signRank_le_of_thresholdDegLE`**
+  (Theorem C, degree half) is now fully proved with no residual debt.
+* **`pow_le_weak_of_lt_two_mul_H`** / **`weak_warren_pow_le`** (P10.1 arithmetic tails)
+  — PROVED (power monotonicity).  **NDISJ.lean is now sorry-free**: the frozen
+  `pow_le_of_leftShatters` / `ndisj_separation` are proved modulo only external Warren.
+
+**Decomposition leaves surfaced by the s4_codex_audit pass, run
+20260824T113249Z** (the two substantive halves of the deepest actually untouched
+open leaf in this iteration, P5.3):
+
+39. `exists_forsterPotential_minimizer` (P5.3a, Forster) — define
+    `forsterPotential u P = ∑ₓ log(uₓᵀ P uₓ)` and prove that, for a
+    general-position unit family with `r < N`, it attains a global minimum on
+    `{P : ForsterPosDef P ∧ det P = 1}` (the local predicate spells out real
+    symmetry and strict positivity).  This is exactly the coercivity/compactness
+    half of P5.3: a degenerating eigenspace contains at most its dimension's
+    share of the vectors.  `hard` (analytic compactness kernel).
+40. `exists_isotropic_of_forsterPotential_minimizer` (P5.3b, Forster) — from
+    such a minimizer, take its positive-definite square root, normalize `B uₓ`,
+    apply the inverse-adjoint transformation to `v_y`, and derive isotropy from
+    the determinant-one first-order condition while preserving all strict
+    signs.  `hard` (matrix square root plus constrained first variation).
+
+Endpoint CLOSED to an assembly this pass:
+
+* **`exists_isotropic_of_generalPosition`** (P5.3) — now a sorry-free assembly
+  of items 39 and 40, with the recipe in its docstring.
+* **P2.3 / the frozen `signRank_le_of_computableWithHeadsN` bridge** — items 34
+  and 35 are both proved, so the bridge now has no residual debt.
