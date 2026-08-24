@@ -673,23 +673,43 @@ hypotheses `1 ≤ 2H ≤ k`, `1 ≤ H` hold in this case):
 
 ### P10.2 `HStar_ndisj_le` (`H*(NDISJ_m) ≤ m`)
 
-Via the corpus normal form `HStar_eq_Lfrac` it suffices to exhibit a sum of
-`m` linear-fractional atoms whose sign is `NDISJ_m` (with the free constant
-absorbed).  Take `ε := 1/(4(m+1))` and atoms
+Via `computable_of_fracComputable`, it suffices to exhibit `m` formal
+`FracAtom`s whose sum plus a constant sign-represents `NDISJ_m`.  The
+`FracAtom` interface requires every positional weight to be strictly positive,
+so use the following fully smoothed construction (this is the formal version
+of the small-`δ` engineering note in the source proof).  Put
 
-    g_i(x,y) := ε / (ε + 2 − x_i − y_i),   i < m,
+    r := 1 / (8(m+1)(2m+1)),
 
-score `R := Σ_i g_i − 1/2` (fold `−1/2` into atom 0's numerator:
-`(ε − B_0/2)/B_0` with affine numerator).  Denominators `ε + 2 − x_i − y_i`
-are ≥ ε > 0 on the cube.  Values: `g_i = 1` iff `x_i = y_i = 1`; otherwise
-`0 ≤ g_i = ε/(ε + t) ≤ ε` with `t ≥ 1`.  If some `x_iy_i = 1`:
-`R ≥ 1 − 1/2 + 0 > 0` (atoms are nonnegative).  If none: `R ≤ m·ε − 1/2
-< 1/4 − 1/2 < 0`.  So `sign R = NDISJ` strictly, with `m` atoms.
-Engineering note: check the Lean `FracAtom` interface for slope conditions;
-the denominator has slopes `(−1)` on `x_i, y_i` and `0` elsewhere — if the
-formal atom class requires strictly one-signed nonzero slopes, add
-`−δ·Σ_{j≠i}(x_j + y_j)` with `δ` small against the finite margin (all the
-above inequalities have slack ≥ 1/4 − mε ≥ ε).  ∎
+and for `i < m` take the atom with
+
+    η_i := (2m+1)r,   δ_i := 0,   γ_i := r,   α_i := r,
+    ρ_{i,p} := 1  if p is x_i or y_i, and r otherwise,
+    m_{i,p} := 0.
+
+All required positivity fields hold because `r > 0`; also `r ≤ 1`.  Its
+value is exactly
+
+    g_i(z) = (2m+1)r / (r + Σ_p ρ_{i,p} · (if z_p then r else 1)).
+
+If `x_i = y_i = 1`, both distinguished weights in the denominator equal
+`r`, and every other positional weight is at most `r` (using `r ≤ 1`).
+There are `2m` positions, so the denominator is at most `(2m+1)r` and
+`g_i ≥ 1`.  If the pair is not jointly set, at least one distinguished
+weight equals `1`, so the denominator is at least `1` and
+
+    0 ≤ g_i ≤ (2m+1)r = 1/(8(m+1)).
+
+Use score `R := Σ_i g_i − 1/2`.  If some pair is jointly set, that atom
+contributes at least `1` and all others are nonnegative, hence `R > 0`.  If
+no pair is jointly set, then
+
+    Σ_i g_i ≤ m/(8(m+1)) < 1/2,
+
+so `R < 0`.  This also covers `m = 0`: the empty sum with constant `−1/2`
+computes the constantly-false `NDISJ_0`.  Thus `fracComputable (m+m) m
+NDISJ_m`, hence `computableWithHeadsN (m+m) m NDISJ_m`; minimality in the
+definition of `HStar` gives `HStar ≤ m`.  ∎
 
 ### P10.3 `thresholdDeg_ndisj` (`= 2` for `m ≥ 2`)
 
@@ -718,8 +738,31 @@ freeze):
 1. `signRank_neg` (P1.2) — needed by P8.3.
 2. `HStar_comp_equiv` (P1.3) — needed by P8.1.
 3. `thresholdDeg_le_of` / monotonicity wiring (P1.4) — needed by P8.5, P10.3.
-4. Rank subadditivity for matrices, if absent at 4.31 (P2.3).
+4. Rank subadditivity for matrices, if absent at 4.31 (P2.3) — realized as the
+   `rank_add_le` leaf (`(A + B).rank ≤ A.rank + B.rank`); it is absent at 4.31.
 5. (Optional) `signRank_pos` for nonempty ±1 matrices — cheap sanity lemma.
+
+**Decomposition leaves surfaced by the gatekeeper pass (self-contained,
+`jules_ready`, each proved inside the P-item named).**  These are honest
+sub-statements carved out of the harder own leaves so that the analytic/model
+core is isolated:
+
+6. `sum_choose_le_pow` (P3.3) — `∑_{i≤d} C(a,i) ≤ (a+1)^d`, the monomial count
+   of the degree-`d` sign-rank ceiling.
+7. `card_le_specNorm_sq` (P5.1) — `card ι ≤ (specNorm M)^2` for `±1` `M`, the
+   `√N` column estimate disposing of Forster's small-rank regime.
+8. `sign_xor_prod` (P8.2) — the XOR sign identity `e(⊕ gⱼ) = (−1)^{k+1} ∏ e(gⱼ)`.
+9. `blockSignRep_distThreshold` (P8.4) — the per-block strict degree-`≤2` sign
+   representation of `z ↦ distThreshold m (blockOf z j)` (rename of P7.1's
+   `Δ − m/2`, nonzero half-integer values).
+10. Character framework for §4 (new defs `charFn`, `distSign`; proved
+    `charFn_xor` = P4.1 multiplicativity), with leaves `signMatrix_distThreshold_apply`
+    (P4.1, `M = s(x ⊕ y)`), `signMatrix_mulVec_charFn` (P4.1, eigen-action
+    `M χ_S = λ_S χ_S`), `charFn_orthogonal` (P4.3, `⟨χ_S, χ_T⟩ = [S=T] 2^m`),
+    `distSign_sum_eq_zero` (P4.2, `λ_∅ = 0` for odd `m`).  Remaining hard core of
+    P4: the level-1 eigenvalue bound (P4.2) and the Parseval assembly (P4.3).
+11. `warren_pow_simp` (P10.1) — `(4 e H k / (2H))^{2H} = (2 e k)^{2H}` for
+    `H ≥ 1`, the final Warren-ceiling simplification.
 
 Corrections/upgrades of the informal sources established here:
 

@@ -43,6 +43,16 @@ theorem signRank_le_of_thresholdDegLE {a b d : ℕ}
     signRank (signMatrix a b f) ≤ (a + 1) ^ d := by
   sorry
 
+/-- Counting bound for `signRank_le_of_thresholdDegLE` (PROOFS.md P3.3): the
+number of left sub-monomials of degree `≤ d` in `a` variables, `∑_{i ≤ d}
+C(a, i)`, is at most `(a + 1) ^ d`.  Induction on `d`: the step uses
+`C(a, d+1) ≤ a · C(a, d)` (from `Nat.succ_mul_choose_eq` / `Nat.choose_succ_right_eq`)
+together with `C(a, d) ≤ ∑_{i ≤ d} C(a, i) ≤ (a + 1) ^ d` (a term is `≤` the sum,
+which is `≤` the inductive bound). -/
+theorem sum_choose_le_pow (a d : ℕ) :
+    ∑ i ∈ Finset.range (d + 1), a.choose i ≤ (a + 1) ^ d := by
+  sorry
+
 /-- **Theorem C, dimension half**: sign-rank is capped by the matrix
 dimensions, `signRank ≤ 2 ^ min a b`.  Together with the degree half this
 bounds the additive gap any sign-rank argument can certify by `≈ n / 2`. -/
@@ -55,9 +65,9 @@ theorem signRank_le_two_pow_min {a b : ℕ} (f : (Fin (a + b) → Bool) → Bool
   have hh : (signMatrix a b f).rank ≤ Fintype.card (Fin a → Bool) :=
     Matrix.rank_le_card_height _
   have ca : Fintype.card (Fin a → Bool) = 2 ^ a := by
-    simp [Fintype.card_fun]
+    simp
   have cb : Fintype.card (Fin b → Bool) = 2 ^ b := by
-    simp [Fintype.card_fun]
+    simp
   rcases Nat.le_total a b with hab | hba
   · rw [min_eq_left hab]
     exact h1.trans (by rw [ca] at hh; exact hh)

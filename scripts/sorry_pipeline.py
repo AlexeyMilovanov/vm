@@ -87,6 +87,24 @@ def control_gate():
         if (CTRL / "STOP").exists():
             log("STOP file present; exiting.")
             sys.exit(0)
+        if (CTRL / "RESTART").exists():
+            # soft code reload: exit cleanly at a stage boundary (nothing in
+            # flight); the cron watchdog relaunches with the current code.
+            # Completed stage work is audit-gated and committed in WORK, so
+            # merge it into ROOT first — the relaunch resyncs WORK from ROOT
+            # and no finished stage is lost.
+            (CTRL / "RESTART").unlink(missing_ok=True)
+            try:
+                aok, _ = full_audit(WORK)
+                if aok:
+                    merge_work_to_root("soft-restart checkpoint")
+                    log("RESTART: work merged to root")
+                else:
+                    log("RESTART: work audit not green, skipping merge")
+            except Exception as exc:  # noqa: BLE001
+                log(f"RESTART merge skipped: {exc}")
+            log("RESTART: exiting at stage boundary for watchdog relaunch.")
+            sys.exit(0)
         if (CTRL / "PAUSE").exists():
             time.sleep(60)
             continue
@@ -95,11 +113,17 @@ def control_gate():
 
 # ---------------------------------------------------------------- census
 
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/-.*?-/", "", text, flags=re.S)
+    return re.sub(r"--[^\n]*", "", text)
+
+
 def sorry_census(base: Path):
-    """List (file, count) of sorry occurrences in the Separations layer."""
+    """List (file, count) of CODE sorry occurrences in the Separations
+    layer (doc-comments and line comments stripped first)."""
     out = {}
     for f in sorted((base / SEP_DIR).glob("*.lean")):
-        n = len(re.findall(r"\bsorry\b", f.read_text()))
+        n = len(re.findall(r"\bsorry\b", strip_comments(f.read_text())))
         if n:
             out[f.name] = n
     return out
@@ -394,7 +418,18 @@ note this in PROGRESS.md).
 
 
 def jules_prompt(entry, base_sha):
-    return f"""Prove exactly one Lean 4 lemma in the repository {GH_REPO}.
+    hard_note = ""
+    if entry.get("status") == "hard":
+        hard_note = """
+NOTE: this target is classified HARD — a complete proof within your budget
+is not expected. Success criteria, in order of preference: (a) full proof;
+(b) a real reduction: fully proved new helper lemmas implementing the first
+steps of the PROOFS.md item, with the target proved from the helpers modulo
+remaining helper `sorry`s (this is allowed for a HARD target: new helper
+lemmas may carry `sorry` if they are honest, clearly-stated sub-steps);
+(c) fully proved standalone helper lemmas. Never fake progress.
+"""
+    return hard_note + f"""Prove exactly one Lean 4 lemma in the repository {GH_REPO}.
 
 Base commit: {base_sha} (branch main). First run `git rev-parse HEAD`; if it
 differs from the base commit, reply exactly BASE_COMMIT_MISMATCH and stop.
@@ -454,10 +489,10 @@ def load_queue(base: Path):
         return []
 
 
-def validated_ready(base: Path):
+def validated_entries(base: Path, statuses=("jules_ready",)):
     out = []
     for e in load_queue(base):
-        if e.get("status") != "jules_ready":
+        if e.get("status") not in statuses:
             continue
         name, file = e.get("name", ""), e.get("file", "")
         if name in EXTERNAL or not name or not file:
@@ -542,6 +577,42 @@ def api(method, path, body=None):
                 return 599, {}
             time.sleep(3)
     return 599, {}
+
+
+def fetch_activities(sid):
+    acts, token, pages = [], None, 0
+    while pages < 10:
+        pages += 1
+        path = f"/sessions/{sid}/activities?pageSize=100"
+        if token:
+            path += f"&pageToken={token}"
+        st, body = api("GET", path)
+        if st != 200 or not isinstance(body, dict):
+            return None
+        acts.extend(body.get("activities", []))
+        token = body.get("nextPageToken")
+        if not token:
+            break
+    acts.sort(key=lambda a: a.get("createTime", ""))
+    return acts
+
+
+def latest_trigger(sid, state):
+    """Newest planGenerated/agentMessaged not yet answered by the user side.
+    Mirrors find_trigger_activity of the KolmogorovMathlib2 responder: walk
+    newest-first; a userMessaged/planApproved seen first means we already
+    responded and the state is just lagging."""
+    acts = fetch_activities(sid)
+    if acts is None:
+        return None
+    for a in reversed(acts):
+        if "userMessaged" in a or "planApproved" in a:
+            return None
+        if state == "AWAITING_PLAN_APPROVAL" and "planGenerated" in a:
+            return a.get("name") or a.get("createTime") or "plan"
+        if state == "AWAITING_USER_FEEDBACK" and "agentMessaged" in a:
+            return a.get("name") or a.get("createTime") or "msg"
+    return None
 
 
 def escalate(campaign, task_id, session_id, reason):
@@ -673,7 +744,7 @@ def jules_phase(ready, base_sha, iter_dir: Path):
             if sid:
                 sessions[sid] = {"entry": entry, "t0": time.time(),
                                  "nudged": 0, "state": "submitted",
-                                 "reviewed": False}
+                                 "reviewed": False, "acted": set()}
                 log(f"jules submitted {entry['name']} session={sid}")
             else:
                 log(f"jules submit FAILED for {entry['name']}")
@@ -746,17 +817,34 @@ def jules_phase(ready, base_sha, iter_dir: Path):
                     f"pulling partial (state={state})")
                 review(sid, info, "budget")
             elif state == "AWAITING_PLAN_APPROVAL":
-                api("POST", f"/sessions/{sid}:approvePlan", body={})
+                # act only on a fresh unanswered planGenerated activity
+                # (state lags after approvePlan; plans can have revisions,
+                # each needing its own approval)
+                trig = latest_trigger(sid, state)
+                if trig and trig not in info["acted"]:
+                    st2, _ = api("POST", f"/sessions/{sid}:approvePlan",
+                                 body={})
+                    info["acted"].add(trig)
+                    log(f"jules {info['entry']['name']}: plan approved "
+                        f"(http {st2})")
                 pending = True
             elif state == "AWAITING_USER_FEEDBACK":
-                if info["nudged"] < 2:
-                    api("POST", f"/sessions/{sid}:sendMessage",
-                        body={"prompt": JULES_NUDGE})
-                    info["nudged"] += 1
-                else:
-                    escalate(campaign, info["entry"]["name"], sid,
-                             "repeated AWAITING_USER_FEEDBACK after nudges")
-                    info["reviewed"] = True
+                trig = latest_trigger(sid, state)
+                if trig and trig not in info["acted"]:
+                    if info["nudged"] < 2:
+                        api("POST", f"/sessions/{sid}:sendMessage",
+                            body={"prompt": JULES_NUDGE})
+                        info["nudged"] += 1
+                        info["acted"].add(trig)
+                        log(f"jules {info['entry']['name']}: nudged "
+                            f"({info['nudged']}/2)")
+                    else:
+                        escalate(campaign, info["entry"]["name"], sid,
+                                 "third AWAITING_USER_FEEDBACK question "
+                                 "after 2 nudges")
+                        info["reviewed"] = True
+                        log(f"jules {info['entry']['name']}: escalated to "
+                            f"jules_needs_attention")
                 pending = True
             else:
                 pending = True
@@ -819,19 +907,31 @@ def one_iteration(run_dir: Path, n: int):
             log(f"iteration {n}: work tree unusable, skipping merge")
             return
     merge_work_to_root(f"pipeline iteration {n}")
-    ready = validated_ready(ROOT)
-    log(f"iteration {n}: {len(ready)} validated jules-ready leaves")
-    if len(ready) < MIN_QUEUE:
-        log(f"iteration {n}: below threshold {MIN_QUEUE}, next local "
-            f"iteration")
+    ready = validated_entries(ROOT, ("jules_ready",))
+    hard = validated_entries(ROOT, ("hard",))
+    log(f"iteration {n}: {len(ready)} jules-ready + {len(hard)} hard "
+        f"validated leaves")
+    if len(ready) + len(hard) < MIN_QUEUE:
+        log(f"iteration {n}: below threshold {MIN_QUEUE} total leaves, "
+            f"next local iteration")
         return
     sha = push_root_to_github(
-        f"pipeline iteration {n}: {len(ready)} jules-ready leaves")
-    jules_phase(ready, sha, iter_dir)
+        f"pipeline iteration {n}: {len(ready)} jules-ready + "
+        f"{len(hard)} hard leaves")
+    # everything non-external goes to Jules: easy leaves first (they win
+    # capacity slots), hard leaves after — partial progress expected there
+    jules_phase(ready + hard, sha, iter_dir)
 
 
 def main():
     CTRL.mkdir(exist_ok=True)
+    import fcntl
+    lock_fd = os.open(CTRL / "driver.lock", os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("another driver instance is running; exiting")
+        sys.exit(0)
     (ROOT / "hints").mkdir(exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = RUNS / stamp

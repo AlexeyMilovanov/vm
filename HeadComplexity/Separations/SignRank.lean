@@ -49,7 +49,7 @@ theorem signRank_le_rank {α β : Type*} [Fintype α] [Fintype β]
     (M : Matrix α β ℝ) : signRank M ≤ M.rank := by
   by_cases hM : ∀ i j, M i j ≠ 0
   · exact Nat.sInf_le ⟨M, fun i j => mul_self_pos.mpr (hM i j), rfl⟩
-  · push_neg at hM
+  · push Not at hM
     obtain ⟨i, j, hij⟩ := hM
     have hempty :
         {r | ∃ A : Matrix α β ℝ, SignMatches M A ∧ A.rank = r} = ∅ := by
@@ -63,11 +63,74 @@ theorem signRank_le_rank {α β : Type*} [Fintype α] [Fintype β]
     rw [hempty, Nat.sInf_empty]
     exact Nat.zero_le _
 
-/-- Sign-rank is invariant under reindexing rows and columns. -/
+/-- Sign-rank is invariant under reindexing rows and columns.  The map
+`A ↦ reindex eα eβ A` is a rank-preserving bijection between matrices matching
+`M` in sign and matrices matching `reindex eα eβ M` in sign, so the two
+defining `sInf` index sets coincide. -/
 theorem signRank_reindex {α β α' β' : Type*}
     [Fintype α] [Fintype β] [Fintype α'] [Fintype β']
     (eα : α ≃ α') (eβ : β ≃ β') (M : Matrix α β ℝ) :
     signRank (Matrix.reindex eα eβ M) = signRank M := by
+  unfold signRank
+  congr 1
+  ext r
+  constructor
+  · rintro ⟨A, hA, rfl⟩
+    refine ⟨Matrix.reindex eα.symm eβ.symm A, ?_, ?_⟩
+    · intro i j
+      have hij := hA (eα i) (eβ j)
+      simpa [Matrix.reindex_apply, Matrix.submatrix_apply] using hij
+    · rw [Matrix.rank_reindex]
+  · rintro ⟨A, hA, rfl⟩
+    refine ⟨Matrix.reindex eα eβ A, ?_, ?_⟩
+    · intro i j
+      simpa [Matrix.reindex_apply, Matrix.submatrix_apply] using
+        hA (eα.symm i) (eβ.symm j)
+    · rw [Matrix.rank_reindex]
+
+/-- Rank is invariant under negation: `(-A).mulVecLin = -(A.mulVecLin)` has the
+same range as `A.mulVecLin`. -/
+theorem rank_neg {α β : Type*} [Fintype β] (A : Matrix α β ℝ) :
+    (-A).rank = A.rank := by
+  have h : (-A).mulVecLin = -(A.mulVecLin) := by
+    apply LinearMap.ext
+    intro v
+    rw [Matrix.mulVecLin_apply, LinearMap.neg_apply, Matrix.mulVecLin_apply,
+      Matrix.neg_mulVec]
+  unfold Matrix.rank
+  rw [h, LinearMap.range_neg]
+
+/-- **Matrix rank subadditivity** (PROOFS.md P2.3; §11 inventory item 4).
+`(A + B).rank ≤ A.rank + B.rank`.  Not a named lemma in mathlib at v4.31, but
+`Matrix.rank M = finrank ℝ (range M.mulVecLin)`, `(A + B).mulVecLin =
+A.mulVecLin + B.mulVecLin`, and `range (f + g) ≤ range f ⊔ range g`, so this
+follows from `LinearMap.rank_add_le`/`Submodule.finrank_add_le_finrank_add_finrank`
+(the range submodules are finite-dimensional since `β` is a `Fintype`).  Used to
+count the `2 ^ (H + 1) - 2` rank-one pieces of the cleared bridge polynomial. -/
+theorem rank_add_le {α β : Type*} [Fintype β] (A B : Matrix α β ℝ) :
+    (A + B).rank ≤ A.rank + B.rank := by
   sorry
+
+/-- Sign-rank is invariant under negation (PROOFS.md P1.2): `A ↦ -A` is a
+rank-preserving bijection carrying sign-matches of `M` onto sign-matches of
+`-M`.  Needed for the global `(-1)^(k+1)` factor in Theorem B. -/
+theorem signRank_neg {α β : Type*} [Fintype α] [Fintype β]
+    (M : Matrix α β ℝ) : signRank (-M) = signRank M := by
+  unfold signRank
+  congr 1
+  ext r
+  constructor
+  · rintro ⟨A, hA, rfl⟩
+    refine ⟨-A, ?_, ?_⟩
+    · intro i j
+      have hij := hA i j
+      simpa [Matrix.neg_apply] using hij
+    · rw [rank_neg]
+  · rintro ⟨A, hA, rfl⟩
+    refine ⟨-A, ?_, ?_⟩
+    · intro i j
+      have hij := hA i j
+      simpa [Matrix.neg_apply] using hij
+    · rw [rank_neg]
 
 end HeadComplexity

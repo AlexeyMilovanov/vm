@@ -1,5 +1,6 @@
 import HeadComplexity.Separations.TwoBlock
 import HeadComplexity.Separations.SignRank
+import HeadComplexity.Separations.ThresholdDegAux
 import HeadComplexity.Separations.SignRankBridge
 import HeadComplexity.Separations.Warren
 import HeadComplexity.Separations.Forster
