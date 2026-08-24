@@ -493,4 +493,62 @@ theorem specNorm_reindex {ι ι' : Type*}
   rw [key, ContinuousLinearMap.opNorm_linearIsometryEquiv_comp,
     ContinuousLinearMap.opNorm_comp_linearIsometryEquiv]
 
+
+/-! ### Manual decomposition of `forster_large_rank` (PROOFS.md P5),
+2026-08-24.  Assembly: `one_le_signRank` gives `1 ≤ r`; factorize
+(`exists_unit_sign_factorization`), repositon (`exists_isotropic_reposition`,
+using `r < N`), and finish with `forster_main_chain`. -/
+
+section ForsterDecomposition
+
+open scoped InnerProductSpace
+
+/-- P5.1: a nonempty `±1` matrix has sign-rank at least one (any sign-match
+of a matrix with a nonzero entry is nonzero, so its rank is positive). -/
+theorem one_le_signRank {ι : Type*} [Fintype ι] [DecidableEq ι] [Nonempty ι]
+    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1) :
+    1 ≤ signRank M := by
+  sorry
+
+/-- P5.1: a rank-`signRank` factorization normalizes to unit vectors with
+strict entrywise sign agreement. -/
+theorem exists_unit_sign_factorization {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
+    (hr : 1 ≤ signRank M) :
+    ∃ u v : ι → EuclideanSpace ℝ (Fin (signRank M)),
+      (∀ x, ‖u x‖ = 1) ∧ (∀ y, ‖v y‖ = 1) ∧
+      ∀ x y, 0 < M x y * ⟪u x, v y⟫_ℝ := by
+  sorry
+
+/-- P5.2 + P5.3 (the analytic kernel): unit vectors with a strict sign margin
+can be perturbed into general position and then brought to isotropic position
+by an invertible transformation, without changing any sign.  Isotropy is
+stated as the quadratic-form identity `∑_x ⟪u'_x, w⟫² = (N/r)·‖w‖²`. -/
+theorem exists_isotropic_reposition {r : ℕ} {ι : Type*} [Fintype ι]
+    (hr : 0 < r) (hcard : r < Fintype.card ι)
+    (u v : ι → EuclideanSpace ℝ (Fin r))
+    (hu : ∀ x, ‖u x‖ = 1) (hv : ∀ y, ‖v y‖ = 1)
+    (s : ι → ι → ℝ) (hs : ∀ x y, 0 < s x y * ⟪u x, v y⟫_ℝ) :
+    ∃ u' v' : ι → EuclideanSpace ℝ (Fin r),
+      (∀ x, ‖u' x‖ = 1) ∧ (∀ y, ‖v' y‖ = 1) ∧
+      (∀ x y, 0 < s x y * ⟪u' x, v' y⟫_ℝ) ∧
+      ∀ w : EuclideanSpace ℝ (Fin r),
+        ∑ x, ⟪u' x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
+  sorry
+
+/-- P5.4: the main chain.  `∑_{x,y} M_{xy}⟪u_x,v_y⟫ = ∑ |⟪u_x,v_y⟫| ≥
+∑ ⟪u_x,v_y⟫² = N²/r` by isotropy, while the same sum is at most
+`specNorm·N` by the column decomposition and Cauchy–Schwarz. -/
+theorem forster_main_chain {r : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (hr : 0 < r) (M : Matrix ι ι ℝ) (hM : ∀ i j, M i j = 1 ∨ M i j = -1)
+    (u v : ι → EuclideanSpace ℝ (Fin r))
+    (hu : ∀ x, ‖u x‖ = 1) (hv : ∀ y, ‖v y‖ = 1)
+    (hsign : ∀ x y, 0 < M x y * ⟪u x, v y⟫_ℝ)
+    (hiso : ∀ w : EuclideanSpace ℝ (Fin r),
+      ∑ x, ⟪u x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2) :
+    (Fintype.card ι : ℝ) ≤ (r : ℝ) * specNorm M := by
+  sorry
+
+end ForsterDecomposition
+
 end HeadComplexity

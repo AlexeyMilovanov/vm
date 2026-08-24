@@ -458,4 +458,43 @@ theorem ndisj_of_sharpShatteringUpperBound
     m ≤ 2 * HStar (m + m) (ndisj m) :=
   hconj _ _ _ _ _ (HStar_computable _) (ndisj_leftShatters m)
 
+
+/-! ### Manual decomposition of `warren_bound_of_leftShatters`
+(PROOFS.md P10.1), 2026-08-24.  Assembly: freeze the left points
+(`exists_shatter_polynomials`), feed the shattering witnesses into
+`pow_le_ncard_signPatterns`. -/
+
+/-- P10.1 (frozen-left-points normal form): with the left points fixed, the
+label of `f` at `(z_j, w)` is the strict sign of a degree-`≤ H` polynomial
+`Q_j` in the `2H` right-block head statistics `ξ(w) = (p_h(w), q_h(w))`.
+Construction: `Q_j(p, q) = ∑_h (a_{hj} + p_h) ∏_{h'≠h} (b_{h'j} + q_{h'})
+− τ ∏_h (b_{hj} + q_h)` with the frozen reals `a_{hj} = A'_h(z_j)`,
+`b_{hj} = A_h(z_j)` (see `headA`, `exists_numerator_readout_two_block_split`
+in SignRankBridge). -/
+theorem exists_shatter_polynomials {a b H : ℕ}
+    {f : (Fin (a + b) → Bool) → Bool}
+    (hcomp : computableWithHeadsN (a + b) H f) {k : ℕ}
+    (zs : Fin k → (Fin a → Bool)) :
+    ∃ (Q : Fin k → MvPolynomial (Fin (2 * H)) ℝ)
+      (ξ : (Fin b → Bool) → (Fin (2 * H) → ℝ)),
+      (∀ j, (Q j).totalDegree ≤ H) ∧
+      ∀ j w, (f (blockJoin (zs j) w) = true ↔
+        0 < MvPolynomial.eval (ξ w) (Q j)) := by
+  sorry
+
+/-- P10.1 (Warren application with the η-shift): if every labelling
+`s : Fin k → Bool` is realized as the strict-positive pattern of `k`
+degree-`≤ H` polynomials in `2H` real variables at a witness point, then the
+`2^k` labellings inject into the strict sign patterns of the η-shifted family
+`Q_j − η`, and `warren_sign_patterns` (with `m := 2H ≤ k`, `d := H`) bounds
+their number. -/
+theorem pow_le_ncard_signPatterns {H k : ℕ} (hH : 1 ≤ H) (hkH : 2 * H ≤ k)
+    (Q : Fin k → MvPolynomial (Fin (2 * H)) ℝ)
+    (hdeg : ∀ j, (Q j).totalDegree ≤ H)
+    (ξ : (Fin k → Bool) → (Fin (2 * H) → ℝ))
+    (hpat : ∀ s j, (s j = true ↔ 0 < MvPolynomial.eval (ξ s) (Q j))) :
+    (2 : ℝ) ^ k ≤
+      (4 * Real.exp 1 * (H : ℝ) * (k : ℝ) / (2 * (H : ℝ))) ^ (2 * H) := by
+  sorry
+
 end HeadComplexity

@@ -195,4 +195,54 @@ theorem signRank_le_two_pow_min {a b : ℕ} (f : (Fin (a + b) → Bool) → Bool
   · rw [min_eq_right hba]
     exact h1.trans (by rw [cb] at hw; exact hw)
 
+
+/-! ### Manual decomposition round (PROOFS.md P2/P3), 2026-08-24.
+New sub-leaves for the two bridge sorries; the parents above should be
+reassembled from these (move declarations up as needed). -/
+
+/-- P2.2 (clearing, pure real algebra): with positive denominators the
+threshold test on the softmax score is equivalent to positivity of the
+cleared combination. -/
+theorem cleared_score_iff {H : ℕ} (τ : ℝ) (u D : Fin H → ℝ)
+    (hD : ∀ h, 0 < D h) :
+    (τ < ∑ h, u h / D h) ↔
+      0 < (∑ h, u h * ∏ h' ∈ Finset.univ.erase h, D h') - τ * ∏ h, D h := by
+  sorry
+
+/-- P2.3+P2.4 (linear-algebra core of the bridge): any function whose strict
+sign is realized by a two-block head-form score has sign-rank at most
+`2^(H+1) - 2`.  Proof plan: clear denominators (`cleared_score_iff`), group
+the cleared matrix by the subset `T ⊆ [H]` of factors contributing their
+left part (`2(2^H - 2) + 2` outer products, boundary subsets merging), and
+strictify the false side by the η-shift absorbed into the `T = ∅` piece. -/
+theorem signRank_le_of_headForm {a b H : ℕ} (hH : 1 ≤ H) (τ : ℝ)
+    {f : (Fin (a + b) → Bool) → Bool}
+    (A : Fin H → (Fin a → Bool) → ℝ) (B : Fin H → (Fin b → Bool) → ℝ)
+    (A' : Fin H → (Fin a → Bool) → ℝ) (B' : Fin H → (Fin b → Bool) → ℝ)
+    (hpos : ∀ h x y, 0 < A h x + B h y)
+    (hf : ∀ x y, f (blockJoin x y) = true ↔
+      τ < ∑ h, (A' h x + B' h y) / (A h x + B h y)) :
+    signRank (signMatrix a b f) ≤ 2 ^ (H + 1) - 2 := by
+  sorry
+
+/-- P3.1: a degree-`d` sign representation may be taken multilinear
+(substitute `x_i^e ↦ x_i`; cube evaluations are unchanged and the total
+degree does not increase). -/
+theorem exists_multilinear_signRepr {n d : ℕ} {f : (Fin n → Bool) → Bool}
+    (h : ThresholdDegLE f d) :
+    ∃ P : MvPolynomial (Fin n) ℝ, P.totalDegree ≤ d ∧
+      (∀ i, P.degreeOf i ≤ 1) ∧ SignRepresents P f := by
+  sorry
+
+/-- P3.2 + η-shift: a multilinear degree-`d` sign representation exhibits the
+sign matrix as a sum of one outer product per left sub-monomial of degree
+`≤ d` (grouping `P = ∑_μ x^μ c_μ(y)`), plus the strictifying constant folded
+into the `μ = ∅` term; hence the rank bound by the monomial count. -/
+theorem signRank_le_of_multilinear_signRepr {a b d : ℕ}
+    {f : (Fin (a + b) → Bool) → Bool} (P : MvPolynomial (Fin (a + b)) ℝ)
+    (hdeg : P.totalDegree ≤ d) (hml : ∀ i, P.degreeOf i ≤ 1)
+    (hsr : SignRepresents P f) :
+    signRank (signMatrix a b f) ≤ ∑ i ∈ Finset.range (d + 1), a.choose i := by
+  sorry
+
 end HeadComplexity

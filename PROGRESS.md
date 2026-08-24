@@ -323,3 +323,12 @@ regrouping of P3 (`signRank_le_sum_choose`), Forster's isotropic-position kernel
 `sorry_queue.json` matches the source inventory exactly.  `lake build` green (2504
 jobs); `lake env lean scripts/smoke/FrozenStatements.lean` green;
 forbidden-construct scan clean.
+
+## Manual decomposition round (2026-08-24, operator)
+Split the 5 remaining hard leaves into 12 sub-leaves per PROOFS.md
+(P2: cleared_score_iff, signRank_le_of_headForm; P3: exists_multilinear_signRepr,
+signRank_le_of_multilinear_signRepr; P5: one_le_signRank,
+exists_unit_sign_factorization, exists_isotropic_reposition, forster_main_chain;
+P8: signMatrix_tensorReindexed_apply, signRank_tensorReindexed_eq_kroneckerPow;
+P10: exists_shatter_polynomials, pow_le_ncard_signPatterns).  Parents relabeled
+as assemblies.  Build green (2504 jobs), smoke green.

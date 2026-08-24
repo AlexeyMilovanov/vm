@@ -659,4 +659,32 @@ theorem theoremB_gap {m : ℕ} (hm : Odd m) (k : ℕ) :
     rw [hexpand]
     linarith [hlog, hdegR]
 
+
+/-! ### Manual decomposition of `forsterRatio_pow_le_signRank_tensor`
+(PROOFS.md P8.2–P8.3), 2026-08-24. -/
+
+/-- P8.2 (entrywise sign identity): the reindexed tensored sign matrix factors
+entrywise into the block sign matrices with the global `(-1)^(k+1)` of the XOR
+encoding (`e(⊕ b_j) = (-1)^(k+1) ∏ e(b_j)` for `true ↦ +1`).  Unfold
+`tensorEquiv`: the `(j, i)` x-coordinate of the all-left layout is coordinate
+`finProdFinEquiv (j, i)` of the left half. -/
+theorem signMatrix_tensorReindexed_apply {m k : ℕ}
+    (x y : Fin (k * m) → Bool) :
+    signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k) x y =
+      (-1 : ℝ) ^ (k + 1) *
+        ∏ j : Fin k, signMatrix m m (distThreshold m)
+          (fun i => x (finProdFinEquiv (j, i)))
+          (fun i => y (finProdFinEquiv (j, i))) := by
+  sorry
+
+/-- P8.2 → P8.3 (rank transport): via `signMatrix_tensorReindexed_apply`, the
+reindex equivalence `(Fin (k·m) → Bool) ≃ (Fin k → Fin m → Bool)` (currying
+through `finProdFinEquiv`), `signRank_reindex`, and `signRank_neg` (for even
+`k`), the reindexed tensored sign matrix has the same sign-rank as the
+Kronecker power of the base sign matrix. -/
+theorem signRank_tensorReindexed_eq_kroneckerPow {m k : ℕ} :
+    signRank (signMatrix (k * m) (k * m) (tensorDistThreshold_reindexed m k)) =
+      signRank (kroneckerPow k (signMatrix m m (distThreshold m))) := by
+  sorry
+
 end HeadComplexity
