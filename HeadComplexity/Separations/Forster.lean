@@ -1,9 +1,14 @@
 import Mathlib.Analysis.CStarAlgebra.Matrix
 import Mathlib.LinearAlgebra.Matrix.Kronecker
 import Mathlib.Analysis.Calculus.Deriv.Basic
+import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+import Mathlib.LinearAlgebra.Matrix.Charpoly.Coeff
+import Mathlib.Analysis.Calculus.Deriv.Polynomial
+import Mathlib.Analysis.Calculus.Deriv.Pow
 import Mathlib.Analysis.Calculus.Deriv.Add
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import HeadComplexity.Separations.SignRank
+import Mathlib.Analysis.Matrix.Spectrum
 
 set_option linter.style.header false
 
@@ -1087,7 +1092,41 @@ lemma exists_l1_min_of_linearIndependent {k r : ℕ}
     {v : Fin k → EuclideanSpace ℝ (Fin r)} (hv : LinearIndependent ℝ v) :
     ∃ η : ℝ, 0 < η ∧
       ∀ c : Fin k → ℝ, ∑ i, |c i| = 1 → η ≤ ‖∑ i, c i • v i‖ := by
-  sorry
+  classical
+  let S : Set (Fin k → ℝ) := {c | ∑ i, |c i| = 1}
+  have h_l1_cont : Continuous (fun c : Fin k → ℝ ↦ ∑ i, |c i|) :=
+    continuous_finsetSum Finset.univ fun i _ ↦ (continuous_apply i).abs
+  have hS_closed : IsClosed S := by
+    exact isClosed_eq h_l1_cont continuous_const
+  have hS_bounded : Bornology.IsBounded S := by
+    refine isBounded_iff_forall_norm_le.mpr ⟨1, ?_⟩
+    intro c hc
+    change (∑ i, |c i|) = 1 at hc
+    rw [pi_norm_le_iff_of_nonneg zero_le_one]
+    intro i
+    rw [Real.norm_eq_abs]
+    calc
+      |c i| ≤ ∑ j, |c j| :=
+        Finset.single_le_sum (fun j _ ↦ abs_nonneg (c j)) (Finset.mem_univ i)
+      _ = 1 := hc
+  have hS_compact : IsCompact S :=
+    isCompact_iff_isClosed_bounded.mpr ⟨hS_closed, hS_bounded⟩
+  have h_norm_cont : Continuous (fun c : Fin k → ℝ ↦ ‖∑ i, c i • v i‖) := by
+    apply Continuous.norm
+    exact continuous_finsetSum Finset.univ fun i _ ↦
+      (continuous_apply i).smul continuous_const
+  have h_pos : ∀ c ∈ S, 0 < ‖∑ i, c i • v i‖ := by
+    intro c hc
+    change (∑ i, |c i|) = 1 at hc
+    rw [norm_pos_iff]
+    intro hcomb
+    have hc_zero : ∀ i, c i = 0 :=
+      Fintype.linearIndependent_iff.mp hv c hcomb
+    have : (∑ i, |c i|) = 0 := by simp [hc_zero]
+    linarith [hc]
+  obtain ⟨η, hη_pos, hη⟩ :=
+    hS_compact.exists_forall_le' h_norm_cont.continuousOn h_pos
+  exact ⟨η, hη_pos, fun c hc ↦ hη c hc⟩
 
 /-- More vectors than the dimension of their ambient subspace admit an
 `ℓ¹`-normalized linear relation: `w + 1 > finrank W` vectors in `W` are
@@ -1359,18 +1398,147 @@ lemma card_near_subspace_le_finrank {r : ℕ} {ι : Type*} [Fintype ι]
   have h_margin := hδ_margin (w + 1) hw1_le_r e he_inj c hc1
   linarith
 
+/-- **Real positive-definite ⇒ Hermitian.**  Over `ℝ` conjugation is trivial,
+so the symmetry field `ForsterPosDef.1` already yields `Matrix.IsHermitian`.
+Proved helper feeding the eigen-data extraction. -/
+lemma forsterPosDef_isHermitian {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    (hP : ForsterPosDef P) : P.IsHermitian := by
+  ext i j
+  change star (P j i) = P i j
+  simp [hP.1 i j]
+
+/-- **P5.3a-M5b (diagonalization leaf).**  An orthonormal spanning eigen-family
+`(e, lam)` diagonalizes the quadratic form.  Start: build the orthonormal basis
+`B := OrthonormalBasis.mk he (le_of_eq hspan.symm)` and expand
+`z = ∑ i, ⟪e i, z⟫_ℝ • e i` (`B.sum_repr`, `OrthonormalBasis.repr_apply_apply`,
+`OrthonormalBasis.coe_mk`, as in `forsterQuad_ge_of_far`).  Unfold `forsterQuad`
+to `(WithLp.equiv 2 _ z) ⬝ᵥ (P *ᵥ (WithLp.equiv 2 _ z))`, push `P` through the
+expansion with `heig` (`mulVec_sum`, `mulVec_smul`), and collapse the double sum
+by orthonormality (`WithLp.equiv 2 _ (e i) ⬝ᵥ WithLp.equiv 2 _ (e j) = ⟪e i,e j⟫_ℝ`,
+zero off-diagonal; `EuclideanSpace.inner_eq_star_dotProduct`, `star` on `ℝ` is `id`).
+Note `⟪e i, z⟫_ℝ = WithLp.equiv 2 _ (e i) ⬝ᵥ WithLp.equiv 2 _ z`. -/
+lemma forsterQuad_eq_sum_sq_eigen {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    {e : Fin r → EuclideanSpace ℝ (Fin r)} {lam : Fin r → ℝ}
+    (he : Orthonormal ℝ e) (hspan : Submodule.span ℝ (Set.range e) = ⊤)
+    (heig : ∀ i, P *ᵥ ⇑(e i) = lam i • ⇑(e i)) :
+    ∀ z : EuclideanSpace ℝ (Fin r), forsterQuad P z = ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2 := by
+  intro z
+  -- Expand `z` in the orthonormal eigenbasis.
+  have hz : z = ∑ i, ⟪e i, z⟫_ℝ • e i := by
+    let B := OrthonormalBasis.mk he (le_of_eq hspan.symm)
+    have h_repr := B.sum_repr z
+    dsimp [B] at h_repr
+    simp_rw [OrthonormalBasis.repr_apply_apply, OrthonormalBasis.coe_mk] at h_repr
+    exact h_repr.symm
+  -- `P` scales each eigenvector `e i` by `lam i`.
+  have hTe : ∀ i, Matrix.toLpLin 2 2 P (e i) = lam i • e i := by
+    intro i
+    apply WithLp.ofLp_injective 2
+    rw [Matrix.ofLp_toLpLin, Matrix.toLin'_apply, heig i]
+    rfl
+  -- Rewrite the quadratic form as an inner product `⟪z, P z⟫`.
+  have hquad_inner : forsterQuad P z = ⟪z, Matrix.toLpLin 2 2 P z⟫_ℝ := by
+    rw [EuclideanSpace.inner_eq_star_dotProduct, star_trivial, Matrix.ofLp_toLpLin,
+      Matrix.toLin'_apply]
+    show (⇑z : Fin r → ℝ) ⬝ᵥ (P *ᵥ ⇑z) = (P *ᵥ ⇑z) ⬝ᵥ ⇑z
+    rw [dotProduct_comm]
+  rw [hquad_inner]
+  conv_lhs => rw [hz]
+  rw [map_sum]
+  simp_rw [map_smul, hTe, smul_smul]
+  rw [he.inner_sum]
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [conj_trivial]
+  ring
+
+/-- **P5.3a-M5c (eigenvalue positivity leaf).**  Eigenvalues of a `ForsterPosDef`
+matrix are positive.  Start: `e i ≠ 0` since `‖e i‖ = 1` (orthonormality `he`);
+`forsterQuad P (e i) = WithLp.equiv 2 _ (e i) ⬝ᵥ (P *ᵥ WithLp.equiv 2 _ (e i))
+= WithLp.equiv 2 _ (e i) ⬝ᵥ (lam i • WithLp.equiv 2 _ (e i))` (`heig`)
+`= lam i * ‖e i‖ ^ 2 = lam i`, while `0 < forsterQuad P (e i)` by `hP.2` at the
+nonzero `e i`.  Mirrors the positivity block of `exists_forster_sqrt`. -/
+lemma eigenvalue_pos_of_eigen {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    (hP : ForsterPosDef P) {e : Fin r → EuclideanSpace ℝ (Fin r)} {lam : Fin r → ℝ}
+    (he : Orthonormal ℝ e)
+    (heig : ∀ i, P *ᵥ ⇑(e i) = lam i • ⇑(e i)) :
+    ∀ i, 0 < lam i := by
+  intro i
+  have hnorm : ‖e i‖ = 1 := he.1 i
+  have hne : (⇑(e i) : Fin r → ℝ) ≠ 0 := (WithLp.ofLp_eq_zero 2).ne.2 (he.ne_zero i)
+  have hself : (⇑(e i) : Fin r → ℝ) ⬝ᵥ (⇑(e i)) = 1 := by
+    have h := EuclideanSpace.inner_eq_star_dotProduct (e i) (e i)
+    rw [real_inner_self_eq_norm_sq, hnorm, one_pow] at h
+    rw [star_trivial] at h
+    exact h.symm
+  have hval : (⇑(e i) : Fin r → ℝ) ⬝ᵥ (P *ᵥ ⇑(e i)) = lam i := by
+    rw [heig i, dotProduct_smul, smul_eq_mul, hself, mul_one]
+  have hpos := hP.2 (⇑(e i)) hne
+  rwa [hval] at hpos
+
+/-- **P5.3a-M5a (eigen-data extraction leaf).**  A `ForsterPosDef` matrix has an
+orthonormal spanning eigen-family whose eigenvalue product is the determinant.
+Start: `hHerm := forsterPosDef_isHermitian hP`; take `e := ⇑ hHerm.eigenvectorBasis`,
+`lam := hHerm.eigenvalues`.  Orthonormality is `hHerm.eigenvectorBasis.orthonormal`;
+`span = ⊤` from the basis (`hHerm.eigenvectorBasis.toBasis.span_eq`, with
+`Set.range ⇑(·.toBasis) = Set.range ⇑·`); the eigen-equation is
+`hHerm.mulVec_eigenvectorBasis`; and `∏ lam = det` is
+`hHerm.det_eq_prod_eigenvalues` (over `ℝ`, `RCLike.ofReal` is `id`). -/
+lemma exists_eigen_of_forsterPosDef {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    (hP : ForsterPosDef P) :
+    ∃ (e : Fin r → EuclideanSpace ℝ (Fin r)) (lam : Fin r → ℝ),
+      Orthonormal ℝ e ∧ Submodule.span ℝ (Set.range e) = ⊤ ∧
+      (∀ i, P *ᵥ ⇑(e i) = lam i • ⇑(e i)) ∧
+      ∏ i, lam i = P.det := by
+  have hHerm := forsterPosDef_isHermitian hP
+  refine ⟨⇑hHerm.eigenvectorBasis, hHerm.eigenvalues,
+    hHerm.eigenvectorBasis.orthonormal, ?_, hHerm.mulVec_eigenvectorBasis, ?_⟩
+  · have h := hHerm.eigenvectorBasis.toBasis.span_eq
+    rwa [OrthonormalBasis.coe_toBasis] at h
+  · rw [hHerm.det_eq_prod_eigenvalues]
+    norm_cast
+
+/-- **P5.3a-M5d (sorting leaf).**  Reindex eigen-data by the sorting permutation
+so the eigenvalues become nondecreasing, transporting every other invariant.
+Start: `σ := Tuple.sort lam`, `e' := fun i => e (σ i)`, `lam' := fun i => lam (σ i)`.
+`Monotone lam'` is `Tuple.monotone_sort lam`; `Orthonormal ℝ e'` is
+`he.comp σ σ.injective`; `Set.range e' = Set.range e` (σ surjective; `Set.range_comp`
++ `σ.surjective.range_eq`) transports the span; positivity, `∏`, and the quadratic
+identity transport by reindexing the finite product/sum over `σ`
+(`Equiv.prod_comp`, `Fintype.sum_equiv σ`). -/
+lemma exists_sorted_of_eigen_data {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
+    {e : Fin r → EuclideanSpace ℝ (Fin r)} {lam : Fin r → ℝ}
+    (he : Orthonormal ℝ e) (hspan : Submodule.span ℝ (Set.range e) = ⊤)
+    (hpos : ∀ i, 0 < lam i) (hprod : ∏ i, lam i = P.det)
+    (hquad : ∀ z : EuclideanSpace ℝ (Fin r), forsterQuad P z = ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2) :
+    ∃ (e' : Fin r → EuclideanSpace ℝ (Fin r)) (lam' : Fin r → ℝ),
+      Orthonormal ℝ e' ∧ Submodule.span ℝ (Set.range e') = ⊤ ∧
+      Monotone lam' ∧ (∀ i, 0 < lam' i) ∧ ∏ i, lam' i = P.det ∧
+      ∀ z : EuclideanSpace ℝ (Fin r),
+        forsterQuad P z = ∑ i, lam' i * ⟪e' i, z⟫_ℝ ^ 2 := by
+  set σ := Tuple.sort lam with hσ
+  refine ⟨fun i => e (σ i), fun i => lam (σ i), he.comp _ σ.injective, ?_,
+    Tuple.monotone_sort lam, fun i => hpos (σ i), ?_, ?_⟩
+  · -- span invariance under the reindexing (σ is a bijection)
+    have hrange : Set.range (fun i => e (σ i)) = Set.range e := by
+      rw [show (fun i => e (σ i)) = e ∘ ⇑σ from rfl, Set.range_comp,
+        σ.surjective.range_eq, Set.image_univ]
+    rw [hrange]; exact hspan
+  · -- eigenvalue product is permutation-invariant
+    rw [Equiv.prod_comp σ lam]; exact hprod
+  · -- the diagonalization transports term-by-term along σ
+    intro z
+    rw [hquad z]
+    exact (Equiv.sum_comp σ (fun j => lam j * ⟪e j, z⟫_ℝ ^ 2)).symm
+
 /-- Sorted spectral data for a `ForsterPosDef` matrix: an orthonormal
 spanning eigen-family with nondecreasing positive eigenvalues whose product
-is the determinant, diagonalizing the quadratic form.  Recipe: `hP.1` makes
-`P` Hermitian over `ℝ` (`Matrix.IsHermitian`, real conjugation is trivial);
-use `Matrix.IsHermitian.eigenvectorBasis` and
-`Matrix.IsHermitian.eigenvalues` with `mulVec_eigenvectorBasis` for the
-diagonalization, `Matrix.IsHermitian.det_eq_prod_eigenvalues` for the
-determinant, and positivity of each eigenvalue by evaluating `hP.2` at the
-eigenvector.  Sort by composing with the permutation produced by
-`Tuple.sort` (all conjuncts are invariant under a simultaneous permutation:
-`Equiv.sum_comp`, `Equiv.prod_comp`); spanning comes from `Basis.span_eq` of
-the orthonormal basis. -/
+is the determinant, diagonalizing the quadratic form.
+
+**Assembly (sorry-free).**  Extract the eigen-family and its eigenvalue product
+(`exists_eigen_of_forsterPosDef`); diagonalize the quadratic form
+(`forsterQuad_eq_sum_sq_eigen`); positivity of the eigenvalues
+(`eigenvalue_pos_of_eigen`); then sort to nondecreasing eigenvalues while
+transporting every invariant (`exists_sorted_of_eigen_data`). -/
 lemma exists_sorted_eigen_data {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
     (hP : ForsterPosDef P) :
     ∃ (e : Fin r → EuclideanSpace ℝ (Fin r)) (lam : Fin r → ℝ),
@@ -1378,7 +1546,10 @@ lemma exists_sorted_eigen_data {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
       Monotone lam ∧ (∀ i, 0 < lam i) ∧ ∏ i, lam i = P.det ∧
       ∀ z : EuclideanSpace ℝ (Fin r),
         forsterQuad P z = ∑ i, lam i * ⟪e i, z⟫_ℝ ^ 2 := by
-  sorry
+  obtain ⟨e, lam, he, hspan, heig, hprod⟩ := exists_eigen_of_forsterPosDef hP
+  have hquad := forsterQuad_eq_sum_sq_eigen he hspan heig
+  have hpos := eigenvalue_pos_of_eigen hP he heig
+  exact exists_sorted_of_eigen_data he hspan hpos hprod hquad
 
 private lemma norm_sq_sum_eq_sum_sq {r : ℕ} (e : Fin r → EuclideanSpace ℝ (Fin r)) (he : Orthonormal ℝ e)
     (f : Fin r → ℝ) (s : Finset (Fin r)) :
@@ -1466,6 +1637,7 @@ lemma forsterQuad_ge_of_far {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
     exact mul_le_mul_of_nonneg_left h_δ_le (le_of_lt (hpos k))
   linarith
 
+open Finset in
 /-- **Abel counting bound.**  If at most `k` items sit strictly below each
 level `k`, the level-sum of a monotone `f` is at least the extremal
 configuration: one item at each level below the top, everything else at the
@@ -1482,7 +1654,125 @@ lemma sum_level_lower_bound {m : ℕ} {f : Fin (m + 1) → ℝ} (hf : Monotone f
       ({x : ι | level x < k} : Set ι).ncard ≤ (k : ℕ)) :
     ((Fintype.card ι : ℝ) - (m + 1)) * f (Fin.last m) + ∑ k, f k ≤
       ∑ x, f (level x) := by
-  sorry
+  let F : ℕ → ℝ := fun n => if h : n < m + 1 then f ⟨n, h⟩ else f (Fin.last m)
+  have hF (n : Fin (m + 1)) : F n = f n := dif_pos n.isLt
+  have hF_last : F m = f (Fin.last m) := dif_pos (Nat.lt_succ_self m)
+  
+  have hF_mono : Monotone F := by
+    intro a b hab
+    dsimp [F]
+    split_ifs with ha hb hb
+    · exact hf (Fin.mk_le_mk.mpr hab)
+    · exact hf (Fin.le_last _)
+    · linarith
+    · rfl
+    
+  let d : ℕ → ℝ := fun j => F (j + 1) - F j
+  have hd_nonneg (j : ℕ) : 0 ≤ d j := sub_nonneg.mpr (hF_mono (Nat.le_succ j))
+  
+  have telescope : ∀ l ≤ m, F m - F l = ∑ j ∈ range m, if l ≤ j then d j else 0 := by
+    intro l hl
+    have h1 : ∑ k ∈ range m, (F (k + 1) - F k) = F m - F 0 := sum_range_sub F m
+    have h2 : ∑ k ∈ range l, (F (k + 1) - F k) = F l - F 0 := sum_range_sub F l
+    have h3 : ∑ j ∈ Ico l m, d j = F m - F l := by
+      dsimp [d]
+      rw [sum_Ico_eq_sub _ hl, h1, h2]
+      ring
+    have h4 : (range m).filter (fun j => l ≤ j) = Ico l m := by
+      ext x
+      simp
+      omega
+    rw [← h3, ← sum_filter, ← h4]
+    
+  have h_sum_x : ∑ x : ι, (F m - F (level x)) = ∑ j ∈ range m, ({x : ι | (level x : ℕ) ≤ j} : Set ι).ncard * d j := by
+    calc ∑ x : ι, (F m - F (level x))
+      _ = ∑ x : ι, ∑ j ∈ range m, if (level x : ℕ) ≤ j then d j else 0 := by
+        apply sum_congr rfl
+        intro x _
+        exact telescope (level x : ℕ) (Fin.is_le (level x))
+      _ = ∑ j ∈ range m, ∑ x : ι, if (level x : ℕ) ≤ j then d j else 0 := sum_comm
+      _ = ∑ j ∈ range m, (univ.filter (fun x : ι => (level x : ℕ) ≤ j)).card * d j := by
+        apply sum_congr rfl
+        intro j _
+        rw [sum_ite, sum_const_zero, add_zero, sum_const, nsmul_eq_mul]
+      _ = ∑ j ∈ range m, ({x : ι | (level x : ℕ) ≤ j} : Set ι).ncard * d j := by
+        apply sum_congr rfl
+        intro j _
+        have h1 : Fintype.card {x : ι // (level x : ℕ) ≤ j} = Nat.card {x : ι // (level x : ℕ) ≤ j} := by
+          exact Nat.card_eq_fintype_card.symm
+        have h2 : (univ.filter (fun x : ι => (level x : ℕ) ≤ j)).card = Fintype.card {x : ι // (level x : ℕ) ≤ j} := by
+          exact (Fintype.card_subtype _).symm
+        have h3 : Nat.card {x : ι // (level x : ℕ) ≤ j} = ({x : ι | (level x : ℕ) ≤ j} : Set ι).ncard := by
+          exact Set.ncard_def _
+        rw [h2, h1, h3]
+        
+  have h_bound : ∑ j ∈ range m, (({x : ι | (level x : ℕ) ≤ j} : Set ι).ncard : ℝ) * d j ≤ ∑ j ∈ range m, (j + 1 : ℝ) * d j := by
+    apply sum_le_sum
+    intro j hj
+    apply mul_le_mul_of_nonneg_right _ (hd_nonneg j)
+    have hj_lt : j + 1 < m + 1 := by
+      rw [mem_range] at hj
+      omega
+    have H := hcount ⟨j + 1, hj_lt⟩
+    have heq : {x : ι | (level x : ℕ) ≤ j} = {x : ι | level x < (⟨j + 1, hj_lt⟩ : Fin (m + 1))} := by
+      ext x
+      simp [Fin.lt_def]
+    rw [heq]
+    exact_mod_cast H
+
+  have h_sum_k : ∑ k : Fin (m + 1), (F m - f k) = ∑ j ∈ range m, (j + 1 : ℝ) * d j := by
+    calc ∑ k : Fin (m + 1), (F m - f k)
+      _ = ∑ k : Fin (m + 1), (F m - F (k : ℕ)) := by
+        apply sum_congr rfl
+        intro k _
+        rw [hF k]
+      _ = ∑ k : Fin (m + 1), ∑ j ∈ range m, if (k : ℕ) ≤ j then d j else 0 := by
+        apply sum_congr rfl
+        intro k _
+        exact telescope (k : ℕ) (Fin.is_le k)
+      _ = ∑ j ∈ range m, ∑ k : Fin (m + 1), if (k : ℕ) ≤ j then d j else 0 := sum_comm
+      _ = ∑ j ∈ range m, (univ.filter (fun k : Fin (m + 1) => (k : ℕ) ≤ j)).card * d j := by
+        apply sum_congr rfl
+        intro j _
+        rw [sum_ite, sum_const_zero, add_zero, sum_const, nsmul_eq_mul]
+      _ = ∑ j ∈ range m, (j + 1 : ℝ) * d j := by
+        apply sum_congr rfl
+        intro j hj
+        rw [mem_range] at hj
+        have h1 : (univ.filter (fun k : Fin (m + 1) => (k : ℕ) ≤ j)).image Fin.val = range (j + 1) := by
+          ext x
+          simp only [mem_image, mem_filter, mem_univ, true_and, mem_range]
+          constructor
+          · rintro ⟨a, ha, rfl⟩
+            omega
+          · intro hx
+            have hx' : x < m + 1 := by omega
+            refine ⟨⟨x, hx'⟩, by exact Nat.le_of_lt_succ hx, rfl⟩
+        have h2 : (univ.filter (fun k : Fin (m + 1) => (k : ℕ) ≤ j)).card = j + 1 := by
+          rw [← card_range (j + 1), ← h1, card_image_of_injective]
+          exact Fin.val_injective
+        rw [h2]
+        have heq : ((j + 1 : ℕ) : ℝ) = (j + 1 : ℝ) := by push_cast; rfl
+        rw [heq]
+
+  have main : ∑ x : ι, (F m - f (level x)) ≤ ∑ k : Fin (m + 1), (F m - f k) := by
+    have hF_level (x : ι) : F m - f (level x) = F m - F (level x) := by rw [hF (level x)]
+    simp_rw [hF_level]
+    rw [h_sum_x, h_sum_k]
+    exact h_bound
+    
+  have hL_x : ∑ x : ι, (F m - f (level x)) = (Fintype.card ι : ℝ) * f (Fin.last m) - ∑ x, f (level x) := by
+    rw [sum_sub_distrib, sum_const, nsmul_eq_mul, ← hF_last]
+    rfl
+  have hL_k : ∑ k : Fin (m + 1), (F m - f k) = (m + 1 : ℝ) * f (Fin.last m) - ∑ k, f k := by
+    rw [sum_sub_distrib, sum_const, nsmul_eq_mul, ← hF_last]
+    have : (univ : Finset (Fin (m + 1))).card = m + 1 := Fintype.card_fin (m + 1)
+    rw [this]
+    push_cast
+    rfl
+    
+  rw [hL_x, hL_k] at main
+  linarith
 
 open scoped Classical
 
@@ -2031,7 +2321,125 @@ theorem exists_forsterPotential_minimizer {r : ℕ} {ι : Type*} [Fintype ι]
         ∀ Q : Matrix (Fin r) (Fin r) ℝ,
           ForsterPosDef Q → Q.det = 1 →
             forsterPotential u P ≤ forsterPotential u Q := by
-  sorry
+  let A : Set (Matrix (Fin r) (Fin r) ℝ) :=
+    {P | (∀ i j, P i j = P j i) ∧
+      (∀ z : EuclideanSpace ℝ (Fin r), 0 ≤ forsterQuad P z) ∧ P.det = 1}
+  let K : Set (Matrix (Fin r) (Fin r) ℝ) :=
+    {P | P ∈ A ∧ forsterPotential u P ≤ 0}
+  have hsym_closed : IsClosed
+      {P : Matrix (Fin r) (Fin r) ℝ | ∀ i j, P i j = P j i} := by
+    simp only [Set.setOf_forall]
+    exact isClosed_iInter fun i ↦ isClosed_iInter fun j ↦
+      isClosed_eq (continuous_id.matrix_elem i j) (continuous_id.matrix_elem j i)
+  have hpsd_closed : IsClosed
+      {P : Matrix (Fin r) (Fin r) ℝ |
+        ∀ z : EuclideanSpace ℝ (Fin r), 0 ≤ forsterQuad P z} := by
+    simp only [Set.setOf_forall]
+    exact isClosed_iInter fun z ↦
+      isClosed_le continuous_const (continuous_forsterQuad z)
+  have hdet_closed : IsClosed
+      {P : Matrix (Fin r) (Fin r) ℝ | P.det = 1} :=
+    isClosed_eq continuous_id.matrix_det continuous_const
+  have hA_closed : IsClosed A := by
+    rw [show A =
+        {P : Matrix (Fin r) (Fin r) ℝ | ∀ i j, P i j = P j i} ∩
+          ({P | ∀ z : EuclideanSpace ℝ (Fin r), 0 ≤ forsterQuad P z} ∩
+          {P | P.det = 1}) by ext P; simp only [A, Set.mem_setOf_eq, Set.mem_inter_iff]]
+    exact hsym_closed.inter (hpsd_closed.inter hdet_closed)
+  have hA_posDef : ∀ P ∈ A, ForsterPosDef P := by
+    intro P hP
+    exact forsterPosDef_of_psd_det_one hP.1
+      (fun z ↦ hP.2.1 ((WithLp.equiv 2 (Fin r → ℝ)).symm z)) hP.2.2
+  have hA_quad_pos : ∀ P ∈ A, ∀ x, 0 < forsterQuad P (u x) := by
+    intro P hP x
+    have hu_ne : WithLp.equiv 2 (Fin r → ℝ) (u x) ≠ 0 := by
+      intro hx
+      have hx' : u x = 0 :=
+        (WithLp.equiv 2 (Fin r → ℝ)).injective (by simpa using hx)
+      have := hu x
+      rw [hx', norm_zero] at this
+      exact zero_ne_one this
+    exact (hA_posDef P hP).2 _ hu_ne
+  have hpot_cont_A : ContinuousOn (forsterPotential u) A :=
+    (continuousOn_forsterPotential u).mono fun P hP ↦ hA_quad_pos P hP
+  have hK_closed : IsClosed K := by
+    exact hA_closed.isClosed_le hpot_cont_A continuousOn_const
+  obtain ⟨δ, hδ, hcoercive⟩ := forsterPotential_coercive hr hcard hu hgen
+  let C : ℝ := Real.exp
+    ((0 - 2 * Fintype.card ι * Real.log δ) / (Fintype.card ι - r))
+  have hcard_real : (r : ℝ) < Fintype.card ι := by exact_mod_cast hcard
+  have hden : 0 < (Fintype.card ι : ℝ) - r := sub_pos.mpr hcard_real
+  have hC_pos : 0 < C := Real.exp_pos _
+  have hK_subset_box : K ⊆ (Set.Icc (-C) C).matrix := by
+    intro P hPK
+    have hPA : P ∈ A := hPK.1
+    have hPpos := hA_posDef P hPA
+    have hdiag : ∀ z : EuclideanSpace ℝ (Fin r), ‖z‖ = 1 →
+        forsterQuad P z ≤ C := by
+      intro z hz
+      refine (hcoercive P hPpos hPA.2.2 z hz).trans ?_
+      apply Real.exp_le_exp.mpr
+      apply (div_le_div_iff_of_pos_right hden).mpr
+      exact sub_le_sub_right hPK.2 _
+    have hentry : ∀ i j, |P i j| ≤ C :=
+      forster_entry_bound hPA.1
+        (fun z ↦ hPA.2.1 ((WithLp.equiv 2 (Fin r → ℝ)).symm z)) hdiag
+    rw [Set.mem_matrix]
+    intro i j
+    exact abs_le.mp (hentry i j)
+  have hK_compact : IsCompact K :=
+    (isCompact_Icc.matrix).of_isClosed_subset hK_closed hK_subset_box
+  have hquad_one : ∀ x, forsterQuad (1 : Matrix (Fin r) (Fin r) ℝ) (u x) = 1 := by
+    intro x
+    dsimp [forsterQuad]
+    rw [Matrix.one_mulVec]
+    have hnorm := norm_sq_eq_local (WithLp.equiv 2 (Fin r → ℝ) (u x))
+    simp only [Equiv.symm_apply_apply, hu x, one_pow] at hnorm
+    rw [dotProduct]
+    calc
+      (∑ i, (WithLp.equiv 2 (Fin r → ℝ) (u x)) i *
+          (WithLp.equiv 2 (Fin r → ℝ) (u x)) i) =
+          ∑ i, (WithLp.equiv 2 (Fin r → ℝ) (u x)) i ^ 2 := by
+            apply Finset.sum_congr rfl
+            intro i _
+            rw [pow_two]
+      _ = 1 := hnorm.symm
+  have hpot_one : forsterPotential u (1 : Matrix (Fin r) (Fin r) ℝ) = 0 := by
+    rw [forsterPotential_eq_sum_log]
+    simp [hquad_one]
+  have hone_A : (1 : Matrix (Fin r) (Fin r) ℝ) ∈ A := by
+    refine ⟨?_, ?_, Matrix.det_one⟩
+    · intro i j
+      simp [Matrix.one_apply, eq_comm]
+    · intro z
+      dsimp [forsterQuad]
+      rw [Matrix.one_mulVec]
+      rw [dotProduct]
+      exact Finset.sum_nonneg fun i _ ↦ mul_self_nonneg _
+  have hone_K : (1 : Matrix (Fin r) (Fin r) ℝ) ∈ K :=
+    ⟨hone_A, hpot_one.le⟩
+  have hpot_cont_K : ContinuousOn (forsterPotential u) K :=
+    hpot_cont_A.mono fun _ h ↦ h.1
+  obtain ⟨P, hPK, hPmin⟩ :=
+    hK_compact.exists_isMinOn ⟨(1 : Matrix (Fin r) (Fin r) ℝ), hone_K⟩ hpot_cont_K
+  refine ⟨P, hA_posDef P hPK.1, hPK.1.2.2, ?_⟩
+  intro Q hQ hQdet
+  by_cases hQpot : forsterPotential u Q ≤ 0
+  · apply hPmin
+    refine ⟨⟨hQ.1, ?_, hQdet⟩, hQpot⟩
+    intro z
+    by_cases hz : z = 0
+    · subst z
+      simp [forsterQuad]
+    · have hzcoord : WithLp.equiv 2 (Fin r → ℝ) z ≠ 0 := by
+        intro hzcoord
+        exact hz ((WithLp.equiv 2 (Fin r → ℝ)).injective (by simpa using hzcoord))
+      exact (hQ.2 _ hzcoord).le
+  · have hP_le_zero : forsterPotential u P ≤ 0 := by
+      have hP_le_one : forsterPotential u P ≤
+          forsterPotential u (1 : Matrix (Fin r) (Fin r) ℝ) := hPmin hone_K
+      simpa [hpot_one] using hP_le_one
+    exact hP_le_zero.trans (le_of_lt (lt_of_not_ge hQpot))
 
 /-! ### P5.3b leaf decomposition: first-order condition and the isotropic
 transform -/
@@ -2220,6 +2628,31 @@ lemma hasDerivAt_forsterPotential {r : ℕ} {ι : Type*} [Fintype ι]
     exact (hq x).ne'
   simpa using HasDerivAt.log h_lin h_ne
 
+open Polynomial in
+private lemma hasDerivAt_det_one_add_smul {r : ℕ} (M : Matrix (Fin r) (Fin r) ℝ) :
+    HasDerivAt (fun t : ℝ => (1 + t • M).det) (M.trace) 0 := by
+  have h_eq : (fun t : ℝ => (1 + t • M).det) =
+      fun t : ℝ => 1 + M.trace * t + eval t (1 + (X : ℝ[X]) • M.map (C : ℝ →+* ℝ[X])).det.divX.divX * t ^ 2 := by
+    ext t
+    exact Matrix.det_one_add_smul t M
+  rw [h_eq]
+  have h_lin : HasDerivAt (fun t : ℝ => 1 + M.trace * t) (M.trace) 0 := by
+    have h1 : HasDerivAt (fun t : ℝ => M.trace * t) (M.trace * 1) 0 := hasDerivAt_id' 0 |>.const_mul M.trace
+    rw [mul_one] at h1
+    exact h1.const_add 1
+  have h_quad : HasDerivAt (fun t : ℝ => eval t (1 + (X : ℝ[X]) • M.map (C : ℝ →+* ℝ[X])).det.divX.divX * t ^ 2) 0 0 := by
+    have h_p : HasDerivAt (fun t : ℝ => eval t (1 + (X : ℝ[X]) • M.map (C : ℝ →+* ℝ[X])).det.divX.divX)
+        (eval 0 (derivative (1 + (X : ℝ[X]) • M.map (C : ℝ →+* ℝ[X])).det.divX.divX)) 0 :=
+      Polynomial.hasDerivAt _ 0
+    have h_sq : HasDerivAt (fun t : ℝ => t ^ 2) (2 * 0 ^ (2 - 1)) 0 := hasDerivAt_pow 2 0
+    have h_prod := h_p.mul h_sq
+    change HasDerivAt (fun t : ℝ => eval t (1 + (X : ℝ[X]) • M.map (C : ℝ →+* ℝ[X])).det.divX.divX * t ^ 2) _ 0 at h_prod
+    ring_nf at h_prod ⊢
+    exact h_prod
+  have h_sum := h_lin.add h_quad
+  rw [add_zero] at h_sum
+  exact h_sum
+
 /-- Derivative of the determinant along a matrix line through a
 determinant-one point: `det (P + t • X) = det P * det (1 + t • (P⁻¹ * X))`
 (factor `P` on the left; `P` is invertible since `P.det = 1`,
@@ -2230,7 +2663,118 @@ in `t`; differentiate with `Polynomial`-free calculus
 lemma hasDerivAt_det_line {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ}
     (X : Matrix (Fin r) (Fin r) ℝ) (hdet : P.det = 1) :
     HasDerivAt (fun t : ℝ => (P + t • X).det) ((P⁻¹ * X).trace) 0 := by
-  sorry
+  have h_inv : IsUnit P.det := by rw [hdet]; exact isUnit_one
+  have h_eq : (fun t : ℝ => (P + t • X).det) = fun t : ℝ => (1 + t • (P⁻¹ * X)).det := by
+    ext t
+    have h_split : (P + t • X) = P * (1 + t • (P⁻¹ * X)) := by
+      rw [Matrix.mul_add, Matrix.mul_one, Matrix.mul_smul, ← mul_assoc, Matrix.mul_nonsing_inv _ h_inv, one_mul]
+    rw [h_split, Matrix.det_mul, hdet, one_mul]
+  rw [h_eq]
+  exact hasDerivAt_det_one_add_smul (P⁻¹ * X)
+
+private lemma forsterPosDef_smul {r : ℕ} {P : Matrix (Fin r) (Fin r) ℝ} {c : ℝ}
+    (hP : ForsterPosDef P) (hc : 0 < c) : ForsterPosDef (c • P) := by
+  constructor
+  · intro i j
+    dsimp [Matrix.smul_apply]
+    rw [hP.1 i j]
+  · intro z hz
+    have h1 := hP.2 z hz
+    rw [Matrix.smul_mulVec, dotProduct_smul]
+    exact mul_pos hc h1
+
+private lemma det_smul_rpow_inv {r : ℕ} (hr : 0 < r) {A : Matrix (Fin r) (Fin r) ℝ}
+    (hA : 0 < A.det) :
+    (((A.det) ^ (-(1 : ℝ) / (r : ℝ))) • A).det = 1 := by
+  rw [Matrix.det_smul, Fintype.card_fin]
+  have h_r_pos : (0 : ℝ) < r := Nat.cast_pos.mpr hr
+  have h_r_ne : (r : ℝ) ≠ 0 := h_r_pos.ne'
+  have h1 : ((A.det) ^ (-(1 : ℝ) / (r : ℝ))) ^ r = (A.det) ^ (-(1 : ℝ) / (r : ℝ) * (r : ℝ)) := by
+    rw [← Real.rpow_natCast, ← Real.rpow_mul hA.le]
+  have h2 : -(1 : ℝ) / (r : ℝ) * (r : ℝ) = -1 := by
+    rw [div_mul_cancel₀ _ h_r_ne]
+  rw [h2, Real.rpow_neg hA.le, Real.rpow_one] at h1
+  rw [h1, inv_mul_cancel₀ hA.ne']
+
+private lemma forsterPotential_smul_rpow_inv {r : ℕ} {ι : Type*} [Fintype ι]
+    (u : ι → EuclideanSpace ℝ (Fin r)) (A : Matrix (Fin r) (Fin r) ℝ)
+    (hA : 0 < A.det) (hqA : ∀ x, forsterQuad A (u x) ≠ 0) :
+    forsterPotential u (((A.det) ^ (-(1 : ℝ) / (r : ℝ))) • A) =
+      forsterPotential u A - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log A.det := by
+  have hc : 0 < (A.det) ^ (-(1 : ℝ) / (r : ℝ)) := Real.rpow_pos_of_pos hA _
+  rw [forsterPotential_smul u A hc hqA]
+  rw [Real.log_rpow hA]
+  ring
+
+private lemma eventually_det_pos {r : ℕ} {P X : Matrix (Fin r) (Fin r) ℝ} (hdet : P.det = 1) :
+    ∃ ε > 0, ∀ t : ℝ, |t| < ε → 0 < (P + t • X).det := by
+  have h_deriv := hasDerivAt_det_line X hdet
+  have h_cont := h_deriv.continuousAt
+  have h_open : IsOpen {s : ℝ | 0 < s} := isOpen_Ioi
+  have h_mem : (P + (0 : ℝ) • X).det ∈ {s : ℝ | 0 < s} := by
+    simp [hdet]
+  have h_eventually : ∀ᶠ t in nhds (0 : ℝ), 0 < (P + t • X).det :=
+    h_cont.eventually (IsOpen.mem_nhds h_open h_mem)
+  rw [Metric.eventually_nhds_iff] at h_eventually
+  obtain ⟨ε, hε, h_dist⟩ := h_eventually
+  use ε, hε
+  intro t ht
+  apply h_dist
+  rw [Real.dist_0_eq_abs]
+  exact ht
+
+private lemma eventually_forsterPosDef_and_det_pos {r : ℕ} {P X : Matrix (Fin r) (Fin r) ℝ}
+    (hP : ForsterPosDef P) (hdet : P.det = 1) (hX : ∀ i j, X i j = X j i) :
+    ∃ ε > 0, ∀ t : ℝ, |t| < ε → ForsterPosDef (P + t • X) ∧ 0 < (P + t • X).det := by
+  obtain ⟨ε1, hε1, hP1⟩ := forsterPosDef_perturb hP hX
+  obtain ⟨ε2, hε2, hdet2⟩ := eventually_det_pos (P := P) (X := X) hdet
+  use min ε1 ε2, lt_min hε1 hε2
+  intro t ht
+  have ht1 : |t| < ε1 := lt_of_lt_of_le ht (min_le_left _ _)
+  have ht2 : |t| < ε2 := lt_of_lt_of_le ht (min_le_right _ _)
+  exact ⟨hP1 t ht1, hdet2 t ht2⟩
+
+private lemma isLocalMin_g {r : ℕ} {ι : Type*} [Fintype ι]
+    (hr : 0 < r) (u : ι → EuclideanSpace ℝ (Fin r)) (hu : ∀ x, ‖u x‖ = 1)
+    (P : Matrix (Fin r) (Fin r) ℝ) (hP : ForsterPosDef P) (hdet : P.det = 1)
+    (hmin : ∀ Q : Matrix (Fin r) (Fin r) ℝ,
+      ForsterPosDef Q → Q.det = 1 →
+        forsterPotential u P ≤ forsterPotential u Q)
+    (X : Matrix (Fin r) (Fin r) ℝ) (hX : ∀ i j, X i j = X j i) :
+    IsLocalMin (fun (t : ℝ) => forsterPotential u (P + t • X) - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log (P + t • X).det) 0 := by
+  change ∀ᶠ t in nhds (0 : ℝ), forsterPotential u (P + (0 : ℝ) • X) - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log (P + (0 : ℝ) • X).det ≤
+    forsterPotential u (P + t • X) - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log (P + t • X).det
+  rw [Metric.eventually_nhds_iff]
+  obtain ⟨ε, hε, h_prop⟩ := eventually_forsterPosDef_and_det_pos hP hdet hX
+  use ε, hε
+  intro t ht
+  rw [Real.dist_0_eq_abs] at ht
+  have h_t_prop := h_prop t ht
+  have hPt_pos := h_t_prop.1
+  have hdet_pos := h_t_prop.2
+  have hqPt : ∀ x, forsterQuad (P + t • X) (u x) ≠ 0 := by
+    intro x
+    have hu_ne : (WithLp.equiv 2 (Fin r → ℝ) (u x)) ≠ 0 := by
+      intro h
+      have h1 : u x = 0 := by
+        rw [← Equiv.symm_apply_apply (WithLp.equiv 2 (Fin r → ℝ)) (u x), h]
+        rfl
+      have h2 : ‖u x‖ = 0 := by rw [h1, norm_zero]
+      rw [hu x] at h2
+      exact zero_ne_one h2.symm
+    exact (hPt_pos.2 (WithLp.equiv 2 (Fin r → ℝ) (u x)) hu_ne).ne'
+  set c := ((P + t • X).det) ^ (-(1 : ℝ) / (r : ℝ))
+  set Q := c • (P + t • X)
+  have hc_pos : 0 < c := Real.rpow_pos_of_pos hdet_pos _
+  have hQ_pos : ForsterPosDef Q := forsterPosDef_smul hPt_pos hc_pos
+  have hQ_det : Q.det = 1 := det_smul_rpow_inv hr hdet_pos
+  have h_min_Q := hmin Q hQ_pos hQ_det
+  have h_pot_Q := forsterPotential_smul_rpow_inv u (P + t • X) hdet_pos hqPt
+  have h_g0 : forsterPotential u (P + (0 : ℝ) • X) - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log (P + (0 : ℝ) • X).det = forsterPotential u P := by
+    simp [hdet]
+  rw [h_g0]
+  rw [← h_pot_Q]
+  exact h_min_Q
 
 /-- **First-order condition at the minimizer** (PROOFS.md P5.3).  Recipe:
 for symmetric `X` consider the normalized line
@@ -2256,7 +2800,95 @@ lemma forster_first_order {r : ℕ} {ι : Type*} [Fintype ι]
     (X : Matrix (Fin r) (Fin r) ℝ) (hX : ∀ i j, X i j = X j i) :
     ∑ x, forsterQuad X (u x) / forsterQuad P (u x)
       = (Fintype.card ι : ℝ) / r * (P⁻¹ * X).trace := by
-  sorry
+  have hq : ∀ x, 0 < forsterQuad P (u x) := by
+    intro x
+    have hu_ne : (WithLp.equiv 2 (Fin r → ℝ) (u x)) ≠ 0 := by
+      intro h
+      have h1 : u x = 0 := by
+        rw [← Equiv.symm_apply_apply (WithLp.equiv 2 (Fin r → ℝ)) (u x), h]
+        rfl
+      have h2 : ‖u x‖ = 0 := by rw [h1, norm_zero]
+      rw [hu x] at h2
+      exact zero_ne_one h2.symm
+    exact hP.2 (WithLp.equiv 2 (Fin r → ℝ) (u x)) hu_ne
+
+  have h_deriv_fp := hasDerivAt_forsterPotential u P X hq
+  have h_deriv_det := hasDerivAt_det_line X hdet
+  have h_det_0 : (P + (0 : ℝ) • X).det = 1 := by
+    rw [zero_smul, add_zero, hdet]
+  have h_deriv_log : HasDerivAt (fun (t : ℝ) => Real.log (P + t • X).det) ((P⁻¹ * X).trace) 0 := by
+    have h_log := HasDerivAt.log h_deriv_det (by rw [h_det_0]; exact one_ne_zero)
+    rw [h_det_0, div_one] at h_log
+    exact h_log
+
+  have h_deriv_g : HasDerivAt (fun (t : ℝ) => forsterPotential u (P + t • X) - ((Fintype.card ι : ℝ) / (r : ℝ)) * Real.log (P + t • X).det)
+      ((∑ x, forsterQuad X (u x) / forsterQuad P (u x)) - ((Fintype.card ι : ℝ) / (r : ℝ)) * (P⁻¹ * X).trace) 0 := by
+    exact h_deriv_fp.sub (h_deriv_log.const_mul _)
+
+  have h_is_min := isLocalMin_g hr u hu P hP hdet hmin X hX
+  have h_zero := IsLocalMin.hasDerivAt_eq_zero h_is_min h_deriv_g
+  linarith
+
+private theorem my_trace_mul_single {r : ℕ} (A : Matrix (Fin r) (Fin r) ℝ) (i j : Fin r) (c : ℝ) :
+    (A * single i j c).trace = A j i * c := by
+  change (∑ l, (A * single i j c) l l) = A j i * c
+  have h_diag : ∀ l, (A * single i j c) l l = if j = l then A j i * c else 0 := by
+    intro l
+    rw [mul_apply]
+    split_ifs with hl
+    · subst hl
+      rw [Finset.sum_eq_single i]
+      · rw [single_apply, if_pos ⟨rfl, rfl⟩]
+      · intro b _ hb
+        rw [single_apply]
+        have h_cond : ¬(i = b ∧ j = j) := fun h => hb h.1.symm
+        rw [if_neg h_cond, mul_zero]
+      · intro hb; exact False.elim (hb (Finset.mem_univ i))
+    · rw [Finset.sum_eq_zero]
+      intro b _
+      rw [single_apply]
+      have h_cond : ¬(i = b ∧ j = l) := fun h => hl h.2
+      rw [if_neg h_cond, mul_zero]
+  simp_rw [h_diag]
+  rw [Finset.sum_eq_single j]
+  · rw [if_pos rfl]
+  · intro b _ hb
+    rw [if_neg (Ne.symm hb)]
+  · intro hb; exact False.elim (hb (Finset.mem_univ j))
+
+private theorem momrec_forsterQuad_single {r : ℕ} (i j : Fin r) (c : ℝ) (z : EuclideanSpace ℝ (Fin r)) :
+    forsterQuad (single i j c) z = c * (WithLp.equiv 2 _ z i) * (WithLp.equiv 2 _ z j) := by
+  change ∑ x, (WithLp.equiv 2 _ z) x * ∑ y, (single i j c) x y * (WithLp.equiv 2 _ z) y = _
+  have h1 : ∀ x, (∑ y, (single i j c) x y * WithLp.equiv 2 (Fin r → ℝ) z y) =
+      if i = x then c * WithLp.equiv 2 (Fin r → ℝ) z j else 0 := by
+    intro x
+    split_ifs with hx
+    · rw [Finset.sum_eq_single j]
+      · rw [single_apply, if_pos ⟨hx, rfl⟩]
+      · intro b _ hb
+        rw [single_apply]
+        have h_cond : ¬(i = x ∧ j = b) := fun h => hb h.2.symm
+        rw [if_neg h_cond, zero_mul]
+      · intro hb; exact False.elim (hb (Finset.mem_univ j))
+    · rw [Finset.sum_eq_zero]
+      intro b _
+      rw [single_apply]
+      have h_cond : ¬(i = x ∧ j = b) := fun h => hx h.1
+      rw [if_neg h_cond, zero_mul]
+  simp_rw [h1]
+  rw [Finset.sum_eq_single i]
+  · rw [if_pos rfl]; ring
+  · intro b _ hb
+    rw [if_neg (Ne.symm hb), mul_zero]
+  · intro hb; exact False.elim (hb (Finset.mem_univ i))
+
+private theorem forsterQuad_add {r : ℕ} (X Y : Matrix (Fin r) (Fin r) ℝ) (z : EuclideanSpace ℝ (Fin r)) :
+    forsterQuad (X + Y) z = forsterQuad X z + forsterQuad Y z := by
+  change ∑ x, (WithLp.equiv 2 _ z) x * ∑ y, (X + Y) x y * (WithLp.equiv 2 _ z) y =
+    (∑ x, (WithLp.equiv 2 _ z) x * ∑ y, X x y * (WithLp.equiv 2 _ z) y) +
+    (∑ x, (WithLp.equiv 2 _ z) x * ∑ y, Y x y * (WithLp.equiv 2 _ z) y)
+  simp_rw [Matrix.add_apply, add_mul, Finset.sum_add_distrib, mul_add]
+  rw [Finset.sum_add_distrib]
 
 /-- The first-order condition for all symmetric `X` packages into the
 moment identity `∑ₓ (uₓ uₓᵀ) / (uₓᵀ P uₓ) = (N/r) • P⁻¹`.  Recipe: test
@@ -2277,7 +2909,73 @@ lemma forster_moment_matrix {r : ℕ} {ι : Type*} [Fintype ι]
     ∑ x, (forsterQuad P (u x))⁻¹ •
         Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))
       = ((Fintype.card ι : ℝ) / r) • P⁻¹ := by
-  sorry
+  ext i j
+  have hP_inv_symm : P⁻¹ j i = P⁻¹ i j := by
+    have h_symm : Pᵀ = P := by
+      ext a b
+      exact hP.1 b a
+    have h1 : P⁻¹ᵀ = Pᵀ⁻¹ := transpose_nonsing_inv P
+    rw [h_symm] at h1
+    have h2 := congr_fun (congr_fun h1 i) j
+    exact h2
+  rw [Matrix.smul_apply, smul_eq_mul]
+  have h_sum_entry : (∑ x, (forsterQuad P (u x))⁻¹ •
+        Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))) i j =
+      ∑ x, ((forsterQuad P (u x))⁻¹ •
+        Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))) i j := by
+    exact Matrix.sum_apply i j Finset.univ _
+  rw [h_sum_entry]
+  simp_rw [Matrix.smul_apply, smul_eq_mul, vecMulVec_apply]
+  by_cases hij : i = j
+  · subst hij
+    have hX_symm : ∀ a b, (single i i (1 : ℝ)) a b = (single i i (1 : ℝ)) b a := by
+      intro a b
+      have h_trans : (single i i (1 : ℝ))ᵀ = single i i (1 : ℝ) := transpose_single i i (1 : ℝ)
+      have h_eq := congr_fun (congr_fun h_trans b) a
+      exact h_eq
+    have h1 := hfo (single i i 1) hX_symm
+    have h_q_i : ∀ x, forsterQuad (single i i 1) (u x) = (WithLp.equiv 2 (Fin r → ℝ) (u x) i) * (WithLp.equiv 2 (Fin r → ℝ) (u x) i) := by
+      intro x
+      rw [momrec_forsterQuad_single i i 1, one_mul]
+    have h_tr : (P⁻¹ * single i i 1).trace = P⁻¹ i i := by
+      rw [my_trace_mul_single P⁻¹ i i 1, mul_one]
+    rw [h_tr] at h1
+    simp_rw [h_q_i] at h1
+    have h_lhs : ∀ x, (forsterQuad P (u x))⁻¹ * (WithLp.equiv 2 (Fin r → ℝ) (u x) i * WithLp.equiv 2 (Fin r → ℝ) (u x) i) =
+        (WithLp.equiv 2 (Fin r → ℝ) (u x) i * WithLp.equiv 2 (Fin r → ℝ) (u x) i) / forsterQuad P (u x) := by
+      intro x; ring
+    simp_rw [h_lhs]
+    exact h1
+  · have hX_symm : ∀ a b, (single i j (1 : ℝ) + single j i (1 : ℝ)) a b = (single i j (1 : ℝ) + single j i (1 : ℝ)) b a := by
+      intro a b
+      rw [Matrix.add_apply, Matrix.add_apply]
+      have h1 : single i j (1 : ℝ) a b = single j i (1 : ℝ) b a := by
+        have h_trans : (single i j (1 : ℝ))ᵀ = single j i (1 : ℝ) := transpose_single i j (1 : ℝ)
+        have h_eq := congr_fun (congr_fun h_trans b) a
+        exact h_eq
+      have h2 : single j i (1 : ℝ) a b = single i j (1 : ℝ) b a := by
+        have h_trans : (single j i (1 : ℝ))ᵀ = single i j (1 : ℝ) := transpose_single j i (1 : ℝ)
+        have h_eq := congr_fun (congr_fun h_trans b) a
+        exact h_eq
+      rw [h1, h2, add_comm]
+    have h1 := hfo (single i j 1 + single j i 1) hX_symm
+    have h_quad : ∀ z, forsterQuad (single i j 1 + single j i 1) z = 2 * (WithLp.equiv 2 _ z i * WithLp.equiv 2 _ z j) := by
+      intro z
+      rw [forsterQuad_add, momrec_forsterQuad_single, momrec_forsterQuad_single]
+      ring
+    have h_trace : (P⁻¹ * (single i j 1 + single j i 1)).trace = 2 * P⁻¹ i j := by
+      rw [mul_add, trace_add, my_trace_mul_single P⁻¹, my_trace_mul_single P⁻¹, mul_one, mul_one, hP_inv_symm]
+      ring
+    rw [h_trace] at h1
+    simp_rw [h_quad] at h1
+    have h_term : ∀ x, 2 * (WithLp.equiv 2 (Fin r → ℝ) (u x) i * WithLp.equiv 2 (Fin r → ℝ) (u x) j) / forsterQuad P (u x) =
+        2 * ((forsterQuad P (u x))⁻¹ * (WithLp.equiv 2 (Fin r → ℝ) (u x) i * WithLp.equiv 2 (Fin r → ℝ) (u x) j)) := by
+      intro x; ring
+    simp_rw [h_term] at h1
+    rw [← Finset.mul_sum] at h1
+    have h_rhs : (Fintype.card ι : ℝ) / r * (2 * P⁻¹ i j) = 2 * (((Fintype.card ι : ℝ) / r) * P⁻¹ i j) := by ring
+    rw [h_rhs] at h1
+    linarith
 
 /-- Positive-definite square root via the spectral theorem: write
 `P = U * diagonal lam * Uᴴ` (`Matrix.IsHermitian.spectral_theorem` for the
@@ -2290,7 +2988,415 @@ positive `Real.sqrt (lam i)`). -/
 lemma exists_forster_sqrt {r : ℕ} (P : Matrix (Fin r) (Fin r) ℝ)
     (hP : ForsterPosDef P) :
     ∃ B : Matrix (Fin r) (Fin r) ℝ, ForsterPosDef B ∧ B * B = P := by
-  sorry
+  have hP_herm : Matrix.IsHermitian P := by
+    ext i j
+    change star (P j i) = P i j
+    simp [hP.1 i j]
+  let U : Matrix (Fin r) (Fin r) ℝ := hP_herm.eigenvectorUnitary
+  let D : Matrix (Fin r) (Fin r) ℝ := diagonal (fun i => Real.sqrt (hP_herm.eigenvalues i))
+  let B : Matrix (Fin r) (Fin r) ℝ := U * D * star U
+  have heig : ∀ i, 0 < hP_herm.eigenvalues i := by
+    intro i
+    have heq := hP_herm.eigenvalues_eq i
+    change hP_herm.eigenvalues i = ⇑(hP_herm.eigenvectorBasis i) ⬝ᵥ (P *ᵥ ⇑(hP_herm.eigenvectorBasis i)) at heq
+    rw [heq]
+    apply hP.2
+    have hnorm := hP_herm.eigenvectorBasis.orthonormal.1 i
+    intro h
+    have h2 : hP_herm.eigenvectorBasis i = 0 := by
+      ext j
+      exact congrFun h j
+    rw [h2] at hnorm
+    simp at hnorm
+  have hB_herm : Matrix.IsHermitian B := by
+    dsimp [B]
+    change star (U * D * star U) = U * D * star U
+    rw [star_mul, star_mul, star_star]
+    have hD : star D = D := isHermitian_diagonal (fun i => Real.sqrt (hP_herm.eigenvalues i))
+    rw [hD, Matrix.mul_assoc]
+  have hB_symm : ∀ i j, B i j = B j i := by
+    intro i j
+    have h1 := congrFun (congrFun hB_herm i) j
+    change star (B j i) = B i j at h1
+    simp only [star_trivial] at h1
+    exact h1.symm
+  use B
+  constructor
+  · constructor
+    · exact hB_symm
+    · intro z hz
+      dsimp [B]
+      have h1 : z ⬝ᵥ ((U * D * star U) *ᵥ z) = z ⬝ᵥ (U *ᵥ (D *ᵥ (star U *ᵥ z))) := by
+        rw [mulVec_mulVec, mulVec_mulVec]
+      rw [h1]
+      have h2 : z ⬝ᵥ (U *ᵥ (D *ᵥ (star U *ᵥ z))) = (z ᵥ* U) ⬝ᵥ (D *ᵥ (star U *ᵥ z)) := by
+        exact dotProduct_mulVec z U (D *ᵥ (star U *ᵥ z))
+      rw [h2]
+      have h3 : z ᵥ* U = star U *ᵥ z := by
+        have ht : Uᵀ = star U := by ext i j; rfl
+        have h4 := vecMul_transpose Uᵀ z
+        rw [transpose_transpose] at h4
+        rw [h4, ht]
+      rw [h3]
+      let w := star U *ᵥ z
+      change 0 < w ⬝ᵥ (D *ᵥ w)
+      have hw : w ≠ 0 := by
+        intro hw0
+        have h_zero : U *ᵥ w = 0 := by rw [hw0, Matrix.mulVec_zero]
+        change U *ᵥ (star U *ᵥ z) = 0 at h_zero
+        have h_zero_2 : (U * star U) *ᵥ z = 0 := by
+          have h_eq : (U * star U) *ᵥ z = U *ᵥ (star U *ᵥ z) := by rw [mulVec_mulVec]
+          rw [h_eq]
+          exact h_zero
+        have hU : U * star U = 1 := Unitary.coe_mul_star_self hP_herm.eigenvectorUnitary
+        rw [hU, Matrix.one_mulVec] at h_zero_2
+        exact hz h_zero_2
+      have h_sum : w ⬝ᵥ (D *ᵥ w) = ∑ i, Real.sqrt (hP_herm.eigenvalues i) * (w i) ^ 2 := by
+        dsimp [D, dotProduct]
+        apply Finset.sum_congr rfl
+        intro i _
+        have hd : (diagonal (fun i => √(hP_herm.eigenvalues i)) *ᵥ w) i = √(hP_herm.eigenvalues i) * w i := by
+          exact mulVec_diagonal (fun i => √(hP_herm.eigenvalues i)) w i
+        rw [hd]
+        ring
+      rw [h_sum]
+      have h_pos : 0 < ∑ i, Real.sqrt (hP_herm.eigenvalues i) * (w i) ^ 2 := by
+        apply Finset.sum_pos'
+        · intro i _
+          apply mul_nonneg
+          · apply Real.sqrt_nonneg
+          · exact sq_nonneg (w i)
+        · have hw2 : ∃ i, w i ≠ 0 := by
+            by_contra hc
+            push Not at hc
+            have h_w0 : w = 0 := by ext i; exact hc i
+            exact hw h_w0
+          rcases hw2 with ⟨k, hk⟩
+          use k
+          constructor
+          · exact Finset.mem_univ k
+          · apply mul_pos
+            · exact Real.sqrt_pos.mpr (heig k)
+            · exact sq_pos_of_ne_zero hk
+      exact h_pos
+  · show B * B = P
+    calc
+      B * B = U * D * star U * (U * D * star U) := rfl
+      _ = U * D * (star U * U) * D * star U := by simp only [Matrix.mul_assoc]
+      _ = U * D * 1 * D * star U := by
+        have hU : star U * U = 1 := Unitary.coe_star_mul_self hP_herm.eigenvectorUnitary
+        rw [hU]
+      _ = U * (D * D) * star U := by simp only [Matrix.mul_assoc, Matrix.mul_one]
+      _ = U * diagonal (hP_herm.eigenvalues) * star U := by
+        have hD_sq : D * D = diagonal (hP_herm.eigenvalues) := by
+          dsimp [D]
+          rw [diagonal_mul_diagonal]
+          congr
+          ext i
+          exact Real.mul_self_sqrt (le_of_lt (heig i))
+        rw [hD_sq]
+      _ = P := by
+        have hSpec := hP_herm.spectral_theorem
+        symm
+        change P = U * diagonal (fun i => (hP_herm.eigenvalues i : ℝ)) * star U
+        change P = ((Unitary.conjStarAlgAut ℝ (Matrix (Fin r) (Fin r) ℝ)) hP_herm.eigenvectorUnitary) (diagonal (fun i => (hP_herm.eigenvalues i : ℝ)))
+        exact hSpec
+
+/-! ### P5.3b normalized-transform decomposition -/
+
+/-- The primal transform used in Forster repositioning. -/
+noncomputable def forsterPrimalTransform {r : ℕ}
+    (B : Matrix (Fin r) (Fin r) ℝ) (z : EuclideanSpace ℝ (Fin r)) :
+    EuclideanSpace ℝ (Fin r) :=
+  (WithLp.equiv 2 (Fin r → ℝ)).symm (B *ᵥ (WithLp.equiv 2 (Fin r → ℝ) z))
+
+/-- The inverse dual transform paired with `forsterPrimalTransform`. -/
+noncomputable def forsterDualTransform {r : ℕ}
+    (B : Matrix (Fin r) (Fin r) ℝ) (z : EuclideanSpace ℝ (Fin r)) :
+    EuclideanSpace ℝ (Fin r) :=
+  (WithLp.equiv 2 (Fin r → ℝ)).symm (B⁻¹ *ᵥ (WithLp.equiv 2 (Fin r → ℝ) z))
+
+/-- Normalize the primal transform by its (nonzero) norm. -/
+noncomputable def normalizedForsterPrimal {r : ℕ}
+    (B : Matrix (Fin r) (Fin r) ℝ) (z : EuclideanSpace ℝ (Fin r)) :
+    EuclideanSpace ℝ (Fin r) :=
+  (‖forsterPrimalTransform B z‖⁻¹ : ℝ) • forsterPrimalTransform B z
+
+/-- Normalize the inverse dual transform by its (nonzero) norm. -/
+noncomputable def normalizedForsterDual {r : ℕ}
+    (B : Matrix (Fin r) (Fin r) ℝ) (z : EuclideanSpace ℝ (Fin r)) :
+    EuclideanSpace ℝ (Fin r) :=
+  (‖forsterDualTransform B z‖⁻¹ : ℝ) • forsterDualTransform B z
+
+/-- **P5.3b-F8a (unit/sign transform).**  If `B` is positive definite, its
+primal action and inverse dual action are injective.  Normalizing both images
+therefore gives unit vectors, while symmetry of `B` and
+`B * B⁻¹ = 1` show that the unnormalized inner product is unchanged.
+The two normalization factors are positive, so every strict sign is
+preserved. -/
+lemma normalizedForsterTransforms_unit_sign
+    {r : ℕ} {ι : Type*} [Fintype ι]
+    (u v : ι → EuclideanSpace ℝ (Fin r))
+    (hu : ∀ x, ‖u x‖ = 1) (hv : ∀ y, ‖v y‖ = 1)
+    (s : ι → ι → ℝ) (hs : ∀ x y, 0 < s x y * ⟪u x, v y⟫_ℝ)
+    (B : Matrix (Fin r) (Fin r) ℝ) (hB : ForsterPosDef B) :
+    (∀ x, ‖normalizedForsterPrimal B (u x)‖ = 1) ∧
+      (∀ y, ‖normalizedForsterDual B (v y)‖ = 1) ∧
+      ∀ x y, 0 < s x y *
+        ⟪normalizedForsterPrimal B (u x), normalizedForsterDual B (v y)⟫_ℝ := by
+  have hB_det : B.det ≠ 0 := forsterPosDef_det_ne_zero hB
+  have hB_det_unit : IsUnit B.det := isUnit_iff_ne_zero.mpr hB_det
+  have hB_unit : IsUnit B := B.isUnit_iff_isUnit_det.mpr hB_det_unit
+  have hB_inv_det_unit : IsUnit B⁻¹.det := B.isUnit_nonsing_inv_det hB_det_unit
+  have hB_inv_unit : IsUnit B⁻¹ := B⁻¹.isUnit_iff_isUnit_det.mpr hB_inv_det_unit
+  have hB_symm : Bᵀ = B := by
+    ext i j
+    exact hB.1 j i
+  have hu_ne : ∀ x, u x ≠ 0 := by
+    intro x hx
+    have := hu x
+    rw [hx, norm_zero] at this
+    exact zero_ne_one this
+  have hv_ne : ∀ y, v y ≠ 0 := by
+    intro y hy
+    have := hv y
+    rw [hy, norm_zero] at this
+    exact zero_ne_one this
+  have hprimal_ne : ∀ x, forsterPrimalTransform B (u x) ≠ 0 := by
+    intro x hx
+    have hmul : B *ᵥ (WithLp.equiv 2 (Fin r → ℝ) (u x)) = 0 := by
+      have := congrArg (WithLp.equiv 2 (Fin r → ℝ)) hx
+      simpa [forsterPrimalTransform] using this
+    have hmul' : B *ᵥ (WithLp.equiv 2 (Fin r → ℝ) (u x)) = B *ᵥ 0 := by
+      simpa using hmul
+    have hvec : WithLp.equiv 2 (Fin r → ℝ) (u x) = 0 :=
+      (Matrix.mulVec_injective_iff_isUnit.mpr hB_unit) hmul'
+    exact hu_ne x ((WithLp.equiv 2 (Fin r → ℝ)).injective hvec)
+  have hdual_ne : ∀ y, forsterDualTransform B (v y) ≠ 0 := by
+    intro y hy
+    have hmul : B⁻¹ *ᵥ (WithLp.equiv 2 (Fin r → ℝ) (v y)) = 0 := by
+      have := congrArg (WithLp.equiv 2 (Fin r → ℝ)) hy
+      simpa [forsterDualTransform] using this
+    have hmul' : B⁻¹ *ᵥ (WithLp.equiv 2 (Fin r → ℝ) (v y)) = B⁻¹ *ᵥ 0 := by
+      simpa using hmul
+    have hvec : WithLp.equiv 2 (Fin r → ℝ) (v y) = 0 :=
+      (Matrix.mulVec_injective_iff_isUnit.mpr hB_inv_unit) hmul'
+    exact hv_ne y ((WithLp.equiv 2 (Fin r → ℝ)).injective hvec)
+  have hinner : ∀ x y,
+      ⟪forsterPrimalTransform B (u x), forsterDualTransform B (v y)⟫_ℝ =
+        ⟪u x, v y⟫_ℝ := by
+    intro x y
+    rw [EuclideanSpace.inner_eq_star_dotProduct,
+      EuclideanSpace.inner_eq_star_dotProduct]
+    change
+      (B⁻¹ *ᵥ WithLp.equiv 2 (Fin r → ℝ) (v y)) ⬝ᵥ
+          (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) =
+        WithLp.equiv 2 (Fin r → ℝ) (v y) ⬝ᵥ
+          WithLp.equiv 2 (Fin r → ℝ) (u x)
+    rw [dotProduct_comm (B⁻¹ *ᵥ WithLp.equiv 2 (Fin r → ℝ) (v y)),
+      dotProduct_comm (WithLp.equiv 2 (Fin r → ℝ) (v y))]
+    calc
+      (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ
+          (B⁻¹ *ᵥ WithLp.equiv 2 (Fin r → ℝ) (v y)) =
+          ((WithLp.equiv 2 (Fin r → ℝ) (u x)) ᵥ* Bᵀ) ⬝ᵥ
+            (B⁻¹ *ᵥ WithLp.equiv 2 (Fin r → ℝ) (v y)) := by
+              rw [Matrix.vecMul_transpose]
+      _ = ((WithLp.equiv 2 (Fin r → ℝ) (u x)) ᵥ* B) ⬝ᵥ
+            (B⁻¹ *ᵥ WithLp.equiv 2 (Fin r → ℝ) (v y)) := by rw [hB_symm]
+      _ = (((WithLp.equiv 2 (Fin r → ℝ) (u x)) ᵥ* B) ᵥ* B⁻¹) ⬝ᵥ
+            WithLp.equiv 2 (Fin r → ℝ) (v y) :=
+              Matrix.dotProduct_mulVec _ _ _
+      _ = (WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ
+            WithLp.equiv 2 (Fin r → ℝ) (v y) := by
+              rw [Matrix.vecMul_vecMul, B.mul_nonsing_inv hB_det_unit,
+                Matrix.vecMul_one]
+  refine ⟨fun x ↦ ?_, fun y ↦ ?_, ?_⟩
+  · exact norm_normalize_eq_one (hprimal_ne x)
+  · exact norm_normalize_eq_one (hdual_ne y)
+  · intro x y
+    rw [normalizedForsterPrimal, normalizedForsterDual,
+      real_inner_smul_left, real_inner_smul_right, hinner]
+    have hp : 0 < ‖forsterPrimalTransform B (u x)‖⁻¹ :=
+      inv_pos.mpr (norm_pos_iff.mpr (hprimal_ne x))
+    have hd : 0 < ‖forsterDualTransform B (v y)‖⁻¹ :=
+      inv_pos.mpr (norm_pos_iff.mpr (hdual_ne y))
+    nlinarith [mul_pos (mul_pos hp hd) (hs x y)]
+
+/-- **P5.3b-F8b (isotropy transform).**  Substitute the moment-matrix
+identity into the quadratic form of the normalized primal images.  Their
+squared norms are `forsterQuad P (u x)` because `B` is symmetric and
+`B * B = P`; after summing, `B * P⁻¹ * B = 1` reduces the result to
+`(N/r) * ‖w‖²`. -/
+lemma normalizedForsterPrimal_isotropic
+    {r : ℕ} {ι : Type*} [Fintype ι]
+    (hr : 0 < r) (u : ι → EuclideanSpace ℝ (Fin r))
+    (hu : ∀ x, ‖u x‖ = 1)
+    (P B : Matrix (Fin r) (Fin r) ℝ) (hB : ForsterPosDef B)
+    (hBB : B * B = P)
+    (hmoment :
+      ∑ x, (forsterQuad P (u x))⁻¹ •
+          Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x)) =
+        ((Fintype.card ι : ℝ) / r) • P⁻¹) :
+    ∀ w : EuclideanSpace ℝ (Fin r),
+      ∑ x, ⟪normalizedForsterPrimal B (u x), w⟫_ℝ ^ 2 =
+        (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
+  have hB_det : B.det ≠ 0 := forsterPosDef_det_ne_zero hB
+  have hB_det_unit : IsUnit B.det := isUnit_iff_ne_zero.mpr hB_det
+  have hB_unit : IsUnit B := B.isUnit_iff_isUnit_det.mpr hB_det_unit
+  have hB_symm : Bᵀ = B := by
+    ext i j
+    exact hB.1 j i
+  have hu_ne : ∀ x, u x ≠ 0 := by
+    intro x hx
+    have := hu x
+    rw [hx, norm_zero] at this
+    exact zero_ne_one this
+  have hprimal_ne : ∀ x, forsterPrimalTransform B (u x) ≠ 0 := by
+    intro x hx
+    have hmul : B *ᵥ (WithLp.equiv 2 (Fin r → ℝ) (u x)) = 0 := by
+      have := congrArg (WithLp.equiv 2 (Fin r → ℝ)) hx
+      simpa [forsterPrimalTransform] using this
+    have hmul' : B *ᵥ (WithLp.equiv 2 (Fin r → ℝ) (u x)) = B *ᵥ 0 := by
+      simpa using hmul
+    have hvec : WithLp.equiv 2 (Fin r → ℝ) (u x) = 0 :=
+      (Matrix.mulVec_injective_iff_isUnit.mpr hB_unit) hmul'
+    exact hu_ne x ((WithLp.equiv 2 (Fin r → ℝ)).injective hvec)
+  have hprimal_norm_sq : ∀ x,
+      ‖forsterPrimalTransform B (u x)‖ ^ 2 = forsterQuad P (u x) := by
+    intro x
+    rw [forsterPrimalTransform, norm_sq_eq_local]
+    change (∑ i, (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) i ^ 2) =
+      (WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ
+        (P *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x))
+    calc
+      (∑ i, (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) i ^ 2) =
+          (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ
+            (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) := by
+              simp [dotProduct, pow_two]
+      _ = ((WithLp.equiv 2 (Fin r → ℝ) (u x)) ᵥ* Bᵀ) ⬝ᵥ
+            (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) := by
+              rw [Matrix.vecMul_transpose]
+      _ = ((WithLp.equiv 2 (Fin r → ℝ) (u x)) ᵥ* B) ⬝ᵥ
+            (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) := by rw [hB_symm]
+      _ = (WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ
+            (B *ᵥ (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x))) := by
+              exact (Matrix.dotProduct_mulVec _ _ _).symm
+      _ = (WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ
+            (P *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) := by
+              rw [Matrix.mulVec_mulVec, hBB]
+  have hinv_norm_sq : ∀ x,
+      ‖forsterPrimalTransform B (u x)‖⁻¹ ^ 2 =
+        (forsterQuad P (u x))⁻¹ := by
+    intro x
+    rw [inv_pow, hprimal_norm_sq]
+  have hP_unit : IsUnit P := by
+    rw [← hBB]
+    exact hB_unit.mul hB_unit
+  have hP_det_unit : IsUnit P.det := P.isUnit_iff_isUnit_det.mp hP_unit
+  have hPB_inv : P * B⁻¹ = B := by
+    rw [← hBB, Matrix.mul_assoc, B.mul_nonsing_inv hB_det_unit, Matrix.mul_one]
+  have hcancel : B * P⁻¹ * B = 1 := by
+    calc
+      B * P⁻¹ * B = B * P⁻¹ * (P * B⁻¹) := by rw [hPB_inv]
+      _ = B * (P⁻¹ * P) * B⁻¹ := by simp only [Matrix.mul_assoc]
+      _ = 1 := by
+        rw [P.nonsing_inv_mul hP_det_unit, Matrix.mul_one,
+          B.mul_nonsing_inv hB_det_unit]
+  intro w
+  let z : Fin r → ℝ := B *ᵥ (WithLp.equiv 2 (Fin r → ℝ) w)
+  have hinner : ∀ x,
+      ⟪forsterPrimalTransform B (u x), w⟫_ℝ =
+        (WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ z := by
+    intro x
+    rw [EuclideanSpace.inner_eq_star_dotProduct]
+    change
+      (WithLp.equiv 2 (Fin r → ℝ) w) ⬝ᵥ
+          (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) =
+        (WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ z
+    calc
+      (WithLp.equiv 2 (Fin r → ℝ) w) ⬝ᵥ
+          (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) (u x)) =
+          (WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ
+            (Bᵀ *ᵥ WithLp.equiv 2 (Fin r → ℝ) w) :=
+              (Matrix.dotProduct_transpose_mulVec B
+                (WithLp.equiv 2 (Fin r → ℝ) (u x))
+                (WithLp.equiv 2 (Fin r → ℝ) w)).symm
+      _ = (WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ z := by rw [hB_symm]
+  have hsum_mulVec :
+      (∑ x, (forsterQuad P (u x))⁻¹ •
+          Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))) *ᵥ z =
+        ∑ x, ((forsterQuad P (u x))⁻¹ •
+          Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))) *ᵥ z := by
+    simpa using Matrix.sum_mulVec Finset.univ
+      (fun x ↦ (forsterQuad P (u x))⁻¹ •
+        Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))) z
+  have hleft :
+      z ⬝ᵥ ((∑ x, (forsterQuad P (u x))⁻¹ •
+          Matrix.vecMulVec (WithLp.equiv 2 _ (u x)) (WithLp.equiv 2 _ (u x))) *ᵥ z) =
+        ∑ x, (forsterQuad P (u x))⁻¹ *
+          ((WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ z) ^ 2 := by
+    rw [hsum_mulVec, dotProduct_sum]
+    apply Finset.sum_congr rfl
+    intro x _
+    rw [Matrix.smul_mulVec, Matrix.vecMulVec_mulVec, dotProduct_smul]
+    rw [op_smul_eq_smul, dotProduct_smul]
+    simp only [smul_eq_mul]
+    rw [dotProduct_comm z (WithLp.equiv 2 (Fin r → ℝ) (u x))]
+    ring
+  have hquad_cancel : z ⬝ᵥ (P⁻¹ *ᵥ z) = ‖w‖ ^ 2 := by
+    change
+      (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) w) ⬝ᵥ
+          (P⁻¹ *ᵥ (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) w)) = ‖w‖ ^ 2
+    calc
+      (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) w) ⬝ᵥ
+          (P⁻¹ *ᵥ (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) w)) =
+          ((WithLp.equiv 2 (Fin r → ℝ) w) ᵥ* Bᵀ) ⬝ᵥ
+            (P⁻¹ *ᵥ (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) w)) := by
+              rw [Matrix.vecMul_transpose]
+      _ = ((WithLp.equiv 2 (Fin r → ℝ) w) ᵥ* B) ⬝ᵥ
+            (P⁻¹ *ᵥ (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) w)) := by rw [hB_symm]
+      _ = (((WithLp.equiv 2 (Fin r → ℝ) w) ᵥ* B) ᵥ* P⁻¹) ⬝ᵥ
+            (B *ᵥ WithLp.equiv 2 (Fin r → ℝ) w) :=
+              Matrix.dotProduct_mulVec _ _ _
+      _ = ((((WithLp.equiv 2 (Fin r → ℝ) w) ᵥ* B) ᵥ* P⁻¹) ᵥ* B) ⬝ᵥ
+            WithLp.equiv 2 (Fin r → ℝ) w := Matrix.dotProduct_mulVec _ _ _
+      _ = ((WithLp.equiv 2 (Fin r → ℝ) w) ᵥ* (B * P⁻¹ * B)) ⬝ᵥ
+            WithLp.equiv 2 (Fin r → ℝ) w := by
+              rw [Matrix.vecMul_vecMul, Matrix.vecMul_vecMul]
+              simp only [Matrix.mul_assoc]
+      _ = (WithLp.equiv 2 (Fin r → ℝ) w) ⬝ᵥ
+            WithLp.equiv 2 (Fin r → ℝ) w := by rw [hcancel, Matrix.vecMul_one]
+      _ = ‖w‖ ^ 2 := by
+        rw [dotProduct]
+        calc
+          (∑ i, (WithLp.equiv 2 (Fin r → ℝ) w) i *
+              (WithLp.equiv 2 (Fin r → ℝ) w) i) =
+              ∑ i, (WithLp.equiv 2 (Fin r → ℝ) w) i ^ 2 := by
+                apply Finset.sum_congr rfl
+                intro i _
+                rw [pow_two]
+          _ = ‖(WithLp.equiv 2 (Fin r → ℝ)).symm
+              (WithLp.equiv 2 (Fin r → ℝ) w)‖ ^ 2 :=
+                (norm_sq_eq_local _).symm
+          _ = ‖w‖ ^ 2 := by simp
+  have hmoment_quad := congrArg (fun M : Matrix (Fin r) (Fin r) ℝ ↦
+    z ⬝ᵥ (M *ᵥ z)) hmoment
+  have hweighted :
+      ∑ x, (forsterQuad P (u x))⁻¹ *
+          ((WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ z) ^ 2 =
+        (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
+    rw [hleft] at hmoment_quad
+    rw [Matrix.smul_mulVec, dotProduct_smul, hquad_cancel] at hmoment_quad
+    simpa [smul_eq_mul] using hmoment_quad
+  calc
+    (∑ x, ⟪normalizedForsterPrimal B (u x), w⟫_ℝ ^ 2) =
+        ∑ x, (forsterQuad P (u x))⁻¹ *
+          ((WithLp.equiv 2 (Fin r → ℝ) (u x)) ⬝ᵥ z) ^ 2 := by
+      apply Finset.sum_congr rfl
+      intro x _
+      rw [normalizedForsterPrimal, real_inner_smul_left, hinner,
+        mul_pow, hinv_norm_sq]
+    _ = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := hweighted
 
 /-- **P5.3b (first-order condition and normalization).**  A global minimizer
 of the Forster potential yields the isotropic repositioning: take its
@@ -2312,7 +3418,18 @@ theorem exists_isotropic_of_forsterPotential_minimizer
       (∀ x y, 0 < s x y * ⟪u' x, v' y⟫_ℝ) ∧
       ∀ w : EuclideanSpace ℝ (Fin r),
         ∑ x, ⟪u' x, w⟫_ℝ ^ 2 = (Fintype.card ι : ℝ) / r * ‖w‖ ^ 2 := by
-  sorry
+  have hfo : ∀ X : Matrix (Fin r) (Fin r) ℝ, (∀ i j, X i j = X j i) →
+      ∑ x, forsterQuad X (u x) / forsterQuad P (u x) =
+        (Fintype.card ι : ℝ) / r * (P⁻¹ * X).trace := by
+    intro X hX
+    exact forster_first_order hr u hu P hP hdet hmin X hX
+  have hmoment := forster_moment_matrix hr u hu P hP hfo
+  obtain ⟨B, hB, hBB⟩ := exists_forster_sqrt P hP
+  have hunit_sign := normalizedForsterTransforms_unit_sign u v hu hv s hs B hB
+  refine ⟨fun x ↦ normalizedForsterPrimal B (u x),
+    fun y ↦ normalizedForsterDual B (v y), hunit_sign.1, hunit_sign.2.1,
+    hunit_sign.2.2, ?_⟩
+  exact normalizedForsterPrimal_isotropic hr u hu P B hB hBB hmoment
 
 /-- **P5.3 (isotropic position — the analytic kernel).**  Unit vectors `u` in
 general position, with a strict sign margin against unit vectors `v`, can be

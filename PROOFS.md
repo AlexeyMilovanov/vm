@@ -981,12 +981,18 @@ open leaf in this iteration, P5.3):
     `{P : ForsterPosDef P ∧ det P = 1}` (the local predicate spells out real
     symmetry and strict positivity).  This is exactly the coercivity/compactness
     half of P5.3: a degenerating eigenspace contains at most its dimension's
-    share of the vectors.  `hard` (analytic compactness kernel).
+    share of the vectors.  **PROVED** in the 20260824T152839Z s4 Codex audit:
+    minimize on the closed sublevel set of symmetric positive-semidefinite
+    determinant-one matrices; `forsterPotential_coercive` and
+    `forster_entry_bound` put this set inside a compact entrywise box.
 40. `exists_isotropic_of_forsterPotential_minimizer` (P5.3b, Forster) — from
     such a minimizer, take its positive-definite square root, normalize `B uₓ`,
     apply the inverse-adjoint transformation to `v_y`, and derive isotropy from
     the determinant-one first-order condition while preserving all strict
-    signs.  `hard` (matrix square root plus constrained first variation).
+    signs.  **PROVED modulo `exists_forster_sqrt`** in the
+    20260824T152839Z s4 Codex audit by items 48 and 49 below; the parent is now
+    a sorry-free assembly of the first-order condition, moment identity,
+    square root, and normalized transformations.
 
 Endpoint CLOSED to an assembly this pass:
 
@@ -994,3 +1000,122 @@ Endpoint CLOSED to an assembly this pass:
   of items 39 and 40, with the recipe in its docstring.
 * **P2.3 / the frozen `signRank_le_of_computableWithHeadsN` bridge** — items 34
   and 35 are both proved, so the bridge now has no residual debt.
+
+**Decomposition leaves surfaced by the s1_opus_audit pass, run 20260824T152839Z**
+(the P5.3b-F5 first-order condition; both statements elaborate and are TRUE):
+
+41. `isLocalMin_g` (P5.3b-F5a, Forster) — the substantive analytic half
+    of the constrained first-order condition: the objective along the normalised
+    line, `g t := forsterPotential u (P + t•X) − (N/r)·log det(P + t•X)`, has a
+    LOCAL MINIMUM at `t = 0`.  For small `t` the normalised matrix
+    `Q t := det(P + t•X)^(−1/r) • (P + t•X)` is `ForsterPosDef` with `det = 1`
+    (`forsterPosDef_perturb` for positive-definiteness near `0`; determinant
+    continuity from `hasDerivAt_det_line` for `det > 0` near `0`; `Matrix.det_smul`
+    + `Real.rpow` bookkeeping `(d^(−1/r))^r·d = 1`).  `forsterPotential_smul` +
+    `Real.log_rpow` identify `forsterPotential u (Q t)` with `g t`, so
+    `g 0 = forsterPotential u P ≤ forsterPotential u (Q t) = g t` by minimality
+    `hmin`.  **PROVED** (the source declaration is the private helper
+    `isLocalMin_g`; an earlier log used the proposed name
+    `forster_line_isLocalMin`).
+42. `hasDerivAt_forster_line` (P5.3b-F5b, Forster) — **PROVED** this pass: `g` has
+    derivative `∑ₓ forsterQuad X (uₓ)/forsterQuad P (uₓ) − (N/r)·(P⁻¹X).trace` at
+    `t = 0`.  Assembled from `hasDerivAt_forsterPotential` (proved; potential term,
+    with `0 < forsterQuad P (uₓ)` from `hP.2` and `‖uₓ‖ = 1`), `hasDerivAt_det_line`
+    (item 43, proved) composed with `HasDerivAt.log` for the log-det term, using
+    `(P + 0•X).det = P.det = 1` so the quotient collapses to `(P⁻¹X).trace`.
+43. `hasDerivAt_det_line` (P5.3b, Forster) — **PROVED** this pass:
+    `HasDerivAt (fun t => (P + t•X).det) ((P⁻¹X).trace) 0` for `det P = 1`.  Factor
+    `P + t•X = P·(1 + t•(P⁻¹X))` (P invertible), so the determinant equals
+    `det (1 + t•(P⁻¹X))`; `Matrix.det_one_add_smul` gives the Taylor expansion
+    `1 + trace(P⁻¹X)·t + c(t)·t²`, whose derivative at `0` is `trace(P⁻¹X)`
+    (`Polynomial.hasDerivAt` for the quadratic tail).  Needed a new import
+    `Mathlib.LinearAlgebra.Matrix.Charpoly.Coeff`.
+
+Endpoint CLOSED to an assembly this pass:
+
+* **`forster_first_order`** (P5.3b-F5, the constrained first-order condition) —
+  a sorry-free assembly of items 41 and 42 via
+  `IsLocalMin.hasDerivAt_eq_zero` (the derivative of `g` at the local minimum `0`
+  vanishes) and `eq_of_sub_eq_zero`.  This is the analytic heart of Forster
+  feeding the P5.3b isotropy assembly.
+
+**Decomposition leaves surfaced for P5.3a coercivity assembly (missing from prior audits)**:
+
+44. `exists_l1_min_of_linearIndependent` (P5.3a-M1, Forster) — **PROVED** in
+    the 20260824T152839Z s4 Codex audit.  The l1 sphere is closed and bounded,
+    hence compact; the norm of the combination is continuous and strictly
+    positive there by `Fintype.linearIndependent_iff`, so
+    `IsCompact.exists_forall_le'` supplies a uniform positive margin.  The
+    argument handles `k = 0` because the l1 sphere is empty.
+45. `exists_sorted_eigen_data` (P5.3a-M5, Forster) — Sorted spectral data.
+    **Sorry-free and fully discharged** (iter_002 s1): the assembly plus all four
+    sub-leaves 50–53 are now proved, along with the helper `forsterPosDef_isHermitian`.
+    Route:
+    obtain the orthonormal eigenbasis/eigenvalues from
+    `Mathlib.Analysis.Matrix.Spectrum`, prove positivity, determinant product,
+    and quadratic diagonalization, then sort by a simultaneous `Fin r`
+    permutation and transport every invariant.  (The earlier claimed
+    `exists_unsorted_eigen_data` / `eigen_data_permutation` split never existed;
+    the real decomposition is 50–53.)
+46. `sum_level_lower_bound` (P5.3a-M7, Forster) — **PROVED** this pass. Abel counting bound; self-contained discrete inequality (no matrix/analysis API). Reduce to sum_x (L - f(level x)) <= sum_k (L - f k) with L = f (Fin.last m); extend f to F : Nat -> R (cap at m), telescope F m - F l = sum over Ico l m of (F(j+1) - F j), rewrite as sum over range m of (if l <= j then d j else 0), swap sums, and bound the x-count by hcount at k = j+1. Both sides equal sum over range m of d j * (j+1).
+
+**P5.3b normalized-transform completion (s4 Codex audit,
+run 20260824T152839Z):**
+
+47. `exists_forster_sqrt` (P5.3b-F7, Forster) — the sole remaining P5.3b
+    leaf.  For symmetric positive-definite `P`, use the Hermitian spectral
+    theorem to write `P = U·diag(λ)·Uᴴ`, prove `0 < λᵢ` from the quadratic-form
+    hypothesis, and set `B = U·diag(√λ)·Uᴴ`.  Unitarity and
+    `Real.mul_self_sqrt` give `B*B=P`; the same decomposition gives symmetry
+    and strict positivity.  `jules_ready` (borderline spectral-API bookkeeping).
+48. `normalizedForsterTransforms_unit_sign` (P5.3b-F8a, Forster) — **PROVED**.
+    Positive definiteness makes `B` and `B⁻¹` injective.  Normalize `Buₓ` and
+    `B⁻¹v_y`; symmetry and `B*B⁻¹=1` preserve the raw inner product, and the
+    positive inverse norms preserve every strict sign.
+49. `normalizedForsterPrimal_isotropic` (P5.3b-F8b, Forster) — **PROVED**.
+    `‖Buₓ‖² = uₓᵀPuₓ`; evaluate the proved moment-matrix identity on `Bw`, then
+    use `B*P⁻¹*B=1` to obtain `(N/r)‖w‖²`.  Together with item 48, this makes
+    `exists_isotropic_of_forsterPotential_minimizer` a sorry-free assembly.
+
+**Decomposition leaves surfaced by the s7_opus_final gatekeeper pass, run
+20260824T152839Z, iter_001** (the sole remaining own leaf `exists_sorted_eigen_data`
+P5.3a-M5 carved into four self-contained `jules_ready` sub-leaves; every statement
+verified to elaborate and TRUE, the parent now a sorry-free assembly of them).  A
+proved reusable helper accompanies them: `forsterPosDef_isHermitian` (Forster) —
+`ForsterPosDef P ⇒ P.IsHermitian` (real conjugation is trivial; `ext`/`simp [hP.1]`,
+mirrors the inline bridge of `exists_forster_sqrt`).
+
+50. `exists_eigen_of_forsterPosDef` (P5.3a-M5a, Forster) — **PROVED** (iter_002 s1).
+    Extraction: a `ForsterPosDef` matrix has an orthonormal spanning eigen-family
+    `(e, lam)` with `∏ lam = det` and the eigen-equation `P *ᵥ ⇑(e i) = lam i • ⇑(e i)`.
+    Take `e := ⇑ hHerm.eigenvectorBasis`, `lam := hHerm.eigenvalues`; orthonormality is
+    `hHerm.eigenvectorBasis.orthonormal`; span from `…toBasis.span_eq` rewritten by
+    `OrthonormalBasis.coe_toBasis`; eigen-eq is `hHerm.mulVec_eigenvectorBasis`;
+    `∏ lam = det` from `hHerm.det_eq_prod_eigenvalues` closed by `norm_cast` (over `ℝ`
+    the `RCLike.ofReal` cast is `id`).
+51. `forsterQuad_eq_sum_sq_eigen` (P5.3a-M5b, Forster) — **PROVED** (iter_002 s1).
+    The quadratic-form diagonalization `forsterQuad P z = ∑ i lam i · ⟪e i, z⟫_ℝ²` for an
+    orthonormal spanning eigen-family.  Route: expand `z = ∑ i ⟪e i,z⟫ • e i`
+    (`OrthonormalBasis.mk`/`sum_repr`); write `forsterQuad P z = ⟪z, Matrix.toLpLin 2 2 P z⟫_ℝ`
+    (`EuclideanSpace.inner_eq_star_dotProduct` + `star_trivial` + `ofLp_toLpLin`/`toLin'_apply`
+    + `dotProduct_comm`); note `Matrix.toLpLin 2 2 P (e i) = lam i • e i` (from `heig`); push
+    the linear map through the expansion (`map_sum`/`map_smul`/`smul_smul`) and collapse by
+    `Orthonormal.inner_sum` (`conj_trivial`, then `ring`).  The meatiest sub-leaf.
+52. `eigenvalue_pos_of_eigen` (P5.3a-M5c, Forster) — **PROVED** (iter_002 s1).
+    Eigenvalue positivity: `⇑(e i) ⬝ᵥ (P *ᵥ ⇑(e i)) = lam i` (Rayleigh quotient at the unit
+    eigenvector; `heig` + `dotProduct_smul` + `⇑(e i) ⬝ᵥ ⇑(e i) = 1` via
+    `EuclideanSpace.inner_eq_star_dotProduct`/`real_inner_self_eq_norm_sq`/`star_trivial`),
+    which is `> 0` by `ForsterPosDef.2` since `⇑(e i) ≠ 0` (`WithLp.ofLp_eq_zero` +
+    `Orthonormal.ne_zero`).  Mirrors the positivity block of `exists_forster_sqrt`.
+53. `exists_sorted_of_eigen_data` (P5.3a-M5d, Forster) — **PROVED** (iter_002 s1).
+    Sorting: reindex the eigen-data by `σ := Tuple.sort lam` to make the eigenvalues
+    nondecreasing, transporting orthonormality (`Orthonormal.comp` + `σ.injective`), span
+    (`Set.range_comp` + `σ.surjective.range_eq` + `Set.image_univ`), monotonicity
+    (`Tuple.monotone_sort`), positivity (`hpos ∘ σ`), `∏` (`Equiv.prod_comp`), and the
+    quadratic identity (`Equiv.sum_comp` term-by-term over the permutation).
+
+The frozen-adjacent parent `exists_sorted_eigen_data` (P5.3a-M5) assembles as:
+`exists_eigen_of_forsterPosDef` → `forsterQuad_eq_sum_sq_eigen` (diagonalize) →
+`eigenvalue_pos_of_eigen` (positivity) → `exists_sorted_of_eigen_data` (sort).  It is
+the last residual debt of the proved coercivity/minimizer chain
+`exists_forsterPotential_minimizer` (P5.3a).
