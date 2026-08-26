@@ -67,7 +67,7 @@ noncomputable def numMvPoly (n : ℕ) (T : Topology) (t : Fin T.termCount)
 theorem denomMvPoly_eval (n : ℕ) (T : Topology) (C : Certificate n T)
     (j : Fin T.denominatorCount) (x : Cube n) :
     eval (certToPoint n T C) (denomMvPoly n T j x) = (C.denominators j).eval x := by
-  sorry
+  simp [denomMvPoly, certToPoint, AffineForm.eval]
 
 /-- Evaluation identity for numerator polynomial in parameter space. -/
 theorem numMvPoly_eval (n : ℕ) (T : Topology) (C : Certificate n T)
@@ -86,14 +86,6 @@ private theorem totalDegree_X_mul_C_le {σ : Type*} (v : σ) (c : ℝ) :
   refine (totalDegree_mul _ _).trans ?_
   rw [totalDegree_X, totalDegree_C, add_zero]
 
-private theorem totalDegree_X_le {σ : Type*} (v : σ) :
-    (X v : MvPolynomial σ ℝ).totalDegree ≤ 1 := by
-  rw [totalDegree_X]
-
-private theorem totalDegree_X_mul_C_le {σ : Type*} (v : σ) (c : ℝ) :
-    (X v * C c : MvPolynomial σ ℝ).totalDegree ≤ 1 := by
-  refine (totalDegree_mul _ _).trans ?_
-  rw [totalDegree_X, totalDegree_C, add_zero]
 
 private theorem totalDegree_sum_X_mul_C_le {ι σ : Type*} (s : Finset ι) (v : ι → σ) (c : ι → ℝ) :
     (∑ i ∈ s, X (v i) * C (c i) : MvPolynomial σ ℝ).totalDegree ≤ 1 := by

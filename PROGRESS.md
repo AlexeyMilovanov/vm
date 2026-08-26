@@ -1038,3 +1038,7 @@ for both Warren endpoints and `HeadComplexity.ndisj_separation` reports exactly
 ## Jules phase fanout_integration (2026-08-26)
 - merged: ['starCoordEquiv', 'powerBlockPartition', 'powerBlockEll', 'powerBlockLagrange', 'certToPoint', 'denomMvPoly', 'numMvPoly', 'clearedTermMvPoly', 'clearedScoreMvPoly', 'strict_sign_transfer', 'fixedTopology_warren_model_helper', 'boundedTopology_card_le', 'represented_truthTables_embedding', 'warren_pattern_card_nat_le', 'topology_param_degree_le', 'truthTables_per_topology_card_le', 'nonconstant_sublevel_card_le', 'constant_sublevel_card_le', 'exp_ineq_topologyCountBound', 'exp_ineq_warrenTerm', 'sublevel_exp_bound_combination', 'poic2_sublevel_card_le_helper', 'powerBlockGroupEquiv']
 - partial (hints saved): ['denomMvPoly_totalDegree_le', 'clearedScoreMvPoly_eval', 'clearedScoreMvPoly_totalDegree_le', 'starCenter_card']
+
+## Jules phase retry_01 (2026-08-26)
+- merged: ['starCenter_card', 'denomMvPoly_totalDegree_le', 'numMvPoly_eval', 'numMvPoly_totalDegree_le', 'clearedScoreMvPoly_eval', 'powerBlockLagrange_delta', 'clearedScoreMvPoly_totalDegree_le']
+- partial (hints saved): ['denomMvPoly_eval', 'powerBlockEll_zero_iff']
