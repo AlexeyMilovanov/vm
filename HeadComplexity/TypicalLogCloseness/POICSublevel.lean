@@ -82,9 +82,11 @@ theorem constant_sublevel_card_le (n : ℕ) :
     (Finset.univ.filter (fun (f : BoolFn n) => IsConstant f)).card ≤ 2 := by
   sorry
 
-/-- Elementary exponential inequality 1: bound on topology count factor. -/
-theorem exp_ineq_topologyCountBound (Q : ℕ) (hQ0 : 1 ≤ Q) :
-    (topologyCountBound Q : ℝ) ≤ 2 ^ (16 * Q ^ 2) := by
+/-- Elementary exponential inequality 1: topology count in the scale needed by the
+final sublevel estimate. -/
+theorem exp_ineq_topologyCountBound (n Q : ℕ) (hn : 2 ≤ n) (hQ0 : 1 ≤ Q)
+    (hQN : Q ≤ 2 ^ n) :
+    (topologyCountBound Q : ℝ) ≤ 2 ^ (16 * n ^ 2 * Q) := by
   sorry
 
 /-- Elementary exponential inequality 2: bound on Warren term per topology. -/

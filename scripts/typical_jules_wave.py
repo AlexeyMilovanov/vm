@@ -62,9 +62,57 @@ Report whether the target is completely sorry-free and list changed files."""
 
 
 pipeline.jules_prompt = typical_prompt
-ready = pipeline.validated_entries(pipeline.ROOT, ("jules_ready", "hard"))
-wave = sys.argv[1] if len(sys.argv) > 1 else datetime.now(
-    timezone.utc).strftime("wave_%Y%m%dT%H%M%SZ")
+
+# Definitions are deliberately completed before proofs which unfold them.
+# Within each dependency stage, every target is assigned to its own concurrent
+# Jules session.
+STAGES = {
+    1: {
+        "log_pos_of_two_le", "powerBlockSize_le_self", "starCoord_card",
+        "cubeSplitEquiv", "coordMismatchForm_eval", "paramIndexEquiv",
+        "boundedTopologyFintype", "cubeIndexEquiv_inj",
+    },
+    2: {
+        "starCoordEquiv", "starCenter_card", "certToPoint",
+        "boundedTopology_card_le", "represented_truthTables_embedding",
+        "warren_pattern_card_nat_le", "topology_param_degree_le",
+        "constant_sublevel_card_le",
+    },
+    3: {
+        "powerBlockGroupEquiv", "denomMvPoly", "numMvPoly",
+        "exp_ineq_topologyCountBound", "exp_ineq_warrenTerm",
+    },
+    4: {
+        "powerBlockPartition", "denomMvPoly_eval", "numMvPoly_eval",
+        "denomMvPoly_totalDegree_le", "numMvPoly_totalDegree_le",
+        "sublevel_exp_bound_combination",
+    },
+    5: {"powerBlockEll", "powerBlockLagrange", "clearedTermMvPoly"},
+    6: {
+        "powerBlockEll_zero_iff", "powerBlockLagrange_delta",
+        "clearedScoreMvPoly",
+    },
+    7: {"clearedScoreMvPoly_eval", "clearedScoreMvPoly_totalDegree_le"},
+    8: {"strict_sign_transfer", "fixedTopology_warren_model_helper"},
+    9: {"truthTables_per_topology_card_le", "nonconstant_sublevel_card_le"},
+    10: {"poic2_sublevel_card_le_helper"},
+}
+
+if len(sys.argv) != 2 or not sys.argv[1].isdigit():
+    raise SystemExit("usage: typical_jules_wave.py STAGE (1..10)")
+stage = int(sys.argv[1])
+if stage not in STAGES:
+    raise SystemExit(f"unknown stage {stage}; expected 1..10")
+all_ready = pipeline.validated_entries(
+    pipeline.ROOT, ("jules_ready", "hard"))
+ready = [entry for entry in all_ready if entry["name"] in STAGES[stage]]
+missing = STAGES[stage] - {entry["name"] for entry in ready}
+if missing:
+    raise SystemExit(f"stage {stage} queue entries missing: {sorted(missing)}")
+wave = f"stage_{stage:02d}"
 pipeline.log(f"typical Jules wave {wave}: {len(ready)} targets")
 sha = pipeline.push_root_to_github(
     f"TypicalLogCloseness Jules wave {wave}: {len(ready)} leaves")
+iter_dir = pipeline.RUNS / "typical_log_closeness" / wave
+iter_dir.mkdir(parents=True, exist_ok=True)
+pipeline.jules_phase(ready, sha, iter_dir)
