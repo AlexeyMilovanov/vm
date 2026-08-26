@@ -745,15 +745,23 @@ def target_closed(base: Path, entry):
     if not fp.exists():
         return False
     text = fp.read_text()
-    if entry["name"] not in text:
+    # Match the declaration name itself, not a private helper whose name merely
+    # has the target as a prefix (for example `target_priv`).
+    decl = re.search(
+        r"(?m)^(?:noncomputable\s+)?"
+        r"(?:theorem|lemma|def|instance|abbrev|structure)\s+"
+        + re.escape(entry["name"])
+        + r"(?=\s|\(|:)",
+        text)
+    if decl is None:
         return False
-    # crude but effective: the decl block up to the next decl has no sorry
-    idx = text.find(entry["name"])
+    idx = decl.start()
     nxt = re.search(
         r"\n(?:noncomputable\s+)?"
         r"(?:theorem|lemma|def|instance|abbrev|structure|end)\s",
-        text[idx + 1:])
-    block = text[idx:idx + 1 + (nxt.start() if nxt else len(text))]
+        text[decl.end():])
+    stop = decl.end() + (nxt.start() if nxt else len(text))
+    block = text[idx:stop]
     return "sorry" not in block
 
 

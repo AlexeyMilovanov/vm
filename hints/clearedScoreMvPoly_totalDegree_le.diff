@@ -1,0 +1,32 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean b/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
+index 8d11661..1136f21 100644
+--- a/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
++++ b/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
+@@ -97,6 +97,27 @@ theorem clearedScoreMvPoly_eval (n : ℕ) (T : Topology) (C : Certificate n T)
+       C.eval x * ∏ j, (C.denominators j).eval x := by
+   sorry
+ 
++private theorem totalDegree_finsetProd_le_card {ι σ : Type*} (s : Finset ι)
++    (f : ι → MvPolynomial σ ℝ) (hf : ∀ i ∈ s, (f i).totalDegree ≤ 1) :
++    (∏ i ∈ s, f i).totalDegree ≤ s.card := by
++  refine (MvPolynomial.totalDegree_finsetProd _ _).trans ?_
++  have h1 : ∑ i ∈ s, (f i).totalDegree ≤ ∑ i ∈ s, 1 := Finset.sum_le_sum hf
++  rw [Finset.sum_const, nsmul_eq_mul, mul_one] at h1
++  exact h1
++
++private theorem totalDegree_clearedTerm_le {ι σ : Type*} (num : MvPolynomial σ ℝ)
++    (hnum : num.totalDegree ≤ 1) (s : Finset ι) (den : ι → MvPolynomial σ ℝ)
++    (hden : ∀ i ∈ s, (den i).totalDegree ≤ 1) :
++    (num * ∏ i ∈ s, den i).totalDegree ≤ 1 + s.card := by
++  refine (MvPolynomial.totalDegree_mul _ _).trans ?_
++  exact add_le_add hnum (totalDegree_finsetProd_le_card s den hden)
++
++private theorem totalDegree_finsetSum_le_of_forall {ι σ : Type*} (s : Finset ι)
++    (f : ι → MvPolynomial σ ℝ) (d : ℕ) (hf : ∀ i ∈ s, (f i).totalDegree ≤ d) :
++    (∑ i ∈ s, f i).totalDegree ≤ d := by
++  refine (MvPolynomial.totalDegree_finsetSum _ _).trans ?_
++  exact Finset.sup_le hf
++
+ /-- Total degree of cleared score polynomial is at most `T.denominatorCount` using
+ nonempty incidence data. -/
+ theorem clearedScoreMvPoly_totalDegree_le (n : ℕ) (T : Topology) (x : Cube n) :

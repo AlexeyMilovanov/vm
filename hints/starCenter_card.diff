@@ -1,0 +1,39 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean b/HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean
+index 3e51f62..8263d39 100644
+--- a/HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean
++++ b/HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean
+@@ -50,10 +50,33 @@ noncomputable def cubeSplitEquiv (n p : ℕ) (hp : p ≤ n) :
+     Cube n ≃ Cube p × Cube (n - p) := by
+   sorry
+ 
++private theorem starCoord_card_helper (m : ℕ) : Fintype.card (StarCoord m) = 2 ^ m := by
++  have h1 : Fintype.card (StarCoord m) = Fintype.card (NonzeroVector m) + 1 := by
++    rw [Fintype.card_sum, Fintype.card_unit]
++  have h2 : Fintype.card (Option (NonzeroVector m)) = Fintype.card (NonzeroVector m) + 1 :=
++    Fintype.card_option
++  have h3 : Fintype.card (Option { v : BinaryVector m // v ≠ 0 }) =
++      Fintype.card (BinaryVector m) := by
++    exact Fintype.card_congr (Equiv.optionSubtypeNe 0)
++  have h4 : Fintype.card (BinaryVector m) = 2 ^ m := by
++    rw [Fintype.card_fun, ZMod.card 2, Fintype.card_fin]
++  linarith
++
+ /-- The cardinality of `StarCenter m` is `2^(2^m) / 2^m`. -/
+ theorem starCenter_card (m : ℕ) (hm : 1 ≤ m) :
+     Fintype.card (StarCenter m) = 2 ^ (2 ^ m) / 2 ^ m := by
+-  sorry
++  have h_equiv := Fintype.card_congr (centerDirectionEquiv m hm)
++  rw [Fintype.card_prod] at h_equiv
++  have h_cube : Fintype.card (StarCube m) = 2 ^ (2 ^ m) := by
++    change Fintype.card (StarCoord m → Bool) = 2 ^ (2 ^ m)
++    rw [Fintype.card_fun, Fintype.card_bool, starCoord_card_helper]
++  have h_coord : Fintype.card (StarCoord m) = 2 ^ m := starCoord_card_helper m
++  rw [h_cube, h_coord] at h_equiv
++  have h_pos : 0 < 2 ^ m := by positivity
++  have h_div : (Fintype.card (StarCenter m) * 2 ^ m) / 2 ^ m = 2 ^ (2 ^ m) / 2 ^ m := by
++    rw [h_equiv]
++  rw [Nat.mul_div_cancel (Fintype.card (StarCenter m)) h_pos] at h_div
++  exact h_div
+ 
+ /-- Equivalence between group indices and pair of star-center and frozen suffix. -/
+ noncomputable def powerBlockGroupEquiv (n : ℕ) (hn : 2 ≤ n) :

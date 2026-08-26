@@ -1,0 +1,37 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean b/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
+index 8d11661..cebfbf1 100644
+--- a/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
++++ b/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
+@@ -68,6 +68,32 @@ theorem numMvPoly_eval (n : ℕ) (T : Topology) (C : Certificate n T)
+     eval (certToPoint n T C) (numMvPoly n T t x) = (C.numerators t).eval x := by
+   sorry
+ 
++private theorem totalDegree_C_le {σ : Type*} (c : ℝ) :
++    (C c : MvPolynomial σ ℝ).totalDegree ≤ 1 := by
++  rw [totalDegree_C]
++  exact zero_le_one
++
++private theorem totalDegree_X_le {σ : Type*} (v : σ) :
++    (X v : MvPolynomial σ ℝ).totalDegree ≤ 1 := by
++  rw [totalDegree_X]
++
++private theorem totalDegree_C_mul_X_le {σ : Type*} (c : ℝ) (v : σ) :
++    (C c * X v : MvPolynomial σ ℝ).totalDegree ≤ 1 := by
++  refine (totalDegree_mul _ _).trans ?_
++  rw [totalDegree_C, zero_add, totalDegree_X]
++
++private theorem totalDegree_affine_sum_le {ι σ : Type*} (s : Finset ι) (c : ι → ℝ) (v : ι → σ) :
++    (∑ i ∈ s, C (c i) * X (v i) : MvPolynomial σ ℝ).totalDegree ≤ 1 := by
++  classical
++  exact totalDegree_finsetSum_le (fun i _ => totalDegree_C_mul_X_le (c i) (v i))
++
++private theorem totalDegree_affine_form_le {ι σ : Type*} (s : Finset ι) (c0 : ℝ) (c : ι → ℝ) (v : ι → σ) :
++    (C c0 + ∑ i ∈ s, C (c i) * X (v i) : MvPolynomial σ ℝ).totalDegree ≤ 1 := by
++  classical
++  refine (totalDegree_add _ _).trans (max_le ?_ ?_)
++  · exact totalDegree_C_le c0
++  · exact totalDegree_affine_sum_le s c v
++
+ /-- Total degree of denominator MvPolynomial is at most 1. -/
+ theorem denomMvPoly_totalDegree_le (n : ℕ) (T : Topology)
+     (j : Fin T.denominatorCount) (x : Cube n) :

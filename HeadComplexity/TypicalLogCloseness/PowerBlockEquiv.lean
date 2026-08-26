@@ -40,11 +40,21 @@ theorem powerBlockSize_le_self (n : ℕ) (hn : 2 ≤ n) : powerBlockSize n ≤ n
 
 /-- The cardinality of `StarCoord m` is `2^m`. -/
 theorem starCoord_card (m : ℕ) : Fintype.card (StarCoord m) = 2 ^ m := by
-  sorry
+  change Fintype.card (NonzeroVector m ⊕ Unit) = 2 ^ m
+  rw [Fintype.card_sum, Fintype.card_unit]
+  change Fintype.card {v : BinaryVector m // v ≠ 0} + 1 = 2 ^ m
+  rw [Fintype.card_subtype_compl]
+  have h2 : Fintype.card (BinaryVector m) = 2 ^ m := by
+    change Fintype.card (Fin m → ZMod 2) = 2 ^ m
+    rw [Fintype.card_fun, Fintype.card_fin, ZMod.card]
+  rw [h2]
+  have h1 : Fintype.card {v : BinaryVector m // v = 0} = 1 := by simp
+  rw [h1]
+  exact Nat.sub_add_cancel (Nat.one_le_pow m 2 (by decide))
 
 /-- Reindexing equivalence between `Fin (2^m)` and `StarCoord m`. -/
-noncomputable def starCoordEquiv (m : ℕ) : Fin (2 ^ m) ≃ StarCoord m := by
-  sorry
+noncomputable def starCoordEquiv (m : ℕ) : Fin (2 ^ m) ≃ StarCoord m :=
+  Fintype.equivOfCardEq (by rw [Fintype.card_fin, starCoord_card])
 
 /-- Splits a Boolean cube of dimension `n` into a prefix of size `p` and a suffix of size
 `n - p`. -/
@@ -63,17 +73,67 @@ theorem starCenter_card (m : ℕ) (hm : 1 ≤ m) :
     Fintype.card (StarCenter m) = 2 ^ (2 ^ m) / 2 ^ m := by
   sorry
 
+private theorem powerBlockGroupEquiv_card (n : ℕ) (hn : 2 ≤ n) :
+    Fintype.card (StarCenter (Nat.log 2 n) × Cube (n - powerBlockSize n)) =
+      2 ^ n / powerBlockSize n := by
+  have hm : 1 ≤ Nat.log 2 n := log_pos_of_two_le n hn
+  rw [Fintype.card_prod, starCenter_card (Nat.log 2 n) hm]
+  have hcube : Fintype.card (Cube (n - powerBlockSize n)) = 2 ^ (n - powerBlockSize n) := by
+    change Fintype.card (Fin (n - powerBlockSize n) → Bool) = 2 ^ (n - powerBlockSize n)
+    rw [Fintype.card_fun, Fintype.card_bool, Fintype.card_fin]
+  rw [hcube]
+  change 2 ^ (2 ^ Nat.log 2 n) / 2 ^ Nat.log 2 n * 2 ^ (n - powerBlockSize n) =
+    2 ^ n / powerBlockSize n
+  set m := Nat.log 2 n
+  have hp_dvd : 2 ^ m ∣ 2 ^ (2 ^ m) := by
+    have hle : m ≤ 2 ^ m := by
+      induction m with
+      | zero => simp
+      | succ m ih =>
+        rw [pow_succ]
+        have : 1 ≤ 2 ^ m := Nat.one_le_two_pow
+        linarith
+    exact pow_dvd_pow 2 hle
+  rcases hp_dvd with ⟨k, hk⟩
+  have hc_pos : 0 < 2 ^ m := by positivity
+  rw [hk, Nat.mul_div_cancel_left _ hc_pos]
+  have hp_le : 2 ^ m ≤ n := powerBlockSize_le_self n hn
+  have h2n : 2 ^ n = 2 ^ m * (k * 2 ^ (n - powerBlockSize n)) := by
+    calc
+      2 ^ n = 2 ^ (2 ^ m + (n - 2 ^ m)) := by rw [Nat.add_sub_cancel' hp_le]
+      _ = 2 ^ (2 ^ m) * 2 ^ (n - 2 ^ m) := pow_add 2 _ _
+      _ = (2 ^ m * k) * 2 ^ (n - powerBlockSize n) := by rw [hk]; rfl
+      _ = 2 ^ m * (k * 2 ^ (n - powerBlockSize n)) := by ring
+  change k * 2 ^ (n - powerBlockSize n) = 2 ^ n / (2 ^ m)
+  rw [h2n, Nat.mul_div_cancel_left _ hc_pos]
+
 /-- Equivalence between group indices and pair of star-center and frozen suffix. -/
 noncomputable def powerBlockGroupEquiv (n : ℕ) (hn : 2 ≤ n) :
     Fin (2 ^ n / powerBlockSize n) ≃
-      StarCenter (Nat.log 2 n) × Cube (n - powerBlockSize n) := by
-  sorry
+      StarCenter (Nat.log 2 n) × Cube (n - powerBlockSize n) :=
+  (Equiv.cast (by rw [powerBlockGroupEquiv_card n hn])).trans (Fintype.equivFin _).symm
+
+private def prodShuffle (A B C : Type*) : (A × B) × C ≃ (A × C) × B where
+  toFun := fun ((a, b), c) => ((a, c), b)
+  invFun := fun ((a, c), b) => ((a, b), c)
+  left_inv := fun _ => rfl
+  right_inv := fun _ => rfl
 
 /-- Uniform partition of `Cube n` into blocks of size `powerBlockSize n`. -/
 noncomputable def powerBlockPartition (n : ℕ) (hn : 2 ≤ n) :
     UniformCubePartition n where
   groupCount := 2 ^ n / powerBlockSize n
   blockSize := powerBlockSize n
-  vertex := sorry
+  vertex :=
+    let m := Nat.log 2 n
+    let hm : 1 ≤ m := log_pos_of_two_le n hn
+    let hp : powerBlockSize n ≤ n := powerBlockSize_le_self n hn
+    (Equiv.prodCongr (powerBlockGroupEquiv n hn) (starCoordEquiv m)).trans
+    ((prodShuffle (StarCenter m) (Cube (n - powerBlockSize n)) (StarCoord m)).trans
+    ((Equiv.prodCongr (centerDirectionEquiv m hm)
+      (Equiv.refl (Cube (n - powerBlockSize n)))).trans
+    ((Equiv.prodCongr ((starCoordEquiv m).symm.arrowCongr (Equiv.refl Bool))
+      (Equiv.refl (Cube (n - powerBlockSize n)))).trans
+    (cubeSplitEquiv n (powerBlockSize n) hp).symm)))
 
 end HeadComplexity.TypicalLogCloseness

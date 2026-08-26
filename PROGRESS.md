@@ -1030,3 +1030,7 @@ Verification: full `lake build` completed successfully (8616 jobs),
 zero proof placeholders in all 59 H* and Warren Lean sources.  `#print axioms`
 for both Warren endpoints and `HeadComplexity.ndisj_separation` reports exactly
 `[propext, Classical.choice, Quot.sound]`.  `sorry_queue.json` is empty.
+
+## Jules phase stage_01 (2026-08-26)
+- merged: ['powerBlockSize_le_self', 'log_pos_of_two_le', 'cubeSplitEquiv', 'boundedTopologyFintype', 'cubeIndexEquiv_inj']
+- partial (hints saved): ['coordMismatchForm_eval', 'starCoord_card', 'paramIndexEquiv']

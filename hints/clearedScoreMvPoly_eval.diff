@@ -1,0 +1,50 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean b/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
+index 8d11661..91fc517 100644
+--- a/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
++++ b/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
+@@ -90,6 +90,45 @@ noncomputable def clearedScoreMvPoly (n : ℕ) (T : Topology) (x : Cube n) :
+     MvPolynomial (Fin (topologyParameterCount n T)) ℝ := by
+   sorry
+ 
++private noncomputable def clearedTermMvPoly_priv (n : ℕ) (T : Topology) (t : Fin T.termCount)
++    (x : Cube n) : MvPolynomial (Fin (topologyParameterCount n T)) ℝ :=
++  numMvPoly n T t x * ∏ j ∈ (T.incidence t).denomsᶜ, denomMvPoly n T j x
++
++private noncomputable def clearedScoreMvPoly_priv (n : ℕ) (T : Topology) (x : Cube n) :
++    MvPolynomial (Fin (topologyParameterCount n T)) ℝ :=
++  ∑ t, clearedTermMvPoly_priv n T t x
++
++private theorem clearedTermMvPoly_eval_priv (n : ℕ) (T : Topology) (C : Certificate n T)
++    (t : Fin T.termCount) (x : Cube n) :
++    eval (certToPoint n T C) (clearedTermMvPoly_priv n T t x) =
++      (C.numerators t).eval x * ∏ j ∈ (T.incidence t).denomsᶜ, (C.denominators j).eval x := by
++  unfold clearedTermMvPoly_priv
++  rw [map_mul, numMvPoly_eval, map_prod]
++  congr 1
++  apply Finset.prod_congr rfl
++  intro j _
++  exact denomMvPoly_eval n T C j x
++
++private theorem clearedScoreMvPoly_eval_priv (n : ℕ) (T : Topology) (C : Certificate n T)
++    (x : Cube n) :
++    eval (certToPoint n T C) (clearedScoreMvPoly_priv n T x) =
++      C.eval x * ∏ j, (C.denominators j).eval x := by
++  unfold clearedScoreMvPoly_priv
++  rw [map_sum]
++  simp_rw [clearedTermMvPoly_eval_priv]
++  unfold Certificate.eval
++  rw [Finset.sum_mul]
++  apply Finset.sum_congr rfl
++  intro t _
++  have hsplit : (∏ j, (C.denominators j).eval x) =
++      C.termDenominator t x * ∏ j ∈ (T.incidence t).denomsᶜ, (C.denominators j).eval x := by
++    unfold Certificate.termDenominator
++    exact (Finset.prod_mul_prod_compl (T.incidence t).denoms _).symm
++  rw [hsplit]
++  have hnz : C.termDenominator t x ≠ 0 := (C.termDenominator_pos t x).ne'
++  symm
++  rw [← mul_assoc, div_mul_cancel₀ _ hnz]
++
+ /-- Evaluation identity for the cleared score polynomial. -/
+ theorem clearedScoreMvPoly_eval (n : ℕ) (T : Topology) (C : Certificate n T)
+     (x : Cube n) :
