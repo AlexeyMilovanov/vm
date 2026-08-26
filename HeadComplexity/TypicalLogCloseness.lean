@@ -3,6 +3,8 @@ import HeadComplexity.TypicalLogCloseness.POIC
 import HeadComplexity.TypicalLogCloseness.FracAtomBridge
 import HeadComplexity.TypicalLogCloseness.AbstractCounting
 import HeadComplexity.TypicalLogCloseness.HammingCode
+import HeadComplexity.TypicalLogCloseness.PowerBlockEquiv
+import HeadComplexity.TypicalLogCloseness.PowerBlockForms
 import HeadComplexity.TypicalLogCloseness.PowerBlockPartition
 import HeadComplexity.TypicalLogCloseness.LocalizationMatrix
 import HeadComplexity.TypicalLogCloseness.POICWarren

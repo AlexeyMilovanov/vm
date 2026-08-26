@@ -1,3 +1,284 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "name": "log_pos_of_two_le",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean",
+      "status": "jules_ready",
+      "pref": "TL.log_pos_of_two_le",
+      "note": "Use the explicit Hamming-star construction: m=Nat.log 2 n, p=2^m, starCoordEquiv, centerDirectionEquiv, cube prefix/suffix splitting, and exact Fintype cardinal arithmetic. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "powerBlockSize_le_self",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean",
+      "status": "jules_ready",
+      "pref": "TL.powerBlockSize_le_self",
+      "note": "Use the explicit Hamming-star construction: m=Nat.log 2 n, p=2^m, starCoordEquiv, centerDirectionEquiv, cube prefix/suffix splitting, and exact Fintype cardinal arithmetic. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "starCoord_card",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean",
+      "status": "jules_ready",
+      "pref": "TL.starCoord_card",
+      "note": "Use the explicit Hamming-star construction: m=Nat.log 2 n, p=2^m, starCoordEquiv, centerDirectionEquiv, cube prefix/suffix splitting, and exact Fintype cardinal arithmetic. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "starCoordEquiv",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean",
+      "status": "jules_ready",
+      "pref": "TL.starCoordEquiv",
+      "note": "Use the explicit Hamming-star construction: m=Nat.log 2 n, p=2^m, starCoordEquiv, centerDirectionEquiv, cube prefix/suffix splitting, and exact Fintype cardinal arithmetic. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "cubeSplitEquiv",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean",
+      "status": "jules_ready",
+      "pref": "TL.cubeSplitEquiv",
+      "note": "Use the explicit Hamming-star construction: m=Nat.log 2 n, p=2^m, starCoordEquiv, centerDirectionEquiv, cube prefix/suffix splitting, and exact Fintype cardinal arithmetic. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "starCenter_card",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean",
+      "status": "jules_ready",
+      "pref": "TL.starCenter_card",
+      "note": "Use the explicit Hamming-star construction: m=Nat.log 2 n, p=2^m, starCoordEquiv, centerDirectionEquiv, cube prefix/suffix splitting, and exact Fintype cardinal arithmetic. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "powerBlockGroupEquiv",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean",
+      "status": "jules_ready",
+      "pref": "TL.powerBlockGroupEquiv",
+      "note": "Use the explicit Hamming-star construction: m=Nat.log 2 n, p=2^m, starCoordEquiv, centerDirectionEquiv, cube prefix/suffix splitting, and exact Fintype cardinal arithmetic. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "powerBlockPartition",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean",
+      "status": "jules_ready",
+      "pref": "TL.powerBlockPartition",
+      "note": "Use the explicit Hamming-star construction: m=Nat.log 2 n, p=2^m, starCoordEquiv, centerDirectionEquiv, cube prefix/suffix splitting, and exact Fintype cardinal arithmetic. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "coordMismatchForm_eval",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockForms.lean",
+      "status": "jules_ready",
+      "pref": "TL.coordMismatchForm_eval",
+      "note": "Use the exact powerBlockPartition construction and affine coordinate-mismatch forms. The group form is signed prefix Hamming distance minus one plus a suffix mismatch penalty at least two; the Lagrange form is the selected prefix mismatch coordinate. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "powerBlockEll",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockForms.lean",
+      "status": "jules_ready",
+      "pref": "TL.powerBlockEll",
+      "note": "Use the exact powerBlockPartition construction and affine coordinate-mismatch forms. The group form is signed prefix Hamming distance minus one plus a suffix mismatch penalty at least two; the Lagrange form is the selected prefix mismatch coordinate. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "powerBlockEll_zero_iff",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockForms.lean",
+      "status": "jules_ready",
+      "pref": "TL.powerBlockEll_zero_iff",
+      "note": "Use the exact powerBlockPartition construction and affine coordinate-mismatch forms. The group form is signed prefix Hamming distance minus one plus a suffix mismatch penalty at least two; the Lagrange form is the selected prefix mismatch coordinate. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "powerBlockLagrange",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockForms.lean",
+      "status": "jules_ready",
+      "pref": "TL.powerBlockLagrange",
+      "note": "Use the exact powerBlockPartition construction and affine coordinate-mismatch forms. The group form is signed prefix Hamming distance minus one plus a suffix mismatch penalty at least two; the Lagrange form is the selected prefix mismatch coordinate. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "powerBlockLagrange_delta",
+      "file": "HeadComplexity/TypicalLogCloseness/PowerBlockForms.lean",
+      "status": "jules_ready",
+      "pref": "TL.powerBlockLagrange_delta",
+      "note": "Use the exact powerBlockPartition construction and affine coordinate-mismatch forms. The group form is signed prefix Hamming distance minus one plus a suffix mismatch penalty at least two; the Lagrange form is the selected prefix mismatch coordinate. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "paramIndexEquiv",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.paramIndexEquiv",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "certToPoint",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.certToPoint",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "denomMvPoly",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.denomMvPoly",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "numMvPoly",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.numMvPoly",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "denomMvPoly_eval",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.denomMvPoly_eval",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "numMvPoly_eval",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.numMvPoly_eval",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "denomMvPoly_totalDegree_le",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.denomMvPoly_totalDegree_le",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "numMvPoly_totalDegree_le",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.numMvPoly_totalDegree_le",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "clearedTermMvPoly",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.clearedTermMvPoly",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "clearedScoreMvPoly",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.clearedScoreMvPoly",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "clearedScoreMvPoly_eval",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.clearedScoreMvPoly_eval",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "clearedScoreMvPoly_totalDegree_le",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.clearedScoreMvPoly_totalDegree_le",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "strict_sign_transfer",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.strict_sign_transfer",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "fixedTopology_warren_model_helper",
+      "file": "HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean",
+      "status": "jules_ready",
+      "pref": "TL.fixedTopology_warren_model_helper",
+      "note": "Use the fixed coefficient encoding and the existing NDISJ shatterPoly/totalDegree/cleared_score pattern. Preserve strict positivity and the exact common-denominator identity. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "boundedTopologyFintype",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.boundedTopologyFintype",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "boundedTopology_card_le",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.boundedTopology_card_le",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "cubeIndexEquiv_inj",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.cubeIndexEquiv_inj",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "represented_truthTables_embedding",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.represented_truthTables_embedding",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "warren_pattern_card_nat_le",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.warren_pattern_card_nat_le",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "topology_param_degree_le",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.topology_param_degree_le",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "truthTables_per_topology_card_le",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.truthTables_per_topology_card_le",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "nonconstant_sublevel_card_le",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.nonconstant_sublevel_card_le",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "constant_sublevel_card_le",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.constant_sublevel_card_le",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "exp_ineq_topologyCountBound",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.exp_ineq_topologyCountBound",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "exp_ineq_warrenTerm",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.exp_ineq_warrenTerm",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "sublevel_exp_bound_combination",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.sublevel_exp_bound_combination",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    },
+    {
+      "name": "poic2_sublevel_card_le_helper",
+      "file": "HeadComplexity/TypicalLogCloseness/POICSublevel.lean",
+      "status": "jules_ready",
+      "pref": "TL.poic2_sublevel_card_le_helper",
+      "note": "Use finite bounded-topology enumeration, injective cube reindexing, the fixed-topology Warren model, Finset union bounds, and the deliberately padded exponent 64. Keep all casts and floors honest. Prove only this declaration; adjacent doc comments fix the exact local contract."
+    }
+  ]
 }
