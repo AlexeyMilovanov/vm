@@ -1,0 +1,43 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/Scratch.lean b/HeadComplexity/TypicalLogCloseness/Scratch.lean
+new file mode 100644
+index 0000000..5ba1eec
+--- /dev/null
++++ b/HeadComplexity/TypicalLogCloseness/Scratch.lean
+@@ -0,0 +1,37 @@
++import HeadComplexity.TypicalLogCloseness.PowerBlockForms
++
++namespace HeadComplexity.TypicalLogCloseness
++
++open Finset
++open scoped BigOperators
++
++theorem cubeSplitEquiv_symm_apply (n p : ℕ) (hp : p ≤ n)
++    (x1 : Cube p) (x2 : Cube (n - p)) (i : Fin n) :
++    (cubeSplitEquiv n p hp).symm (x1, x2) i =
++      if hi : i.1 < p then
++        x1 ⟨i.1, hi⟩
++      else
++        have hj : i.1 - p < n - p := by omega
++        x2 ⟨i.1 - p, hj⟩ := by
++  dsimp [cubeSplitEquiv]
++  split_ifs with hi
++  · change Sum.elim x1 x2 (finSumFinEquiv.symm (cast (congrArg Fin (Nat.add_sub_of_le hp).symm) i)) = x1 ⟨i.1, hi⟩
++    have h_cast : cast (congrArg Fin (Nat.add_sub_of_le hp).symm) i = Fin.castAdd (n - p) ⟨i.1, hi⟩ := by
++      ext
++      simp
++    rw [h_cast]
++    change Sum.elim x1 x2 (finSumFinEquiv.symm (finSumFinEquiv (Sum.inl ⟨i.1, hi⟩))) = x1 ⟨i.1, hi⟩
++    rw [Equiv.symm_apply_apply]
++    rfl
++  · have hj : i.1 - p < n - p := by omega
++    change Sum.elim x1 x2 (finSumFinEquiv.symm (cast (congrArg Fin (Nat.add_sub_of_le hp).symm) i)) = x2 ⟨i.1 - p, hj⟩
++    have h_cast : cast (congrArg Fin (Nat.add_sub_of_le hp).symm) i = Fin.natAdd p ⟨i.1 - p, hj⟩ := by
++      ext
++      simp
++      omega
++    rw [h_cast]
++    change Sum.elim x1 x2 (finSumFinEquiv.symm (finSumFinEquiv (Sum.inr ⟨i.1 - p, hj⟩))) = x2 ⟨i.1 - p, hj⟩
++    rw [Equiv.symm_apply_apply]
++    rfl
++
++end HeadComplexity.TypicalLogCloseness

@@ -1,0 +1,18 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean b/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
+index 5844e63..8f37af5 100644
+--- a/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
++++ b/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
+@@ -67,7 +67,12 @@ noncomputable def numMvPoly (n : ℕ) (T : Topology) (t : Fin T.termCount)
+ theorem denomMvPoly_eval (n : ℕ) (T : Topology) (C : Certificate n T)
+     (j : Fin T.denominatorCount) (x : Cube n) :
+     eval (certToPoint n T C) (denomMvPoly n T j x) = (C.denominators j).eval x := by
+-  sorry
++  dsimp [denomMvPoly, AffineForm.eval]
++  rw [eval_add, eval_X, eval_sum]
++  simp only [eval_mul, eval_X, eval_C]
++  dsimp [certToPoint]
++  simp only [Equiv.apply_symm_apply]
++  rfl
+ 
+ /-- Evaluation identity for numerator polynomial in parameter space. -/
+ theorem numMvPoly_eval (n : ℕ) (T : Topology) (C : Certificate n T)

@@ -68,6 +68,36 @@ noncomputable def powerBlockLagrange (n : ℕ) (hn : 2 ≤ n)
   let k : Fin n := ⟨i.1, lt_of_lt_of_le i.2 (powerBlockSize_le_self n hn)⟩
   coordMismatchForm n k b
 
+private theorem cast_fin_val {a b : ℕ} (h : a = b) (x : Fin a) :
+    (cast (congrArg Fin h) x).val = x.val := by
+  subst h
+  rfl
+
+private theorem cubeSplitEquiv_symm_apply_left (n p : ℕ) (hp : p ≤ n)
+    (x1 : Cube p) (x2 : Cube (n - p)) (i : Fin p) :
+    (cubeSplitEquiv n p hp).symm (x1, x2) ⟨i.1, lt_of_lt_of_le i.2 hp⟩ = x1 i := by
+  dsimp [cubeSplitEquiv, finSumFinEquiv]
+  have h_cast : (⟨i.1, lt_of_lt_of_le i.2 hp⟩ : Fin n) =
+      (Equiv.cast (congrArg Fin (Nat.add_sub_of_le hp).symm)).symm (Fin.castAdd (n - p) i) := by
+    apply Fin.ext
+    change i.val = (cast (congrArg Fin (Nat.add_sub_of_le hp).symm.symm) (Fin.castAdd (n - p) i)).val
+    rw [cast_fin_val (Nat.add_sub_of_le hp)]
+    rfl
+  rw [h_cast]
+  simp [Fin.addCases_left]
+
+private theorem powerBlockPartition_vertex_apply (n : ℕ) (hn : 2 ≤ n)
+    (g : Fin (2 ^ n / powerBlockSize n))
+    (k i : Fin (powerBlockSize n)) :
+    (powerBlockPartition n hn).vertex (g, k)
+        ⟨i.1, lt_of_lt_of_le i.2 (powerBlockSize_le_self n hn)⟩ =
+      toggle (powerBlockGroupEquiv n hn g).1.1 (starCoordEquiv (Nat.log 2 n) k)
+        (starCoordEquiv (Nat.log 2 n) i) := by
+  change (cubeSplitEquiv n (powerBlockSize n) (powerBlockSize_le_self n hn)).symm
+    ((fun j => toggle (powerBlockGroupEquiv n hn g).1.1 (starCoordEquiv (Nat.log 2 n) k) (starCoordEquiv (Nat.log 2 n) j)),
+     (powerBlockGroupEquiv n hn g).2) ⟨i.1, lt_of_lt_of_le i.2 (powerBlockSize_le_self n hn)⟩ = _
+  rw [cubeSplitEquiv_symm_apply_left]
+
 /-- Evaluation identity for `powerBlockLagrange` matching delta basis. -/
 theorem powerBlockLagrange_delta (n : ℕ) (hn : 2 ≤ n)
     (g : Fin (2 ^ n / powerBlockSize n))
@@ -75,6 +105,15 @@ theorem powerBlockLagrange_delta (n : ℕ) (hn : 2 ≤ n)
     (powerBlockLagrange n hn g i).eval
         ((powerBlockPartition n hn).vertex (g, k)) =
       if i = k then 1 else 0 := by
-  sorry
+  dsimp [powerBlockLagrange]
+  rw [coordMismatchForm_eval]
+  rw [powerBlockPartition_vertex_apply]
+  by_cases h_ik : i = k
+  · subst h_ik
+    simp [toggle_same]
+  · have h_ne : starCoordEquiv (Nat.log 2 n) i ≠ starCoordEquiv (Nat.log 2 n) k :=
+      fun h_eq => h_ik ((starCoordEquiv (Nat.log 2 n)).injective h_eq)
+    rw [toggle_ne _ h_ne]
+    simp [h_ik]
 
 end HeadComplexity.TypicalLogCloseness

@@ -71,7 +71,14 @@ noncomputable def cubeSplitEquiv (n p : ℕ) (hp : p ≤ n) :
 /-- The cardinality of `StarCenter m` is `2^(2^m) / 2^m`. -/
 theorem starCenter_card (m : ℕ) (hm : 1 ≤ m) :
     Fintype.card (StarCenter m) = 2 ^ (2 ^ m) / 2 ^ m := by
-  sorry
+  have h_equiv := Fintype.card_congr (centerDirectionEquiv m hm)
+  rw [Fintype.card_prod, starCoord_card] at h_equiv
+  have h_cube : Fintype.card (StarCube m) = 2 ^ (2 ^ m) := by
+    change Fintype.card (StarCoord m → Bool) = 2 ^ (2 ^ m)
+    rw [Fintype.card_fun, Fintype.card_bool, starCoord_card]
+  rw [h_cube] at h_equiv
+  have hpos : 0 < 2 ^ m := by positivity
+  rw [← h_equiv, mul_comm, Nat.mul_div_cancel_left _ hpos]
 
 private theorem powerBlockGroupEquiv_card (n : ℕ) (hn : 2 ≤ n) :
     Fintype.card (StarCenter (Nat.log 2 n) × Cube (n - powerBlockSize n)) =
