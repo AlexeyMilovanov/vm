@@ -749,7 +749,10 @@ def target_closed(base: Path, entry):
         return False
     # crude but effective: the decl block up to the next decl has no sorry
     idx = text.find(entry["name"])
-    nxt = re.search(r"\n(theorem|lemma|def|end)\s", text[idx + 1:])
+    nxt = re.search(
+        r"\n(?:noncomputable\s+)?"
+        r"(?:theorem|lemma|def|instance|abbrev|structure|end)\s",
+        text[idx + 1:])
     block = text[idx:idx + 1 + (nxt.start() if nxt else len(text))]
     return "sorry" not in block
 

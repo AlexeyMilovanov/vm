@@ -23,9 +23,31 @@ structure BoundedTopology (Q : ℕ) where
   incidence : Fin termCount → Incidence denominatorCount
   score_le : max denominatorCount termCount ≤ Q
 
+private noncomputable instance incidenceFintype (s : ℕ) : Fintype (Incidence s) :=
+  Fintype.ofInjective (fun inc => inc.denoms) (fun ⟨_, _, _⟩ ⟨_, _, _⟩ h => by cases h; rfl)
+
+private def toTarget (Q : ℕ) (bt : BoundedTopology Q) :
+    (d : Fin (Q + 1)) × (t : Fin (Q + 1)) × (Fin t.val → Incidence d.val) :=
+  ⟨⟨bt.denominatorCount, Nat.lt_succ_of_le (le_trans (le_max_left _ _) bt.score_le)⟩,
+   ⟨bt.termCount, Nat.lt_succ_of_le (le_trans (le_max_right _ _) bt.score_le)⟩,
+   bt.incidence⟩
+
+private theorem toTarget_inj (Q : ℕ) : Function.Injective (toTarget Q) := by
+  rintro ⟨d1, t1, i1, s1⟩ ⟨d2, t2, i2, s2⟩ h
+  dsimp [toTarget] at h
+  injection h with hd hrest
+  have hd_val : d1 = d2 := Fin.ext_iff.mp hd
+  subst hd_val
+  injection hrest with ht hi
+  have ht_val : t1 = t2 := Fin.ext_iff.mp ht
+  subst ht_val
+  have hi_eq : i1 = i2 := eq_of_heq hi
+  subst hi_eq
+  rfl
+
 /-- Fintype instance for `BoundedTopology Q`. -/
-noncomputable instance boundedTopologyFintype (Q : ℕ) : Fintype (BoundedTopology Q) := by
-  sorry
+noncomputable instance boundedTopologyFintype (Q : ℕ) : Fintype (BoundedTopology Q) :=
+  Fintype.ofInjective (toTarget Q) (toTarget_inj Q)
 
 /-- Cardinality of `BoundedTopology Q` is bounded by `topologyCountBound Q`. -/
 theorem boundedTopology_card_le (Q : ℕ) :
@@ -35,7 +57,11 @@ theorem boundedTopology_card_le (Q : ℕ) :
 /-- Cube index reindexing maps representable truth tables injectively into sign patterns. -/
 theorem cubeIndexEquiv_inj (n : ℕ) :
     Function.Injective (fun (f : BoolFn n) (i : Fin (2 ^ n)) => f (cubeIndexEquiv n i)) := by
-  sorry
+  intro f g h
+  ext x
+  have h_eq := congr_fun h ((cubeIndexEquiv n).symm x)
+  simp only [(cubeIndexEquiv n).apply_symm_apply] at h_eq
+  exact h_eq
 
 /-- Represented truth tables embed into sign patterns of a `FixedTopologyWarrenModel`. -/
 theorem represented_truthTables_embedding (n : ℕ) (T : Topology)

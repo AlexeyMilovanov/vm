@@ -1,0 +1,23 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean b/HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean
+index 3e51f62..85bf07b 100644
+--- a/HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean
++++ b/HeadComplexity/TypicalLogCloseness/PowerBlockEquiv.lean
+@@ -39,7 +39,17 @@ theorem powerBlockSize_le_self (n : ℕ) (hn : 2 ≤ n) : powerBlockSize n ≤ n
+ 
+ /-- The cardinality of `StarCoord m` is `2^m`. -/
+ theorem starCoord_card (m : ℕ) : Fintype.card (StarCoord m) = 2 ^ m := by
+-  sorry
++  change Fintype.card (NonzeroVector m ⊕ Unit) = 2 ^ m
++  rw [Fintype.card_sum, Fintype.card_unit]
++  change Fintype.card {v : BinaryVector m // v ≠ 0} + 1 = 2 ^ m
++  rw [Fintype.card_subtype_compl]
++  have h2 : Fintype.card (BinaryVector m) = 2 ^ m := by
++    change Fintype.card (Fin m → ZMod 2) = 2 ^ m
++    rw [Fintype.card_fun, Fintype.card_fin, ZMod.card]
++  rw [h2]
++  have h1 : Fintype.card {v : BinaryVector m // v = 0} = 1 := by simp
++  rw [h1]
++  exact Nat.sub_add_cancel (Nat.one_le_pow m 2 (by decide))
+ 
+ /-- Reindexing equivalence between `Fin (2^m)` and `StarCoord m`. -/
+ noncomputable def starCoordEquiv (m : ℕ) : Fin (2 ^ m) ≃ StarCoord m := by

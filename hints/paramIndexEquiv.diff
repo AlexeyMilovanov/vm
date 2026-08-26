@@ -1,0 +1,17 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean b/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
+index 8d11661..e4cdb71 100644
+--- a/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
++++ b/HeadComplexity/TypicalLogCloseness/FixedTopologyWarren.lean
+@@ -37,8 +37,10 @@ structure FixedTopologyWarrenModel (n : ℕ) (T : Topology) where
+ `Fin (topologyParameterCount n T)` to denominator/numerator affine coefficients. -/
+ def paramIndexEquiv (n : ℕ) (T : Topology) :
+     Fin (topologyParameterCount n T) ≃
+-      ((Fin T.denominatorCount × Fin (n + 1)) ⊕ (Fin T.termCount × Fin (n + 1))) := by
+-  sorry
++      ((Fin T.denominatorCount × Fin (n + 1)) ⊕ (Fin T.termCount × Fin (n + 1))) :=
++  finProdFinEquiv.symm.trans
++    ((Equiv.prodCongr finSumFinEquiv.symm (Equiv.refl (Fin (n + 1)))).trans
++      (Equiv.sumProdDistrib (Fin T.denominatorCount) (Fin T.termCount) (Fin (n + 1))))
+ 
+ /-- Converts certificate denominator and numerator coefficients into an evaluation point
+ in parameter space `Fin (topologyParameterCount n T) → ℝ`. -/

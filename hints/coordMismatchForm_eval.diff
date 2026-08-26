@@ -1,0 +1,19 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/PowerBlockForms.lean b/HeadComplexity/TypicalLogCloseness/PowerBlockForms.lean
+index 9fc6fb4..ef95119 100644
+--- a/HeadComplexity/TypicalLogCloseness/PowerBlockForms.lean
++++ b/HeadComplexity/TypicalLogCloseness/PowerBlockForms.lean
+@@ -20,7 +20,13 @@ def coordMismatchForm (n : ℕ) (k : Fin n) (b : Bool) : AffineForm n where
+ @[simp] theorem coordMismatchForm_eval (n : ℕ) (k : Fin n) (b : Bool)
+     (x : Cube n) :
+     (coordMismatchForm n k b).eval x = if x k = b then 0 else 1 := by
+-  sorry
++  dsimp [coordMismatchForm, AffineForm.eval]
++  rw [Finset.sum_eq_single k]
++  · cases b <;> cases x k <;> simp [bitReal]
++  · intro j _ hj
++    simp [hj]
++  · intro hk
++    exact (hk (Finset.mem_univ k)).elim
+ 
+ /-- The suffix penalty affine form `ell g` for a group index `g`. -/
+ noncomputable def powerBlockEll (n : ℕ) (hn : 2 ≤ n)
