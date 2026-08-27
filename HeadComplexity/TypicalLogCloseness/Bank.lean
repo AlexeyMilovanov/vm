@@ -133,7 +133,77 @@ private theorem exists_fracAtom_eval_eq_of_strictAdmissible
     (A B : AffineForm n) (hB : B.StrictAdmissible) :
     ∃ φ : HeadComplexity.FracAtom n,
       ∀ x, φ.eval x = A.eval x / B.eval x := by
-  sorry
+  rcases hB.2 with hpos | hneg
+  · have hbc : 0 < B.constant := by
+      have h0 := hB.1 (fun _ => false)
+      simpa [AffineForm.eval] using h0
+    exact exists_fracAtom_eval_eq A B ⟨hbc, hpos⟩
+  · classical
+    let all_false : Cube n := fun _ => false
+    let all_true : Cube n := fun _ => true
+    have hbc : 0 < B.constant := by
+      have h0 := hB.1 all_false
+      simpa [AffineForm.eval, all_false] using h0
+    have hsum_pos : 0 < B.constant + ∑ i, B.linear i := by
+      have h1 := hB.1 all_true
+      simpa [AffineForm.eval, all_true] using h1
+    let S : ℝ := ∑ i, B.linear i
+    have hS : S ≤ 0 := Finset.sum_nonpos fun i _ => (hneg i).le
+    have hS_lt : -S < B.constant := by linarith [hsum_pos]
+    let d : ℝ := (1 + (-S / B.constant)) / 2
+    have hd_lt1 : -S / B.constant < 1 := (div_lt_one hbc).mpr hS_lt
+    have hd_pos0 : 0 ≤ -S / B.constant := div_nonneg (by linarith) hbc.le
+    have hd_pos : 0 < d := by dsimp [d]; linarith
+    have hd_lt : d < 1 := by dsimp [d]; linarith
+    have hd_gt : -S / B.constant < d := by dsimp [d]; linarith
+    have hγ : 0 < B.constant + S / d := by
+      have h1 : -S / d < B.constant := by
+        have h1' : -S < d * B.constant := (div_lt_iff₀ hbc).mp hd_gt
+        exact (div_lt_iff₀' hd_pos).mpr h1'
+      rw [neg_div] at h1
+      linarith
+    have hα : 0 < 1 - d := sub_pos.mpr hd_lt
+    have hρ : ∀ i, 0 < -B.linear i / d := fun i => div_pos (neg_pos.mpr (hneg i)) hd_pos
+    let φ : HeadComplexity.FracAtom n := {
+      η := A.constant + ∑ i, A.linear i / d
+      δ := 0
+      γ := B.constant + S / d
+      α := 1 - d
+      ρ i := -B.linear i / d
+      m i := A.linear i / B.linear i
+      hγ := hγ
+      hα := hα
+      hρ := hρ
+    }
+    have hden : fracDenominator φ = B := by
+      ext
+      · dsimp [fracDenominator, φ]
+        have hli : ∀ j, -B.linear j / d = -(B.linear j / d) := fun _ => neg_div _ _
+        simp_rw [hli, Finset.sum_neg_distrib, ← Finset.sum_div, show (∑ j, B.linear j) = S from rfl]
+        ring
+      · rename_i j
+        dsimp [fracDenominator, φ]
+        have hdn : d ≠ 0 := hd_pos.ne'
+        field_simp
+        ring
+    have hnum : fracNumerator φ = A := by
+      ext
+      · dsimp [fracNumerator, φ]
+        have hli : ∀ j, -B.linear j / d * (A.linear j / B.linear j) = -(A.linear j / d) := by
+          intro j
+          have hneq : B.linear j ≠ 0 := (hneg j).ne
+          have hdn : d ≠ 0 := hd_pos.ne'
+          field_simp
+        simp_rw [hli, Finset.sum_neg_distrib]
+        rw [add_neg_cancel_right]
+      · rename_i j
+        dsimp [fracNumerator, φ]
+        have hdn : d ≠ 0 := hd_pos.ne'
+        have hli2 : B.linear j ≠ 0 := (hneg j).ne
+        field_simp [hli2, hdn]
+        ring
+    refine ⟨φ, fun x => ?_⟩
+    rw [fracAtom_eval_eq_affine, hden, hnum]
 
 /-- One spanning bank works for every Boolean target, hence bounds H*. -/
 theorem HStar_le_Bank (f : BoolFn n) :
