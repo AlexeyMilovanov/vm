@@ -568,6 +568,35 @@ private theorem clearedTwoAtomPoly_mixed_negative
     exact clearedTwoAtomPoly_signRepresents φ c hsign x
   exact f8_quadratic_mixed_negative
     (toMultilinear (clearedTwoAtomPoly φ c)) hdeg hrep
+
+/-- Paper Lemma 3, nondegeneracy part: negative mixed curvature rules out a
+constant denominator. Since every `FracAtom` denominator has one common slope
+factor and strictly positive coordinate weights, all eight slopes of each
+nonconstant denominator are nonzero. -/
+private theorem clearedTwoAtom_denominator_slopes_ne_zero
+    (φ : Fin 2 → FracAtom 8) (c : ℝ)
+    (hneg : NegativeDefinite4
+      (symmetricPart4
+        (mixedMatrix4 (toMultilinear (clearedTwoAtomPoly φ c))))) :
+    (∀ i, (fracDenominator (φ 0)).linear i ≠ 0) ∧
+      (∀ i, (fracDenominator (φ 1)).linear i ≠ 0) := by
+  sorry
+
+/-- Paper Lemmas 3 and 4 after the rank obstruction has supplied two
+nonconstant, strictly oriented denominators. This is the factor-map and shell
+transition part of the normalization argument. -/
+private theorem nondegenerate_twoAtoms_yield_f8NormalizedSystem
+    (φ : Fin 2 → FracAtom 8) (c : ℝ)
+    (hsign : ∀ x : Fin 8 → Bool,
+      0 < c + ∑ h : Fin 2, (φ h).eval x ↔ f8 x = true)
+    (hneg : NegativeDefinite4
+      (symmetricPart4
+        (mixedMatrix4 (toMultilinear (clearedTwoAtomPoly φ c)))))
+    (hslopes :
+      (∀ i, (fracDenominator (φ 0)).linear i ≠ 0) ∧
+        (∀ i, (fracDenominator (φ 1)).linear i ≠ 0)) :
+    Nonempty F8NormalizedSystem := by
+  sorry
 /-- Paper Lemmas 3 and 4: a two-head realization supplies the normalized
 system. -/
 theorem two_heads_yield_f8NormalizedSystem
@@ -577,7 +606,10 @@ theorem two_heads_yield_f8NormalizedSystem
     (computableWithHeadsN_iff_fracComputable 2 f8).mp h
   obtain ⟨φ, c, hsign⟩ := hfrac
   have hneg := clearedTwoAtomPoly_mixed_negative φ c hsign
-  sorry
+  have hslopes :=
+    clearedTwoAtom_denominator_slopes_ne_zero φ c hneg
+  exact nondegenerate_twoAtoms_yield_f8NormalizedSystem
+    φ c hsign hneg hslopes
 
 private theorem trace_plus_two_sum_eq_sum_univ
     (M : Matrix (Fin 4) (Fin 4) ℝ)
