@@ -1,6 +1,6 @@
 import HeadComplexity.TypicalLogCloseness.AbstractCounting
 import HeadComplexity.TypicalLogCloseness.LocalizationMatrix
-import HeadComplexity.TypicalLogCloseness.POICWarren
+import HeadComplexity.TypicalLogCloseness.CanonicalCounting
 import HeadComplexity.Results.FractionalNormalForm
 
 set_option linter.style.header false

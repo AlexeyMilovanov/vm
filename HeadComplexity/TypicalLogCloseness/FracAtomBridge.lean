@@ -251,7 +251,7 @@ theorem fracComputable_hasCertificate {H : ℕ} {f : BoolFn n}
           simp [hx] at htrue
         linarith
 
-/-- Totality of the canonical POIC₂ complexity follows from the established
+/-- Totality of the relaxed POIC₂ complexity follows from the established
 finite H* normal form and the preceding bridge. -/
 theorem exists_hasCertificate (f : BoolFn n) :
     ∃ Q, HasCertificate n Q f := by

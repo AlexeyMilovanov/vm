@@ -5,7 +5,7 @@ set_option linter.style.header false
 /-!
 # POIC₂ sublevel counting helper declarations
 
-Decomposition of `poic2_sublevel_card_le` into modular helper declarations.
+Decomposition of `relaxed_poic2_sublevel_card_le` into modular helper declarations.
 -/
 
 namespace HeadComplexity.TypicalLogCloseness
@@ -507,39 +507,39 @@ theorem sublevel_exp_bound_combination (n Q : ℕ) (hn : 2 ≤ n) (hQ0 : 1 ≤ Q
   exact_mod_cast hN_real
 
 /-- Final sublevel packaging helper. -/
-theorem poic2_sublevel_card_le_helper (n Q : ℕ) (hn : 2 ≤ n)
+theorem relaxed_poic2_sublevel_card_le_helper (n Q : ℕ) (hn : 2 ≤ n)
     (hQ0 : 1 ≤ Q) (hQN : Q ≤ 2 ^ n) :
-    (sublevel (POIC2 n) Q).card ≤ 2 ^ (64 * n ^ 2 * Q) := by
+    (sublevel (RelaxedPOIC2 n) Q).card ≤ 2 ^ (64 * n ^ 2 * Q) := by
   classical
   let S_const := Finset.univ.filter (fun (f : BoolFn n) => IsConstant f)
   let S_nonconst := Finset.univ.filter (fun (f : BoolFn n) =>
     ∃ (T : Topology) (C : Certificate n T), T.score ≤ Q ∧ C.Represents f)
-  have hsub : sublevel (POIC2 n) Q ⊆ S_const ∪ S_nonconst := by
+  have hsub : sublevel (RelaxedPOIC2 n) Q ⊆ S_const ∪ S_nonconst := by
     intro f hf
     rw [mem_sublevel] at hf
     have hex : ∃ R, HasCertificate n R f := exists_hasCertificate f
-    have hcert : HasCertificate n Q f := hasCertificate_of_POIC2_le hex hf
+    have hcert : HasCertificate n Q f := hasCertificate_of_relaxedPOIC2_le hex hf
     rw [Finset.mem_union, Finset.mem_filter, Finset.mem_filter]
     rcases hcert with hc | ⟨T, C, hT, hC⟩
     · left; exact ⟨Finset.mem_univ f, hc⟩
     · right; exact ⟨Finset.mem_univ f, ⟨T, C, hT, hC⟩⟩
-  have hcard_union : (sublevel (POIC2 n) Q).card ≤ S_const.card + S_nonconst.card :=
+  have hcard_union : (sublevel (RelaxedPOIC2 n) Q).card ≤ S_const.card + S_nonconst.card :=
     (Finset.card_le_card hsub).trans (Finset.card_union_le S_const S_nonconst)
   have hconst_le : S_const.card ≤ 2 := constant_sublevel_card_le n
   have hnonconst_le : S_nonconst.card ≤ topologyCountBound Q *
       Nat.floor ((8 * ((Q : ℝ) * ((2 ^ n : ℕ) : ℝ) + 1)) ^ (2 * Q * (n + 1))) :=
     nonconstant_sublevel_card_le n Q hn hQ0 hQN
-  have hbound : (sublevel (POIC2 n) Q).card ≤ 2 + topologyCountBound Q *
+  have hbound : (sublevel (RelaxedPOIC2 n) Q).card ≤ 2 + topologyCountBound Q *
       Nat.floor ((8 * ((Q : ℝ) * ((2 ^ n : ℕ) : ℝ) + 1)) ^ (2 * Q * (n + 1))) := by
     omega
-  have hcast : ((sublevel (POIC2 n) Q).card : ℝ) ≤ 2 + (topologyCountBound Q : ℝ) *
+  have hcast : ((sublevel (RelaxedPOIC2 n) Q).card : ℝ) ≤ 2 + (topologyCountBound Q : ℝ) *
       (8 * ((Q : ℝ) * ((2 ^ n : ℕ) : ℝ) + 1)) ^ (2 * Q * (n + 1)) := by
     have hfloor_le : (Nat.floor ((8 * ((Q : ℝ) * ((2 ^ n : ℕ) : ℝ) + 1)) ^ (2 * Q * (n + 1))) : ℝ) ≤
         (8 * ((Q : ℝ) * ((2 ^ n : ℕ) : ℝ) + 1)) ^ (2 * Q * (n + 1)) := by
       apply Nat.floor_le
       positivity
     have htop_nonneg : 0 ≤ (topologyCountBound Q : ℝ) := by positivity
-    have h1 : ((sublevel (POIC2 n) Q).card : ℝ) ≤
+    have h1 : ((sublevel (RelaxedPOIC2 n) Q).card : ℝ) ≤
         (2 + topologyCountBound Q *
           Nat.floor ((8 * ((Q : ℝ) * ((2 ^ n : ℕ) : ℝ) + 1)) ^ (2 * Q * (n + 1))) : ℕ) := by
       exact_mod_cast hbound
@@ -555,6 +555,6 @@ theorem poic2_sublevel_card_le_helper (n Q : ℕ) (hn : 2 ≤ n)
           (8 * ((Q : ℝ) * ((2 ^ n : ℕ) : ℝ) + 1)) ^ (2 * Q * (n + 1)) := by
       gcongr
     linarith
-  exact sublevel_exp_bound_combination n Q hn hQ0 hQN (sublevel (POIC2 n) Q).card hcast
+  exact sublevel_exp_bound_combination n Q hn hQ0 hQN (sublevel (RelaxedPOIC2 n) Q).card hcast
 
 end HeadComplexity.TypicalLogCloseness

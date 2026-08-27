@@ -6,3 +6,4 @@ import HeadComplexity.Examples.All
 
 -- complete, axiom-clean separations layer (statements frozen)
 import HeadComplexity.Separations.All
+import HeadComplexity.TypicalLogCloseness
