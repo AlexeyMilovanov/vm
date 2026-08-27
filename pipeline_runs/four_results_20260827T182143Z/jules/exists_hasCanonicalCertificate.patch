@@ -1,0 +1,15 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean b/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean
+index 8f3b8d7..dcb031d 100644
+--- a/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean
++++ b/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean
+@@ -76,7 +76,9 @@ theorem fracComputable_hasCanonicalCertificate {H : ℕ} {f : BoolFn n}
+ /-- Totality of canonical POIC₂. -/
+ theorem exists_hasCanonicalCertificate (f : BoolFn n) :
+     ∃ Q, HasCanonicalCertificate n Q f := by
+-  sorry
++  rcases HeadComplexity.exists_computable f with ⟨H, hH⟩
++  refine ⟨H, fracComputable_hasCanonicalCertificate ?_⟩
++  exact (HeadComplexity.computableWithHeadsN_iff_fracComputable H f).mp hH
+ 
+ /-- Canonical no-bias POIC₂ complexity. -/
+ noncomputable def POIC2 (n : ℕ) (f : BoolFn n) : ℕ := by

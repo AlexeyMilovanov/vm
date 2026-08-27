@@ -1,0 +1,31 @@
+Session is created.
+ID: 8573605811680194906
+Task: Prove exactly one Lean 4.31 declaration in AlexeyMilovanov/vm.
+
+Base commit: 2697881ce5ccdc8b6bb6d145d1f0ae8f0f189de9 on main. First check git rev-parse HEAD. If it differs,
+reply exactly BASE_COMMIT_MISMATCH and stop.
+
+Target: columnMax_spectral_inequality in HeadComplexity/Separations/EightBitHammingThreshold.lean. It contains exactly one sorry.
+The other sorry declarations belong to parallel Jules sessions.
+
+Audited mathematical route and local API hints:
+Unpack d>0 with S=diagonal d * M symmetric and PositiveIndexAtLeastTwo4 S. Positive row sums of M give a positive test direction. Prove the four-dimensional trace/column-max inequality by contradiction: if trace M + 2*max_{i≠j} M_ij≤0 in every column, establish that the symmetrized form has positive index at most one, contradicting the supplied two-dimensional positive subspace. The conclusion uses an existential off-diagonal picker, so choose actual Finset maximizers after proving the max form.
+
+Rules:
+1. Preserve every existing statement exactly and remove only the target sorry.
+   You may add honest fully proved private helpers immediately above it.
+2. Do not edit another existing declaration. Do not weaken hypotheses or the
+   conclusion. Do not rename canonical POIC2 back to the relaxed invariant.
+3. Forbidden: sorry in a claimed completed target, admit, axiom, unsafe,
+   native_decide, set_option maxHeartbeats, and set_option maxRecDepth.
+4. Inspect all neighbouring declarations and reuse repository/mathlib lemmas.
+   Exact public statements of parallel targets may be used as dependencies.
+5. Run `lake -Kjobs=1 build HeadComplexity/Separations/EightBitHammingThreshold.lean` or the corresponding module.
+   Warnings about other assigned sorries are expected.
+6. If the complete proof is out of reach, keep the target sorry and commit
+   only useful fully proved helpers. If the statement is false, add a precise
+   BLOCKER_columnMax_spectral_inequality.md instead of changing the theorem.
+
+In the final report say whether the target is completely sorry-free and list
+all changed files.
+URL: https://jules.google.com/session/8573605811680194906

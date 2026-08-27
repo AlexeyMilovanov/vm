@@ -1,0 +1,31 @@
+Session is created.
+ID: 1504527850316817648
+Task: Prove exactly one Lean 4.31 declaration in AlexeyMilovanov/vm.
+
+Base commit: 2697881ce5ccdc8b6bb6d145d1f0ae8f0f189de9 on main. First check git rev-parse HEAD. If it differs,
+reply exactly BASE_COMMIT_MISMATCH and stop.
+
+Target: theorem026_exists_hard_function in HeadComplexity/TypicalLogCloseness/CountingLowerBound.lean. It contains exactly one sorry.
+The other sorry declarations belong to parallel Jules sessions.
+
+Audited mathematical route and local API hints:
+Use theorem026_counting_lower_bound. If every BoolFn n lay in the HStar sublevel, that finite set would have cardinal 2^(2^n). The assumed strict exponent inequality gives 2^(64*n^2*H) < 2^(2^n), contradiction. Reuse Fintype.card_congr/card_fun/card_bool and sublevel membership lemmas; finish by classical finite-set cardinality and omega/norm_num arithmetic.
+
+Rules:
+1. Preserve every existing statement exactly and remove only the target sorry.
+   You may add honest fully proved private helpers immediately above it.
+2. Do not edit another existing declaration. Do not weaken hypotheses or the
+   conclusion. Do not rename canonical POIC2 back to the relaxed invariant.
+3. Forbidden: sorry in a claimed completed target, admit, axiom, unsafe,
+   native_decide, set_option maxHeartbeats, and set_option maxRecDepth.
+4. Inspect all neighbouring declarations and reuse repository/mathlib lemmas.
+   Exact public statements of parallel targets may be used as dependencies.
+5. Run `lake -Kjobs=1 build HeadComplexity/TypicalLogCloseness/CountingLowerBound.lean` or the corresponding module.
+   Warnings about other assigned sorries are expected.
+6. If the complete proof is out of reach, keep the target sorry and commit
+   only useful fully proved helpers. If the statement is false, add a precise
+   BLOCKER_theorem026_exists_hard_function.md instead of changing the theorem.
+
+In the final report say whether the target is completely sorry-free and list
+all changed files.
+URL: https://jules.google.com/session/1504527850316817648

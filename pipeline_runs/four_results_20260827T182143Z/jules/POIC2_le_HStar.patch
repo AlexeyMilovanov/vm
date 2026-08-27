@@ -1,0 +1,17 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean b/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean
+index 8f3b8d7..85a1522 100644
+--- a/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean
++++ b/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean
+@@ -120,7 +120,11 @@ theorem relaxedPOIC2_le_POIC2 (f : BoolFn n) :
+ /-- Explicit right-hand bridge in the canonical hierarchy. -/
+ theorem POIC2_le_HStar (f : BoolFn n) :
+     POIC2 n f ≤ HeadComplexity.HStar n f := by
+-  sorry
++  have h_comp : HeadComplexity.computableWithHeadsN n (HeadComplexity.HStar n f) f :=
++    HeadComplexity.HStar_computable f
++  have h_frac : HeadComplexity.fracComputable n (HeadComplexity.HStar n f) f :=
++    (HeadComplexity.computableWithHeadsN_iff_fracComputable _ _).mp h_comp
++  exact POIC2_le_of_hasCanonicalCertificate (fracComputable_hasCanonicalCertificate h_frac)
+ 
+ /-- The comparison chain that must be used when transferring results proved
+ for the relaxed model. -/

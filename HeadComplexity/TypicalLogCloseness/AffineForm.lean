@@ -57,6 +57,35 @@ noncomputable def eval (L : AffineForm n) (x : Cube n) : ℝ :=
 def StrictLegal (B : AffineForm n) : Prop :=
   ∀ x, 0 < B.eval x
 
+/-- Weak common orientation of the variable slopes. Zero slopes are allowed.
+This is the closure convention used when a weak certificate is strictified. -/
+def WeaklyOriented (B : AffineForm n) : Prop :=
+  (∀ i, 0 ≤ B.linear i) ∨ (∀ i, B.linear i ≤ 0)
+
+/-- Exact one-head orientation: every variable slope is nonzero and all slopes
+have one common sign. -/
+def StrictlyOriented (B : AffineForm n) : Prop :=
+  (∀ i, 0 < B.linear i) ∨ (∀ i, B.linear i < 0)
+
+/-- A denominator in the weak closure of the native one-head cone. -/
+def WeakAdmissible (B : AffineForm n) : Prop :=
+  B.StrictLegal ∧ B.WeaklyOriented
+
+/-- A denominator in the exact native one-head cone. This is the legality
+predicate used in the canonical POIC₂ definition. -/
+def StrictAdmissible (B : AffineForm n) : Prop :=
+  B.StrictLegal ∧ B.StrictlyOriented
+
+theorem StrictlyOriented.weaklyOriented {B : AffineForm n}
+    (hB : B.StrictlyOriented) : B.WeaklyOriented := by
+  rcases hB with hpos | hneg
+  · exact Or.inl fun i => (hpos i).le
+  · exact Or.inr fun i => (hneg i).le
+
+theorem StrictAdmissible.weakAdmissible {B : AffineForm n}
+    (hB : B.StrictAdmissible) : B.WeakAdmissible :=
+  ⟨hB.1, hB.2.weaklyOriented⟩
+
 theorem eval_pos (B : AffineForm n) (hB : B.StrictLegal) (x : Cube n) :
     0 < B.eval x := hB x
 
@@ -76,6 +105,14 @@ theorem PositiveCoefficients.strictLegal {B : AffineForm n}
   exact add_pos_of_pos_of_nonneg hB.1
     (Finset.sum_nonneg fun i _ =>
       mul_nonneg (hB.2 i).le (bitReal_nonneg _))
+
+theorem PositiveCoefficients.strictlyOriented {B : AffineForm n}
+    (hB : B.PositiveCoefficients) : B.StrictlyOriented :=
+  Or.inl hB.2
+
+theorem PositiveCoefficients.strictAdmissible {B : AffineForm n}
+    (hB : B.PositiveCoefficients) : B.StrictAdmissible :=
+  ⟨hB.strictLegal, hB.strictlyOriented⟩
 
 /-- Pointwise addition, used by the legal one-parameter deformation. -/
 def add (L K : AffineForm n) : AffineForm n where

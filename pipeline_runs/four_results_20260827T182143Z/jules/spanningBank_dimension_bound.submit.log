@@ -1,0 +1,31 @@
+Session is created.
+ID: 7291810092762851663
+Task: Prove exactly one Lean 4.31 declaration in AlexeyMilovanov/vm.
+
+Base commit: 2697881ce5ccdc8b6bb6d145d1f0ae8f0f189de9 on main. First check git rev-parse HEAD. If it differs,
+reply exactly BASE_COMMIT_MISMATCH and stop.
+
+Target: spanningBank_dimension_bound in HeadComplexity/TypicalLogCloseness/Bank.lean. It contains exactly one sorry.
+The other sorry declarations belong to parallel Jules sessions.
+
+Audited mathematical route and local API hints:
+Fix B from HasSpanningBank. For each h the map AffineForm n → (Cube n→ℝ), A ↦ A.eval/B_h.eval is linear and has range dimension at most n+1. All ranges contain the same constant table 1 (take A=B_h), so the sum of H ranges has dimension at most 1+n*H, not merely H*(n+1). FixedBankSpans makes their sum equal the full table space, whose real finrank is Fintype.card (Cube n)=2^n. Formalize with LinearMap.range, Submodule.finrank_sup_le, and the common one-dimensional intersection.
+
+Rules:
+1. Preserve every existing statement exactly and remove only the target sorry.
+   You may add honest fully proved private helpers immediately above it.
+2. Do not edit another existing declaration. Do not weaken hypotheses or the
+   conclusion. Do not rename canonical POIC2 back to the relaxed invariant.
+3. Forbidden: sorry in a claimed completed target, admit, axiom, unsafe,
+   native_decide, set_option maxHeartbeats, and set_option maxRecDepth.
+4. Inspect all neighbouring declarations and reuse repository/mathlib lemmas.
+   Exact public statements of parallel targets may be used as dependencies.
+5. Run `lake -Kjobs=1 build HeadComplexity/TypicalLogCloseness/Bank.lean` or the corresponding module.
+   Warnings about other assigned sorries are expected.
+6. If the complete proof is out of reach, keep the target sorry and commit
+   only useful fully proved helpers. If the statement is false, add a precise
+   BLOCKER_spanningBank_dimension_bound.md instead of changing the theorem.
+
+In the final report say whether the target is completely sorry-free and list
+all changed files.
+URL: https://jules.google.com/session/7291810092762851663

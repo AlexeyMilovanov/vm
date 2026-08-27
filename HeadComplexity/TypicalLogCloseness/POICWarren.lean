@@ -11,8 +11,8 @@ namespace HeadComplexity.TypicalLogCloseness
 
 open MvPolynomial
 
-/-- The H* normal form supplies a finite POIC₂ certificate for every truth table. -/
-theorem poic2_total (f : BoolFn n) : ∃ Q, HasCertificate n Q f :=
+/-- The H* normal form supplies a finite relaxed POIC₂ certificate for every truth table. -/
+theorem relaxed_poic2_total (f : BoolFn n) : ∃ Q, HasCertificate n Q f :=
   exists_hasCertificate f
 
 /-- Clearing the common positive denominator pool produces the fixed-topology
@@ -31,9 +31,9 @@ theorem FixedTopologyWarrenModel.pattern_card_le
   HeadComplexity.warren_sign_patterns_weak M.polynomial M.degree_le
 
 /-- The Warren sublevel estimate used by the abstract counting theorem. -/
-theorem poic2_sublevel_card_le (n Q : ℕ) (hn : 2 ≤ n)
+theorem relaxed_poic2_sublevel_card_le (n Q : ℕ) (hn : 2 ≤ n)
     (hQ0 : 1 ≤ Q) (hQN : Q ≤ 2 ^ n) :
-    (sublevel (POIC2 n) Q).card ≤ 2 ^ (64 * n ^ 2 * Q) :=
-  poic2_sublevel_card_le_helper n Q hn hQ0 hQN
+    (sublevel (RelaxedPOIC2 n) Q).card ≤ 2 ^ (64 * n ^ 2 * Q) :=
+  relaxed_poic2_sublevel_card_le_helper n Q hn hQ0 hQN
 
 end HeadComplexity.TypicalLogCloseness

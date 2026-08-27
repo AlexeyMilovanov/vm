@@ -1,0 +1,31 @@
+Session is created.
+ID: 13948666120267400215
+Task: Prove exactly one Lean 4.31 declaration in AlexeyMilovanov/vm.
+
+Base commit: 2697881ce5ccdc8b6bb6d145d1f0ae8f0f189de9 on main. First check git rev-parse HEAD. If it differs,
+reply exactly BASE_COMMIT_MISMATCH and stop.
+
+Target: fracComputable_hasCanonicalCertificate in HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean. It contains exactly one sorry.
+The other sorry declarations belong to parallel Jules sessions.
+
+Audited mathematical route and local API hints:
+Reuse the construction and proof of fracComputable_hasCertificate in FracAtomBridge.lean. Its denominators are fracDenominator φ with slope ρ_i*(α-1); hρ and hα imply all slopes have one weak common sign, with the only non-strict case α=1. Package the same Certificate, establish WeaklyOriented for every denominator by cases α≤1/1≤α, and invoke strictify_weak_certificate without changing topology or budget. Handle H=0 exactly as the relaxed bridge does.
+
+Rules:
+1. Preserve every existing statement exactly and remove only the target sorry.
+   You may add honest fully proved private helpers immediately above it.
+2. Do not edit another existing declaration. Do not weaken hypotheses or the
+   conclusion. Do not rename canonical POIC2 back to the relaxed invariant.
+3. Forbidden: sorry in a claimed completed target, admit, axiom, unsafe,
+   native_decide, set_option maxHeartbeats, and set_option maxRecDepth.
+4. Inspect all neighbouring declarations and reuse repository/mathlib lemmas.
+   Exact public statements of parallel targets may be used as dependencies.
+5. Run `lake -Kjobs=1 build HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean` or the corresponding module.
+   Warnings about other assigned sorries are expected.
+6. If the complete proof is out of reach, keep the target sorry and commit
+   only useful fully proved helpers. If the statement is false, add a precise
+   BLOCKER_fracComputable_hasCanonicalCertificate.md instead of changing the theorem.
+
+In the final report say whether the target is completely sorry-free and list
+all changed files.
+URL: https://jules.google.com/session/13948666120267400215

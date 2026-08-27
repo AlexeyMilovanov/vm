@@ -7,6 +7,7 @@ import HeadComplexity.Separations.Forster
 import HeadComplexity.Separations.DistanceThreshold
 import HeadComplexity.Separations.Tensor
 import HeadComplexity.Separations.NDISJ
+import HeadComplexity.Separations.EightBitHammingThreshold
 
 set_option linter.style.header false
 

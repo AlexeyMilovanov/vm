@@ -1,0 +1,2 @@
+VERDICT: ACCEPT
+The patch honestly and accurately implements the intended strategy described in item CPOIC.3. It successfully extracts `H` and `computableWithHeadsN` from `HeadComplexity.exists_computable`, uses `computableWithHeadsN_iff_fracComputable` to do the conversion, and supplies the result to `fracComputable_hasCanonicalCertificate` to complete the proof. It does not alter the target statement, nor does it introduce any vacuous or irrelevant helper lemmas.

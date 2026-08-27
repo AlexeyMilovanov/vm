@@ -1,0 +1,31 @@
+Session is created.
+ID: 962126206747658445
+Task: Prove exactly one Lean 4.31 declaration in AlexeyMilovanov/vm.
+
+Base commit: 2697881ce5ccdc8b6bb6d145d1f0ae8f0f189de9 on main. First check git rev-parse HEAD. If it differs,
+reply exactly BASE_COMMIT_MISMATCH and stop.
+
+Target: bank_le_powerBlock_groupCount in HeadComplexity/TypicalLogCloseness/Bank.lean. It contains exactly one sorry.
+The other sorry declarations belong to parallel Jules sessions.
+
+Audited mathematical route and local API hints:
+Construct HasSpanningBank n (powerBlockLocalization n hn).groupCount from the existing power-block denominators and localization inverse. This is the uniform-in-v strengthening of the existing per-function Headline proof: keep the poles fixed, let interpolation numerators depend linearly on the arbitrary table v, and package StrictAdmissible using the established PositiveCoefficients/strict legality lemmas.
+
+Rules:
+1. Preserve every existing statement exactly and remove only the target sorry.
+   You may add honest fully proved private helpers immediately above it.
+2. Do not edit another existing declaration. Do not weaken hypotheses or the
+   conclusion. Do not rename canonical POIC2 back to the relaxed invariant.
+3. Forbidden: sorry in a claimed completed target, admit, axiom, unsafe,
+   native_decide, set_option maxHeartbeats, and set_option maxRecDepth.
+4. Inspect all neighbouring declarations and reuse repository/mathlib lemmas.
+   Exact public statements of parallel targets may be used as dependencies.
+5. Run `lake -Kjobs=1 build HeadComplexity/TypicalLogCloseness/Bank.lean` or the corresponding module.
+   Warnings about other assigned sorries are expected.
+6. If the complete proof is out of reach, keep the target sorry and commit
+   only useful fully proved helpers. If the statement is false, add a precise
+   BLOCKER_bank_le_powerBlock_groupCount.md instead of changing the theorem.
+
+In the final report say whether the target is completely sorry-free and list
+all changed files.
+URL: https://jules.google.com/session/962126206747658445

@@ -3,7 +3,7 @@ import HeadComplexity.TypicalLogCloseness.AffineForm
 set_option linter.style.header false
 
 /-!
-# Canonical POIC₂ certificates
+# Relaxed POIC₂ certificates
 
 The representation is a sum of affine numerators divided by products of one
 or two members of a shared strictly-positive affine denominator pool.  There
@@ -70,7 +70,7 @@ theorem eval_ne_zero_of_represents {C : Certificate n T} {f : BoolFn n}
 
 end Certificate
 
-/-- A truth table is constant.  Constants have canonical POIC₂ cost zero. -/
+/-- A truth table is constant.  Constants have relaxed POIC₂ cost zero. -/
 def IsConstant (f : BoolFn n) : Prop := ∃ b, ∀ x, f x = b
 
 /-- Existence of a certificate of cost at most `Q`, including the constant layer. -/
@@ -84,34 +84,34 @@ theorem HasCertificate.mono {Q R : ℕ} (hQR : Q ≤ R) {f : BoolFn n}
   · exact Or.inl hc
   · exact Or.inr ⟨T, C, hT.trans hQR, hC⟩
 
-/-- Canonical no-bias POIC₂ complexity.  The fallback branch disappears once
+/-- Relaxed no-bias POIC₂ complexity.  The fallback branch disappears once
 the bridge from the already-total H* normal form has been established. -/
-noncomputable def POIC2 (n : ℕ) (f : BoolFn n) : ℕ := by
+noncomputable def RelaxedPOIC2 (n : ℕ) (f : BoolFn n) : ℕ := by
   classical
   exact if h : ∃ Q, HasCertificate n Q f then Nat.find h else 0
 
-theorem hasCertificate_at_POIC2 {f : BoolFn n}
-    (hex : ∃ Q, HasCertificate n Q f) : HasCertificate n (POIC2 n f) f := by
+theorem hasCertificate_at_relaxedPOIC2 {f : BoolFn n}
+    (hex : ∃ Q, HasCertificate n Q f) : HasCertificate n (RelaxedPOIC2 n f) f := by
   classical
-  simp only [POIC2, dif_pos hex]
+  simp only [RelaxedPOIC2, dif_pos hex]
   exact Nat.find_spec hex
 
-theorem POIC2_le_of_hasCertificate {Q : ℕ} {f : BoolFn n}
-    (h : HasCertificate n Q f) : POIC2 n f ≤ Q := by
+theorem relaxedPOIC2_le_of_hasCertificate {Q : ℕ} {f : BoolFn n}
+    (h : HasCertificate n Q f) : RelaxedPOIC2 n f ≤ Q := by
   classical
-  unfold POIC2
+  unfold RelaxedPOIC2
   split_ifs with hex
   · exact Nat.find_min' hex h
   · exact Nat.zero_le _
 
-theorem hasCertificate_of_POIC2_le {Q : ℕ} {f : BoolFn n}
-    (hex : ∃ R, HasCertificate n R f) (hQ : POIC2 n f ≤ Q) :
+theorem hasCertificate_of_relaxedPOIC2_le {Q : ℕ} {f : BoolFn n}
+    (hex : ∃ R, HasCertificate n R f) (hQ : RelaxedPOIC2 n f ≤ Q) :
     HasCertificate n Q f :=
-  (hasCertificate_at_POIC2 hex).mono hQ
+  (hasCertificate_at_relaxedPOIC2 hex).mono hQ
 
-theorem POIC2_eq_zero_of_constant {f : BoolFn n} (hf : IsConstant f) :
-    POIC2 n f = 0 := by
+theorem relaxedPOIC2_eq_zero_of_constant {f : BoolFn n} (hf : IsConstant f) :
+    RelaxedPOIC2 n f = 0 := by
   apply Nat.eq_zero_of_le_zero
-  exact POIC2_le_of_hasCertificate (Q := 0) (Or.inl hf)
+  exact relaxedPOIC2_le_of_hasCertificate (Q := 0) (Or.inl hf)
 
 end HeadComplexity.TypicalLogCloseness
