@@ -171,6 +171,87 @@ private theorem checkerboard_second_diff_term (u u' v v' : Fin 4 → Bool) (i j 
     (boolToReal (u' i) - boolToReal (u i)) * (boolToReal (v' j) - boolToReal (v j)) := by
   ring
 
+private noncomputable def bilinear4 (K : Matrix (Fin 4) (Fin 4) ℝ)
+    (u v : Fin 4 → ℝ) : ℝ :=
+  ∑ i, ∑ j, u i * K i j * v j
+
+private def bitDiff4 (x₀ x₁ : Fin 4 → Bool) : Fin 4 → ℝ :=
+  fun i => boolToReal (x₀ i) - boolToReal (x₁ i)
+
+/-- Degree-two checkerboard differences retain exactly the mixed block. -/
+private theorem quadratic_checkerboard_difference
+    (P : MvPolynomial (Fin 8) ℝ) (hdeg : P.totalDegree ≤ 2)
+    (x₀ x₁ y₀ y₁ : Fin 4 → Bool) :
+    eval (cubePoint (blockJoin x₀ y₀)) P -
+        eval (cubePoint (blockJoin x₀ y₁)) P -
+        eval (cubePoint (blockJoin x₁ y₀)) P +
+        eval (cubePoint (blockJoin x₁ y₁)) P =
+      bilinear4 (mixedMatrix4 P) (bitDiff4 x₀ x₁) (bitDiff4 y₀ y₁) := by
+  sorry
+
+/-- A simultaneous signed coordinate permutation. The Boolean action
+complements flipped coordinates on both blocks, so it preserves Hamming
+distance. -/
+private structure SignedPerm4 where
+  perm : Equiv.Perm (Fin 4)
+  flip : Fin 4 → Bool
+
+private def SignedPerm4.act (T : SignedPerm4) (z : Fin 4 → ℝ) : Fin 4 → ℝ :=
+  fun i => if T.flip i then -z (T.perm i) else z (T.perm i)
+
+private def prefix1 : Fin 4 → ℝ := ![1, 0, 0, 0]
+private def prefix2 : Fin 4 → ℝ := ![1, 1, 0, 0]
+private def prefix3 : Fin 4 → ℝ := ![1, 1, 1, 0]
+private def prefix4 : Fin 4 → ℝ := ![1, 1, 1, 1]
+private def q2 : Fin 4 → ℝ := ![1, 0, 1, 1]
+private def q3 : Fin 4 → ℝ := ![1, 1, 0, 1]
+private def r2 : Fin 4 → ℝ := ![1, 1, 0, 0]
+private def r3 : Fin 4 → ℝ := ![1, 0, 1, 0]
+private def r4 : Fin 4 → ℝ := ![1, 0, 0, 1]
+
+/-- The signed-permutation closure of the finite curvature certificate used
+in paper Lemma 2. The only uncontrolled prefix cross term is `(p₁,p₄)`;
+the `q` and `r` fields control it in the two possible coefficient orders. -/
+private structure F8CurvatureCertificate
+    (S : Matrix (Fin 4) (Fin 4) ℝ) : Prop where
+  p1p1 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix1) (T.act prefix1) < 0
+  p2p2 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix2) (T.act prefix2) < 0
+  p3p3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix3) (T.act prefix3) < 0
+  p4p4 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix4) (T.act prefix4) < 0
+  p1p2 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix1) (T.act prefix2) < 0
+  p1p3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix1) (T.act prefix3) < 0
+  p2p3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix2) (T.act prefix3) < 0
+  p2p4 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix2) (T.act prefix4) < 0
+  p3p4 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix3) (T.act prefix4) < 0
+  p1q2 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix1) (T.act q2) < 0
+  p1q3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix1) (T.act q3) < 0
+  p4r2 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix4) (T.act r2) < 0
+  p4r3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix4) (T.act r3) < 0
+  p4r4 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix4) (T.act r4) < 0
+
+/-- The fourteen exact checkerboards, transported by simultaneous signed
+coordinate permutations, yield the abstract curvature certificate. -/
+private theorem f8_has_curvatureCertificate
+    (P : MvPolynomial (Fin 8) ℝ)
+    (hdeg : P.totalDegree ≤ 2)
+    (hrep : SignRepresents P f8) :
+    F8CurvatureCertificate (symmetricPart4 (mixedMatrix4 P)) := by
+  sorry
+
+private theorem symmetricPart4_isSymm (K : Matrix (Fin 4) (Fin 4) ℝ) :
+    (symmetricPart4 K).IsSymm := by
+  ext i j
+  simp [symmetricPart4, Matrix.transpose_apply]
+  ring
+
+/-- The real-algebraic half of paper Lemma 2: the finite certificate covers
+every cone of vectors after sorting absolute coordinates. -/
+private theorem curvatureCertificate_negative
+    (S : Matrix (Fin 4) (Fin 4) ℝ) (hsymm : S.IsSymm)
+    (hcert : F8CurvatureCertificate S) :
+    NegativeDefinite4 S := by
+  sorry
+
 /-- Paper Lemma 2: every quadratic sign representation of `f8` has strictly
 negative symmetric mixed curvature. -/
 theorem f8_quadratic_mixed_negative
@@ -178,7 +259,9 @@ theorem f8_quadratic_mixed_negative
     (hdeg : P.totalDegree ≤ 2)
     (hrep : SignRepresents P f8) :
     NegativeDefinite4 (symmetricPart4 (mixedMatrix4 P)) := by
-  sorry
+  exact curvatureCertificate_negative _
+    (symmetricPart4_isSymm (mixedMatrix4 P))
+    (f8_has_curvatureCertificate P hdeg hrep)
 
 /-- The normalized pointwise system forced by a hypothetical two-head score. -/
 structure F8NormalizedSystem where
