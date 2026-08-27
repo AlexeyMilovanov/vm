@@ -823,8 +823,12 @@ def jules_phase(ready, base_sha, iter_dir: Path):
             shutil.copy2(pfile, ROOT / "hints" / f"{entry['name']}.diff")
             partial.append(entry["name"])
             return
-        aok, why = full_audit(WORK)
         closed = target_closed(WORK, entry)
+        if closed:
+            aok, why = full_audit(WORK)
+        else:
+            aok = False
+            why = "target remains open"
         acc = False
         if aok and closed:
             acc, verdict = semantic_review(entry, pfile, jdir)

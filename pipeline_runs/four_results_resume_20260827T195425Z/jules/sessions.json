@@ -1,0 +1,23 @@
+{
+  "7266139988277857388": "strictify_weak_certificate",
+  "13948666120267400215": "fracComputable_hasCanonicalCertificate",
+  "1504527850316817648": "theorem026_exists_hard_function",
+  "5348126645873124541": "exists_spanningBank",
+  "11441755629850234489": "HStar_le_Bank",
+  "7291810092762851663": "spanningBank_dimension_bound",
+  "11382233168488323259": "bank_lower_bound",
+  "962126206747658445": "bank_le_powerBlock_groupCount",
+  "10106300838517490700": "bank_pow_two",
+  "2310177770716421987": "bank_one",
+  "14392093731370065679": "f8_thresholdDegLE_two",
+  "16184434450946973891": "f8_not_thresholdDegLE_one",
+  "12076732890131890736": "thresholdDeg_f8",
+  "9768103875898784692": "f8_quadratic_mixed_negative",
+  "8573605811680194906": "columnMax_spectral_inequality",
+  "7633147597132941644": "two_heads_yield_f8NormalizedSystem",
+  "1085648981445532012": "not_nonempty_f8NormalizedSystem",
+  "9622735369883011185": "f8_denominators_admissible",
+  "1641719497960859265": "f8_integer_certificate_margin",
+  "15717658387544662388": "f8_computableWithHeadsN_three",
+  "4633528630495900528": "HStar_f8"
+}

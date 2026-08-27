@@ -41,3 +41,76 @@
 [2026-08-27T18:25:54Z] jules submitted HStar_f8 session=4633528630495900528
 [2026-08-27T18:37:15Z] jules POIC2_le_HStar: plan approved (http 200)
 [2026-08-27T18:54:46Z] review exists_hasCanonicalCertificate: audit=ok closed=yes semantic=ACCEPT
+[2026-08-27T19:35:28Z] resuming first Jules wave: 23 open targets
+[2026-08-27T19:35:28Z] jules submitted strictify_weak_certificate session=7266139988277857388
+[2026-08-27T19:35:33Z] jules submitted fracComputable_hasCanonicalCertificate session=13948666120267400215
+[2026-08-27T19:35:38Z] jules submitted exists_hasCanonicalCertificate session=5558260025236136646
+[2026-08-27T19:35:43Z] jules submitted POIC2_le_HStar session=9000621457354563652
+[2026-08-27T19:35:48Z] jules submitted theorem026_exists_hard_function session=1504527850316817648
+[2026-08-27T19:37:18Z] resuming first Jules wave: 21 open targets
+[2026-08-27T19:37:18Z] jules submitted strictify_weak_certificate session=7266139988277857388
+[2026-08-27T19:37:23Z] jules submitted fracComputable_hasCanonicalCertificate session=13948666120267400215
+[2026-08-27T19:37:28Z] jules submitted theorem026_exists_hard_function session=1504527850316817648
+[2026-08-27T19:37:33Z] jules submitted exists_spanningBank session=5348126645873124541
+[2026-08-27T19:37:38Z] jules submitted HStar_le_Bank session=11441755629850234489
+[2026-08-27T19:37:43Z] jules submitted spanningBank_dimension_bound session=7291810092762851663
+[2026-08-27T19:37:48Z] jules submitted bank_lower_bound session=11382233168488323259
+[2026-08-27T19:37:53Z] jules submitted bank_le_powerBlock_groupCount session=962126206747658445
+[2026-08-27T19:37:58Z] jules submitted bank_pow_two session=10106300838517490700
+[2026-08-27T19:38:03Z] jules submitted bank_one session=2310177770716421987
+[2026-08-27T19:38:08Z] jules submitted f8_thresholdDegLE_two session=14392093731370065679
+[2026-08-27T19:38:13Z] jules submitted f8_not_thresholdDegLE_one session=16184434450946973891
+[2026-08-27T19:38:18Z] jules submitted thresholdDeg_f8 session=12076732890131890736
+[2026-08-27T19:38:23Z] jules submitted f8_quadratic_mixed_negative session=9768103875898784692
+[2026-08-27T19:38:28Z] jules submitted columnMax_spectral_inequality session=8573605811680194906
+[2026-08-27T19:38:33Z] jules submitted two_heads_yield_f8NormalizedSystem session=7633147597132941644
+[2026-08-27T19:38:38Z] jules submitted not_nonempty_f8NormalizedSystem session=1085648981445532012
+[2026-08-27T19:38:43Z] jules submitted f8_denominators_admissible session=9622735369883011185
+[2026-08-27T19:38:48Z] jules submitted f8_integer_certificate_margin session=1641719497960859265
+[2026-08-27T19:38:53Z] jules submitted f8_computableWithHeadsN_three session=15717658387544662388
+[2026-08-27T19:38:58Z] jules submitted HStar_f8 session=4633528630495900528
+[2026-08-27T19:47:31Z] resuming first Jules wave: 21 open targets
+[2026-08-27T19:47:31Z] jules submitted strictify_weak_certificate session=7266139988277857388
+[2026-08-27T19:47:36Z] jules submitted fracComputable_hasCanonicalCertificate session=13948666120267400215
+[2026-08-27T19:47:41Z] jules submitted theorem026_exists_hard_function session=1504527850316817648
+[2026-08-27T19:47:46Z] jules submitted exists_spanningBank session=5348126645873124541
+[2026-08-27T19:47:51Z] jules submitted HStar_le_Bank session=11441755629850234489
+[2026-08-27T19:47:56Z] jules submitted spanningBank_dimension_bound session=7291810092762851663
+[2026-08-27T19:48:01Z] jules submitted bank_lower_bound session=11382233168488323259
+[2026-08-27T19:48:06Z] jules submitted bank_le_powerBlock_groupCount session=962126206747658445
+[2026-08-27T19:48:11Z] jules submitted bank_pow_two session=10106300838517490700
+[2026-08-27T19:48:16Z] jules submitted bank_one session=2310177770716421987
+[2026-08-27T19:48:21Z] jules submitted f8_thresholdDegLE_two session=14392093731370065679
+[2026-08-27T19:48:26Z] jules submitted f8_not_thresholdDegLE_one session=16184434450946973891
+[2026-08-27T19:48:31Z] jules submitted thresholdDeg_f8 session=12076732890131890736
+[2026-08-27T19:48:36Z] jules submitted f8_quadratic_mixed_negative session=9768103875898784692
+[2026-08-27T19:48:41Z] jules submitted columnMax_spectral_inequality session=8573605811680194906
+[2026-08-27T19:48:46Z] jules submitted two_heads_yield_f8NormalizedSystem session=7633147597132941644
+[2026-08-27T19:48:51Z] jules submitted not_nonempty_f8NormalizedSystem session=1085648981445532012
+[2026-08-27T19:48:56Z] jules submitted f8_denominators_admissible session=9622735369883011185
+[2026-08-27T19:49:01Z] jules submitted f8_integer_certificate_margin session=1641719497960859265
+[2026-08-27T19:49:06Z] jules submitted f8_computableWithHeadsN_three session=15717658387544662388
+[2026-08-27T19:49:11Z] jules submitted HStar_f8 session=4633528630495900528
+[2026-08-27T19:54:25Z] resuming first Jules wave: 21 open targets
+[2026-08-27T19:54:25Z] jules submitted strictify_weak_certificate session=7266139988277857388
+[2026-08-27T19:54:30Z] jules submitted fracComputable_hasCanonicalCertificate session=13948666120267400215
+[2026-08-27T19:54:35Z] jules submitted theorem026_exists_hard_function session=1504527850316817648
+[2026-08-27T19:54:40Z] jules submitted exists_spanningBank session=5348126645873124541
+[2026-08-27T19:54:45Z] jules submitted HStar_le_Bank session=11441755629850234489
+[2026-08-27T19:54:50Z] jules submitted spanningBank_dimension_bound session=7291810092762851663
+[2026-08-27T19:54:55Z] jules submitted bank_lower_bound session=11382233168488323259
+[2026-08-27T19:55:00Z] jules submitted bank_le_powerBlock_groupCount session=962126206747658445
+[2026-08-27T19:55:05Z] jules submitted bank_pow_two session=10106300838517490700
+[2026-08-27T19:55:10Z] jules submitted bank_one session=2310177770716421987
+[2026-08-27T19:55:15Z] jules submitted f8_thresholdDegLE_two session=14392093731370065679
+[2026-08-27T19:55:20Z] jules submitted f8_not_thresholdDegLE_one session=16184434450946973891
+[2026-08-27T19:55:25Z] jules submitted thresholdDeg_f8 session=12076732890131890736
+[2026-08-27T19:55:30Z] jules submitted f8_quadratic_mixed_negative session=9768103875898784692
+[2026-08-27T19:55:35Z] jules submitted columnMax_spectral_inequality session=8573605811680194906
+[2026-08-27T19:55:40Z] jules submitted two_heads_yield_f8NormalizedSystem session=7633147597132941644
+[2026-08-27T19:55:45Z] jules submitted not_nonempty_f8NormalizedSystem session=1085648981445532012
+[2026-08-27T19:55:50Z] jules submitted f8_denominators_admissible session=9622735369883011185
+[2026-08-27T19:55:55Z] jules submitted f8_integer_certificate_margin session=1641719497960859265
+[2026-08-27T19:56:00Z] jules submitted f8_computableWithHeadsN_three session=15717658387544662388
+[2026-08-27T19:56:05Z] jules submitted HStar_f8 session=4633528630495900528
+[2026-08-27T19:56:16Z] review strictify_weak_certificate: audit=False closed=False

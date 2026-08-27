@@ -1,0 +1,146 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean b/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean
+index 8f3b8d7..e85a7d4 100644
+--- a/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean
++++ b/HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean
+@@ -65,13 +65,140 @@ theorem strictify_weak_certificate {T : Topology} (C : Certificate n T)
+     ∃ C' : CanonicalCertificate n T, C'.Represents f := by
+   sorry
+ 
++private theorem fracDenominator_weaklyOriented (φ : HeadComplexity.FracAtom n) :
++    (fracDenominator φ).WeaklyOriented := by
++  by_cases hα : φ.α ≤ 1
++  · right
++    intro i
++    dsimp [fracDenominator]
++    have h1 : φ.α - 1 ≤ 0 := sub_nonpos.mpr hα
++    have h2 : 0 < φ.ρ i := φ.hρ i
++    nlinarith
++  · left
++    intro i
++    dsimp [fracDenominator]
++    have h1 : 0 ≤ φ.α - 1 := sub_nonneg.mpr (le_of_not_ge hα)
++    have h2 : 0 < φ.ρ i := φ.hρ i
++    positivity
++
++/-- Every H* representation gives a canonical singleton-incidence
++certificate at the same budget. This includes strictification of native atoms
++whose temperature is one. -/
++private theorem exists_uniform_strict_margin
++    (p : Cube n → Prop) (a : Cube n → ℝ)
++    (ha : ∀ x, p x → 0 < a x) :
++    ∃ ε : ℝ, 0 < ε ∧ ∀ x, p x → ε < a x := by
++  classical
++  let S : Finset ℝ := (Finset.univ.filter p).image a
++  by_cases hS : S.Nonempty
++  · let m := S.min' hS
++    have hm : 0 < m := by
++      rw [Finset.lt_min'_iff]
++      intro y hy
++      rcases Finset.mem_image.mp hy with ⟨x, hx, rfl⟩
++      exact ha x (Finset.mem_filter.mp hx).2
++    refine ⟨m / 2, by positivity, ?_⟩
++    intro x hpx
++    have hmem : a x ∈ S := by
++      exact Finset.mem_image.mpr
++        ⟨x, Finset.mem_filter.mpr ⟨Finset.mem_univ x, hpx⟩, rfl⟩
++    have hmin : m ≤ a x := Finset.min'_le S (a x) hmem
++    linarith
++  · refine ⟨1, zero_lt_one, ?_⟩
++    intro x hpx
++    exfalso
++    apply hS
++    refine ⟨a x, ?_⟩
++    exact Finset.mem_image.mpr
++      ⟨x, Finset.mem_filter.mpr ⟨Finset.mem_univ x, hpx⟩, rfl⟩
++
+ /-- Every H* representation gives a canonical singleton-incidence
+ certificate at the same budget. This includes strictification of native atoms
+ whose temperature is one. -/
+ theorem fracComputable_hasCanonicalCertificate {H : ℕ} {f : BoolFn n}
+     (h : HeadComplexity.fracComputable n H f) :
+     HasCanonicalCertificate n H f := by
+-  sorry
++  classical
++  rcases h with ⟨φ, c, hrep⟩
++  by_cases hH : H = 0
++  · subst H
++    left
++    by_cases hc : 0 < c
++    · refine ⟨true, fun x => ?_⟩
++      apply (hrep x).mp
++      simpa using hc
++    · refine ⟨false, fun x => ?_⟩
++      cases hx : f x
++      · rfl
++      · exfalso
++        apply hc
++        have hs := (hrep x).mpr hx
++        simpa using hs
++  · have hHpos : 0 < H := Nat.pos_of_ne_zero hH
++    let i0 : Fin H := ⟨0, hHpos⟩
++    let score : Cube n → ℝ := fun x => c + ∑ t, (φ t).eval x
++    have hscore : ∀ x, f x = true → 0 < score x := by
++      intro x hx
++      exact (hrep x).mpr hx
++    obtain ⟨ε, hε, hmargin⟩ :=
++      exists_uniform_strict_margin (fun x => f x = true) score hscore
++    let shiftedBias : ℝ := c - ε
++    let T : Topology := {
++      denominatorCount := H
++      termCount := H
++      incidence t := {
++        denoms := {t}
++        nonempty := Finset.singleton_nonempty t
++        card_le_two := by simp
++      }
++    }
++    let C : Certificate n T := {
++      denominators t := fracDenominator (φ t)
++      numerators t :=
++        (fracNumerator (φ t)).add
++          ((fracDenominator (φ t)).smul
++            (if t = i0 then shiftedBias else 0))
++      legal t := fracDenominator_strictLegal (φ t)
++    }
++    have hEval : ∀ x, C.eval x = score x - ε := by
++      intro x
++      have hquot : ∀ t,
++          (C.numerators t).eval x / C.termDenominator t x =
++            (φ t).eval x + (if t = i0 then shiftedBias else 0) := by
++        intro t
++        have hden :
++            C.termDenominator t x = (fracDenominator (φ t)).eval x := by
++          simp [Certificate.termDenominator, C, T]
++        rw [hden]
++        simp only [C, AffineForm.eval_add, AffineForm.eval_smul,
++          fracAtom_eval_eq_affine]
++        have hnz := (fracDenominator_strictLegal (φ t) x).ne'
++        field_simp
++      unfold Certificate.eval
++      rw [Finset.sum_congr rfl (fun t _ => hquot t)]
++      rw [Finset.sum_add_distrib]
++      simp [score, shiftedBias, i0]
++      ring
++    have hC : C.Represents f := by
++      intro x
++      constructor
++      · intro hx
++        rw [hEval]
++        exact sub_pos.mpr (hmargin x hx)
++      · intro hx
++        rw [hEval]
++        have hnonpos : score x ≤ 0 := by
++          apply le_of_not_gt
++          intro hpos
++          have htrue : f x = true := (hrep x).mp hpos
++          simp [hx] at htrue
++        linarith
++    have hweak : ∀ j, (C.denominators j).WeaklyOriented := fun j =>
++      fracDenominator_weaklyOriented (φ j)
++    obtain ⟨C', hC'⟩ := strictify_weak_certificate C hweak hC
++    right
++    refine ⟨T, C', ?_, hC'⟩
++    simp [T, Topology.score]
+ 
+ /-- Totality of canonical POIC₂. -/
+ theorem exists_hasCanonicalCertificate (f : BoolFn n) :
