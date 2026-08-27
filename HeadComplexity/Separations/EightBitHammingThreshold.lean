@@ -1,5 +1,7 @@
 import HeadComplexity.Separations.DistanceThreshold
 import HeadComplexity.TypicalLogCloseness.FracAtomBridge
+import HeadComplexity.Atoms.TwoHeadClearing
+import HeadComplexity.Separations.SignRankBridge
 
 set_option linter.style.header false
 
@@ -160,6 +162,15 @@ def PositiveIndexAtLeastTwo4 (M : Matrix (Fin 4) (Fin 4) ℝ) : Prop :=
 def InertiaTwoTwo4 (M : Matrix (Fin 4) (Fin 4) ℝ) : Prop :=
   M.IsSymm ∧ PositiveIndexAtLeastTwo4 M ∧ PositiveIndexAtLeastTwo4 (-M)
 
+open MvPolynomial
+
+/-- 4-point checkerboard second difference helper: mixed term evaluation identity. -/
+private theorem checkerboard_second_diff_term (u u' v v' : Fin 4 → Bool) (i j : Fin 4) :
+    boolToReal (u' i) * boolToReal (v' j) - boolToReal (u' i) * boolToReal (v j) -
+      boolToReal (u i) * boolToReal (v' j) + boolToReal (u i) * boolToReal (v j) =
+    (boolToReal (u' i) - boolToReal (u i)) * (boolToReal (v' j) - boolToReal (v j)) := by
+  ring
+
 /-- Paper Lemma 2: every quadratic sign representation of `f8` has strictly
 negative symmetric mixed curvature. -/
 theorem f8_quadratic_mixed_negative
@@ -211,12 +222,122 @@ theorem columnMax_spectral_inequality
       0 < Matrix.trace M + 2 * ∑ j, M (pick j) j := by
   sorry
 
+
+/-- Denominator clearing polynomial for two linear-fractional atoms. -/
+private noncomputable def clearedTwoAtomPoly
+    (φ : Fin 2 → FracAtom 8) (c : ℝ) :
+    MvPolynomial (Fin 8) ℝ :=
+  (C c * (φ 0).denPoly + (φ 0).numPoly) * (φ 1).denPoly +
+    (φ 1).numPoly * (φ 0).denPoly
+
+private theorem eval_clearedTwoAtomPoly
+    (φ : Fin 2 → FracAtom 8) (c : ℝ) (x : Fin 8 → Bool) :
+    eval (cubePoint x) (clearedTwoAtomPoly φ c) =
+      eval (cubePoint x) (φ 0).denPoly * eval (cubePoint x) (φ 1).denPoly *
+        (c + (φ 0).eval x + (φ 1).eval x) := by
+  unfold clearedTwoAtomPoly
+  rw [(φ 0).eval_eq_numPoly_div_denPoly, (φ 1).eval_eq_numPoly_div_denPoly]
+  simp only [map_add, map_mul, eval_C]
+  generalize hd0 : eval (cubePoint x) (φ 0).denPoly = d0
+  generalize hd1 : eval (cubePoint x) (φ 1).denPoly = d1
+  generalize eval (cubePoint x) (φ 0).numPoly = n0
+  generalize eval (cubePoint x) (φ 1).numPoly = n1
+  have h0 : d0 ≠ 0 := by
+    rw [← hd0]
+    exact ((φ 0).denPoly_pos x).ne'
+  have h1 : d1 ≠ 0 := by
+    rw [← hd1]
+    exact ((φ 1).denPoly_pos x).ne'
+  have h0_eq : n0 / d0 * d0 = n0 := div_mul_cancel₀ n0 h0
+  have h1_eq : n1 / d1 * d1 = n1 := div_mul_cancel₀ n1 h1
+  calc
+    (c * d0 + n0) * d1 + n1 * d0 =
+        d0 * d1 * c + (n0 / d0 * d0) * d1 +
+          (n1 / d1 * d1) * d0 := by
+      rw [h0_eq, h1_eq]
+      ring
+    _ = d0 * d1 * (c + n0 / d0 + n1 / d1) := by ring
+
+private theorem clearedTwoAtomPoly_totalDegree_le
+    (φ : Fin 2 → FracAtom 8) (c : ℝ) :
+    (clearedTwoAtomPoly φ c).totalDegree ≤ 2 := by
+  unfold clearedTwoAtomPoly
+  have hC : (C c : MvPolynomial (Fin 8) ℝ).totalDegree ≤ 0 :=
+    (totalDegree_C c).le
+  have hL0 :
+      (C c * (φ 0).denPoly + (φ 0).numPoly).totalDegree ≤ 1 := by
+    refine (totalDegree_add _ _).trans
+      (max_le ?_ (φ 0).numPoly_totalDegree_le)
+    refine (totalDegree_mul _ _).trans ?_
+    have h0 := (φ 0).denPoly_totalDegree_le
+    omega
+  refine (totalDegree_add _ _).trans (max_le ?_ ?_)
+  · refine (totalDegree_mul _ _).trans ?_
+    have h1 := (φ 1).denPoly_totalDegree_le
+    omega
+  · refine (totalDegree_mul _ _).trans ?_
+    have h0 := (φ 0).denPoly_totalDegree_le
+    have h1 := (φ 1).numPoly_totalDegree_le
+    omega
+
+private theorem clearedTwoAtomPoly_signRepresents
+    (φ : Fin 2 → FracAtom 8) (c : ℝ)
+    (hsign : ∀ x : Fin 8 → Bool,
+      0 < c + ∑ h : Fin 2, (φ h).eval x ↔ f8 x = true) :
+    SignRepresents (clearedTwoAtomPoly φ c) f8 := by
+  intro x
+  rw [eval_clearedTwoAtomPoly]
+  have hd0 : 0 < eval (cubePoint x) (φ 0).denPoly :=
+    (φ 0).denPoly_pos x
+  have hd1 : 0 < eval (cubePoint x) (φ 1).denPoly :=
+    (φ 1).denPoly_pos x
+  have hpos :
+      0 < eval (cubePoint x) (φ 0).denPoly *
+        eval (cubePoint x) (φ 1).denPoly := mul_pos hd0 hd1
+  have hiff :
+      0 < c + (φ 0).eval x + (φ 1).eval x ↔ f8 x = true := by
+    have hx := hsign x
+    rw [Fin.sum_univ_two] at hx
+    rw [← add_assoc] at hx
+    exact hx
+  rw [mul_pos_iff_of_pos_left hpos]
+  exact hiff
+
+private theorem clearedTwoAtomPoly_mixed_negative
+    (φ : Fin 2 → FracAtom 8) (c : ℝ)
+    (hsign : ∀ x : Fin 8 → Bool,
+      0 < c + ∑ h : Fin 2, (φ h).eval x ↔ f8 x = true) :
+    NegativeDefinite4
+      (symmetricPart4 (mixedMatrix4 (toMultilinear (clearedTwoAtomPoly φ c)))) := by
+  have hdeg : (toMultilinear (clearedTwoAtomPoly φ c)).totalDegree ≤ 2 :=
+    (totalDegree_toMultilinear _).trans
+      (clearedTwoAtomPoly_totalDegree_le φ c)
+  have hrep :
+      SignRepresents (toMultilinear (clearedTwoAtomPoly φ c)) f8 := by
+    intro x
+    rw [eval_toMultilinear]
+    exact clearedTwoAtomPoly_signRepresents φ c hsign x
+  exact f8_quadratic_mixed_negative
+    (toMultilinear (clearedTwoAtomPoly φ c)) hdeg hrep
 /-- Paper Lemmas 3 and 4: a two-head realization supplies the normalized
 system. -/
 theorem two_heads_yield_f8NormalizedSystem
     (h : computableWithHeadsN 8 2 f8) :
     Nonempty F8NormalizedSystem := by
+  have hfrac : fracComputable 8 2 f8 :=
+    (computableWithHeadsN_iff_fracComputable 2 f8).mp h
+  obtain ⟨φ, c, hsign⟩ := hfrac
+  have hneg := clearedTwoAtomPoly_mixed_negative φ c hsign
   sorry
+
+private theorem trace_plus_two_sum_eq_sum_univ
+    (M : Matrix (Fin 4) (Fin 4) ℝ)
+    (pick : Fin 4 → Fin 4) :
+    Matrix.trace M + 2 * ∑ j, M (pick j) j =
+      ∑ j, (M j j + 2 * M (pick j) j) := by
+  unfold Matrix.trace Matrix.diag
+  rw [mul_sum, ← sum_add_distrib]
+
 
 /-- Paper Lemma 6: the normalized system is impossible. -/
 theorem not_nonempty_f8NormalizedSystem :
