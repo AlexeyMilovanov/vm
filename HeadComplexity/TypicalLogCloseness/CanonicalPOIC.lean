@@ -204,7 +204,18 @@ noncomputable def perturbationEval {T : Topology} (C : Certificate n T)
 theorem continuousAt_perturbationEval_zero {T : Topology}
     (C : Certificate n T) (x : Cube n) :
     ContinuousAt (fun ε : ℝ => perturbationEval C ε x) 0 := by
-  sorry
+  unfold perturbationEval
+  apply tendsto_finsetSum
+  intro t _
+  refine tendsto_const_nhds.div ?_ ?_
+  · apply tendsto_finsetProd
+    intro j _
+    exact tendsto_const_nhds.add
+      (Filter.Tendsto.mul Filter.tendsto_id tendsto_const_nhds)
+  · simp only [zero_mul, add_zero]
+    apply Finset.prod_ne_zero_iff.mpr
+    intro j hj
+    exact (C.denominators j).eval_ne_zero (C.legal j) x
 
 /-- A finite family of continuous nonzero values keeps its sign at one common
 strictly positive parameter. -/
@@ -213,7 +224,21 @@ theorem exists_positive_parameter_preserving_sign
     (hcont : ∀ x, ContinuousAt (fun ε => g ε x) 0)
     (hne : ∀ x, g 0 x ≠ 0) :
     ∃ ε : ℝ, 0 < ε ∧ ∀ x, 0 < g ε x * g 0 x := by
-  sorry
+  have hevent :
+      ∀ᶠ ε in nhds (0 : ℝ), ∀ x, 0 < g ε x * g 0 x := by
+    rw [Filter.eventually_all]
+    intro x
+    have hc : ContinuousAt (fun ε => g ε x * g 0 x) 0 :=
+      (hcont x).mul continuousAt_const
+    have h0 : 0 < g 0 x * g 0 x := mul_self_pos.mpr (hne x)
+    exact hc.eventually (isOpen_Ioi.mem_nhds h0)
+  rw [Metric.eventually_nhds_iff] at hevent
+  obtain ⟨δ, hδ, hall⟩ := hevent
+  refine ⟨δ / 2, half_pos hδ, ?_⟩
+  intro x
+  apply hall
+  rw [Real.dist_0_eq_abs, abs_of_pos (half_pos hδ)]
+  linarith
 
 /-- Finite-cube closure lemma. A positive weakly oriented certificate can be
 perturbed, without changing its topology or truth-table signs, to an exact
