@@ -620,10 +620,48 @@ private theorem trace_plus_two_sum_eq_sum_univ
   rw [mul_sum, ← sum_add_distrib]
 
 
+/-- The algebraic part of paper Lemma 6. Once every null-vector coordinate is
+nonzero, rowwise contraction and the column-max spectral inequality contradict
+the strict intercept inequality. -/
+private theorem f8NormalizedSystem_false_of_mu_ne_zero
+    (sys : F8NormalizedSystem) (hμ : ∀ i, sys.μ i ≠ 0) : False := by
+  sorry
+
+/-- The perturbative part of paper Lemma 6. The null cone is smooth at `μ`
+because `V μ` is coordinatewise positive. Hence one can remove zero
+coordinates while preserving the four strict open conditions. -/
+private theorem exists_nonzero_null_perturbation
+    (sys : F8NormalizedSystem) :
+    ∃ ν : Fin 4 → ℝ,
+      (∀ i, ν i ≠ 0) ∧
+      (∀ i, 0 < (sys.U.transpose.mulVec ν) i) ∧
+      (∀ i, 0 < (sys.V.mulVec ν) i) ∧
+      quadraticForm4 sys.V ν = 0 ∧
+      (∑ i, (sys.U.transpose.mulVec ν) i) +
+        (∑ i, (sys.V.mulVec ν) i) < dotProduct ν sys.w := by
+  sorry
+
 /-- Paper Lemma 6: the normalized system is impossible. -/
 theorem not_nonempty_f8NormalizedSystem :
     ¬ Nonempty F8NormalizedSystem := by
-  sorry
+  rintro ⟨sys⟩
+  obtain ⟨ν, hν, hleft, hright, hnull, hintercept⟩ :=
+    exists_nonzero_null_perturbation sys
+  let perturbed : F8NormalizedSystem := {
+    U := sys.U
+    V := sys.V
+    w := sys.w
+    μ := ν
+    U_pos := sys.U_pos
+    V_inertia := sys.V_inertia
+    diagonal_pos := sys.diagonal_pos
+    contraction := sys.contraction
+    leftSlope_pos := hleft
+    rightSlope_pos := hright
+    null := hnull
+    intercept := hintercept
+  }
+  exact f8NormalizedSystem_false_of_mu_ne_zero perturbed hν
 
 theorem f8_not_computableWithHeadsN_two :
     ¬ computableWithHeadsN 8 2 f8 := by
