@@ -1,0 +1,179 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/Bank.lean b/HeadComplexity/TypicalLogCloseness/Bank.lean
+index 36b7225..aeb30ab 100644
+--- a/HeadComplexity/TypicalLogCloseness/Bank.lean
++++ b/HeadComplexity/TypicalLogCloseness/Bank.lean
+@@ -14,6 +14,7 @@ namespace HeadComplexity.TypicalLogCloseness
+ 
+ open Finset
+ open scoped BigOperators
++open Module
+ 
+ /-- A fixed denominator family spans every real table when the affine
+ numerators may depend on the target table. -/
+@@ -55,13 +56,165 @@ theorem HStar_le_Bank (f : BoolFn n) :
+     HeadComplexity.HStar n f ≤ Bank n := by
+   sorry
+ 
++private noncomputable def affineEvalLinearMap (n : ℕ) :
++    (ℝ × (Fin n → ℝ)) →ₗ[ℝ] (Cube n → ℝ) where
++  toFun := fun (c, l) x => c + ∑ i, l i * bitReal (x i)
++  map_add' := fun (c1, l1) (c2, l2) => by
++    ext x
++    simp only [Pi.add_apply, add_mul]
++    rw [Finset.sum_add_distrib]
++    ring
++  map_smul' := fun a (c, l) => by
++    ext x
++    simp only [Prod.smul_snd, Pi.smul_apply, RingHom.id_apply, smul_eq_mul]
++    rw [mul_add, Finset.mul_sum]
++    congr 1
++    apply Finset.sum_congr rfl
++    intro i _
++    ring
++
++private noncomputable def divByB (n : ℕ) (B : AffineForm n) :
++    (Cube n → ℝ) →ₗ[ℝ] (Cube n → ℝ) where
++  toFun := fun v x => v x / B.eval x
++  map_add' := fun v w => by ext x; simp only [Pi.add_apply, add_div]
++  map_smul' := fun a v => by
++    ext x
++    simp only [Pi.smul_apply, RingHom.id_apply, smul_eq_mul]
++    ring
++
++private noncomputable def headSpace (n : ℕ) (B : AffineForm n) : Submodule ℝ (Cube n → ℝ) :=
++  ((divByB n B).comp (affineEvalLinearMap n)).range
++
++private lemma finrank_affineEval (n : ℕ) : finrank ℝ (affineEvalLinearMap n).range ≤ n + 1 := by
++  have h := LinearMap.finrank_range_le (affineEvalLinearMap n)
++  rw [finrank_prod, finrank_self, finrank_pi, Fintype.card_fin] at h
++  omega
++
++private lemma finrank_headSpace (n : ℕ) (B : AffineForm n) :
++    finrank ℝ (headSpace n B) ≤ n + 1 := by
++  have h1 : headSpace n B = ((divByB n B).comp (affineEvalLinearMap n)).range := rfl
++  rw [h1, LinearMap.range_comp]
++  have h2 := Submodule.finrank_map_le (divByB n B) (affineEvalLinearMap n).range
++  have h3 := finrank_affineEval n
++  omega
++
++private lemma one_mem_headSpace (n : ℕ) (B : AffineForm n) (hB : ∀ x, B.eval x ≠ 0) :
++    (fun (_ : Cube n) => (1 : ℝ)) ∈ headSpace n B := by
++  use (B.constant, B.linear)
++  ext x
++  change B.eval x / B.eval x = 1
++  exact div_self (hB x)
++
++private lemma finrank_sup_le_of_mem_inter {K V : Type*} [DivisionRing K] [AddCommGroup V]
++    [Module K V] (S T : Submodule K V) [FiniteDimensional K ↥S] [FiniteDimensional K ↥T]
++    (c : V) (hcS : c ∈ S) (hcT : c ∈ T) (hc0 : c ≠ 0) :
++    finrank K ↥(S ⊔ T) ≤ finrank K ↥S + finrank K ↥T - 1 := by
++  have h_inf : c ∈ S ⊓ T := Submodule.mem_inf.mpr ⟨hcS, hcT⟩
++  have h_ne : S ⊓ T ≠ ⊥ := fun h => hc0 (by
++    have : c ∈ (⊥ : Submodule K V) := h ▸ h_inf
++    rwa [Submodule.mem_bot] at this)
++  have h_pos : 1 ≤ finrank K ↥(S ⊓ T) := by
++    by_contra h0
++    have h1 : finrank K ↥(S ⊓ T) = 0 := by omega
++    have h2 := Submodule.finrank_eq_zero.mp h1
++    exact h_ne h2
++  have h_eq := Submodule.finrank_sup_add_finrank_inf_eq S T
++  omega
++
++private lemma iSup_fin_succ' {α : Type*} [CompleteLattice α] {n : ℕ} (f : Fin (n + 1) → α) :
++    (⨆ i, f i) = (⨆ i : Fin n, f i.castSucc) ⊔ f (Fin.last n) := by
++  refine le_antisymm (iSup_le fun i => ?_)
++    (sup_le (iSup_le fun i => le_iSup f i.castSucc) (le_iSup f (Fin.last n)))
++  rcases i.le_last.eq_or_lt with h | h
++  · rw [h]
++    exact le_sup_right
++  · have : i = Fin.castSucc ⟨i.val, h⟩ := by ext; rfl
++    rw [this]
++    exact le_trans (le_iSup (fun i : Fin n => f i.castSucc) ⟨i.val, h⟩) le_sup_left
++
++private lemma finrank_sum_le_of_mem_inter {K V : Type*} [DivisionRing K] [AddCommGroup V]
++    [Module K V] (c : V) (hc0 : c ≠ 0) :
++    ∀ (H : ℕ) (S : Fin H → Submodule K V) [∀ h, FiniteDimensional K ↥(S h)] (_ : ∀ h, c ∈ S h),
++      finrank K ↥(⨆ h, S h) ≤ 1 + ∑ h, (finrank K ↥(S h) - 1)
++  | 0, S, _, _ => by
++      have : (⨆ h : Fin 0, S h) = ⊥ := iSup_of_empty S
++      rw [this, finrank_bot]
++      omega
++  | H + 1, S, _, hcS => by
++      rw [iSup_fin_succ', Fin.sum_univ_castSucc]
++      have ih := finrank_sum_le_of_mem_inter c hc0 H (fun h => S h.castSucc)
++        (fun h => hcS h.castSucc)
++      cases H with
++      | zero =>
++          have h_bot : (⨆ h : Fin 0, S (Fin.castSucc h)) = ⊥ := iSup_of_empty _
++          rw [h_bot, bot_sup_eq]
++          have h0 : ∑ i : Fin 0, (finrank K ↥(S i.castSucc) - 1) = 0 := rfl
++          rw [h0, zero_add]
++          have : c ∈ S (Fin.last 0) := hcS (Fin.last 0)
++          have h_ne : S (Fin.last 0) ≠ ⊥ := fun h => hc0 (by rwa [h, Submodule.mem_bot] at this)
++          have h1 : 1 ≤ finrank K ↥(S (Fin.last 0)) := by
++            by_contra h0
++            have h2 : finrank K ↥(S (Fin.last 0)) = 0 := by omega
++            exact h_ne (Submodule.finrank_eq_zero.mp h2)
++          omega
++      | succ H' =>
++          let i0 : Fin (H' + 1) := ⟨0, Nat.succ_pos H'⟩
++          have hc_iSup : c ∈ ⨆ h : Fin (H' + 1), S h.castSucc :=
++            le_iSup (fun h => S h.castSucc) i0 (hcS i0.castSucc)
++          have hc_last : c ∈ S (Fin.last (H' + 1)) := hcS (Fin.last (H' + 1))
++          have h_bound := finrank_sup_le_of_mem_inter (⨆ h : Fin (H' + 1), S h.castSucc)
++            (S (Fin.last (H' + 1))) c hc_iSup hc_last hc0
++          have h_last_pos : 1 ≤ finrank K ↥(S (Fin.last (H' + 1))) := by
++            have : c ∈ S (Fin.last (H' + 1)) := hcS (Fin.last (H' + 1))
++            have h_ne : S (Fin.last (H' + 1)) ≠ ⊥ :=
++              fun h => hc0 (by rwa [h, Submodule.mem_bot] at this)
++            by_contra h0
++            have h2 : finrank K ↥(S (Fin.last (H' + 1))) = 0 := by omega
++            exact h_ne (Submodule.finrank_eq_zero.mp h2)
++          omega
++
+ /-- Shared-constant dimension bound. Each head space has affine dimension
+ `n + 1`, but all head spaces contain the same constant function
+ `1 = B_h / B_h`; therefore `H` poles span at most `1 + nH` dimensions. -/
+ theorem spanningBank_dimension_bound {n H : ℕ}
+     (h : HasSpanningBank n H) :
+     2 ^ n ≤ 1 + n * H := by
+-  sorry
++  rcases h with ⟨B, hB_adm, hB_spans⟩
++  have hB_ne0 : ∀ h x, (B h).eval x ≠ 0 := fun h x => (B h).eval_ne_zero (hB_adm h).1 x
++  let S : Fin H → Submodule ℝ (Cube n → ℝ) := fun h => headSpace n (B h)
++  have hcS : ∀ h, (fun (_ : Cube n) => (1 : ℝ)) ∈ S h :=
++    fun h => one_mem_headSpace n (B h) (hB_ne0 h)
++  have hc0 : (fun (_ : Cube n) => (1 : ℝ)) ≠ 0 := by
++    intro h_zero
++    have h1 := congr_fun h_zero (fun _ => true)
++    norm_num at h1
++  have h_top : (⨆ h, S h) = ⊤ := by
++    ext v
++    simp only [Submodule.mem_top, iff_true]
++    rcases hB_spans v with ⟨A, hA⟩
++    have : v = ∑ h, ((divByB n (B h)).comp (affineEvalLinearMap n))
++        ((A h).constant, (A h).linear) := by
++      ext x
++      simp only [Finset.sum_apply, LinearMap.comp_apply, divByB, affineEvalLinearMap,
++        LinearMap.coe_mk, AddHom.coe_mk, AffineForm.eval]
++      exact hA x
++    rw [this]
++    exact Submodule.sum_mem _ (fun h _ => Submodule.mem_iSup_of_mem h
++      ⟨((A h).constant, (A h).linear), rfl⟩)
++  have h_bound := finrank_sum_le_of_mem_inter (fun (_ : Cube n) => (1 : ℝ)) hc0 H S hcS
++  rw [h_top, finrank_top] at h_bound
++  have h_cube : finrank ℝ (Cube n → ℝ) = 2 ^ n := by
++    rw [finrank_pi, Fintype.card_fun, Fintype.card_bool, Fintype.card_fin]
++  rw [h_cube] at h_bound
++  have h_sum : ∑ h : Fin H, (finrank ℝ ↥(S h) - 1) ≤ ∑ h : Fin H, n := by
++    apply Finset.sum_le_sum
++    intro h _
++    change finrank ℝ ↥(headSpace n (B h)) - 1 ≤ n
++    have hhs := finrank_headSpace n (B h)
++    omega
++  rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul] at h_sum
++  have h_mn : H * n = n * H := mul_comm H n
++  omega
+ 
+ theorem bank_dimension_bound (n : ℕ) :
+     2 ^ n ≤ 1 + n * Bank n :=

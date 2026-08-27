@@ -1,0 +1,15 @@
+diff --git a/HeadComplexity/Separations/EightBitHammingThreshold.lean b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+index df0edbc..0e2eb19 100644
+--- a/HeadComplexity/Separations/EightBitHammingThreshold.lean
++++ b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+@@ -37,7 +37,9 @@ theorem f8_not_thresholdDegLE_one : ¬ ThresholdDegLE f8 1 := by
+   sorry
+ 
+ theorem thresholdDeg_f8 : thresholdDeg f8 = 2 := by
+-  sorry
++  have hle := thresholdDeg_le_of f8_thresholdDegLE_two
++  have hlt := lt_thresholdDeg_of f8_not_thresholdDegLE_one
++  omega
+ 
+ /-- Mixed coefficient matrix between the left and right four-bit blocks. -/
+ noncomputable def mixedMatrix4

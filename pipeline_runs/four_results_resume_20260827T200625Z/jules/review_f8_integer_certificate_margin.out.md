@@ -1,0 +1,2 @@
+VERDICT: ACCEPT
+The proof honestly establishes the unchanged target statement by converting the real-valued evaluations to mathematically equivalent integer-valued functions. These private helpers enable `decide` to rigorously verify the inequality over `ℤ` instead of `ℝ`. For a finite domain of 256 boolean inputs, exhaustive case analysis using `cases` and `decide` is a completely legitimate, sound, and self-contained alternative proof. There is no statement drift, and all introduced helpers serve the valid purpose of typecasting for decidability. No files were modified.

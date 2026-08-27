@@ -1,0 +1,2 @@
+VERDICT: ACCEPT
+The proof honestly and faithfully implements the exact strategy outlined in item T189.8. It introduces a mathematically sound and highly relevant helper lemma `StrictLegal_of_neg_slopes` to factor out the `StrictLegal` logic for affine forms with non-positive slopes. It then applies this helper, along with `fin_cases` and `norm_num`, to establish both `StrictLegal` and `StrictlyOriented` for all three denominators (`f8D1`, `f8D2`, `f8D3`). There are no vacuous lemmas and no statement drift.

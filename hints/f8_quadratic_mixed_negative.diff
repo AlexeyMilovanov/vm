@@ -1,0 +1,20 @@
+diff --git a/HeadComplexity/Separations/EightBitHammingThreshold.lean b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+index df0edbc..7cb7f8f 100644
+--- a/HeadComplexity/Separations/EightBitHammingThreshold.lean
++++ b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+@@ -76,6 +76,15 @@ def PositiveIndexAtLeastTwo4 (M : Matrix (Fin 4) (Fin 4) ℝ) : Prop :=
+ def InertiaTwoTwo4 (M : Matrix (Fin 4) (Fin 4) ℝ) : Prop :=
+   M.IsSymm ∧ PositiveIndexAtLeastTwo4 M ∧ PositiveIndexAtLeastTwo4 (-M)
+ 
++open MvPolynomial
++
++/-- 4-point checkerboard second difference helper: mixed term evaluation identity. -/
++private theorem checkerboard_second_diff_term (u u' v v' : Fin 4 → Bool) (i j : Fin 4) :
++    boolToReal (u' i) * boolToReal (v' j) - boolToReal (u' i) * boolToReal (v j) -
++      boolToReal (u i) * boolToReal (v' j) + boolToReal (u i) * boolToReal (v j) =
++    (boolToReal (u' i) - boolToReal (u i)) * (boolToReal (v' j) - boolToReal (v j)) := by
++  ring
++
+ /-- Paper Lemma 2: every quadratic sign representation of `f8` has strictly
+ negative symmetric mixed curvature. -/
+ theorem f8_quadratic_mixed_negative

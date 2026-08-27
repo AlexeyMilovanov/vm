@@ -1,0 +1,69 @@
+diff --git a/HeadComplexity/Separations/EightBitHammingThreshold.lean b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+index df0edbc..9afb310 100644
+--- a/HeadComplexity/Separations/EightBitHammingThreshold.lean
++++ b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+@@ -181,11 +181,63 @@ noncomputable def f8ClearedScore (z : Fin 8 → Bool) : ℝ :=
+ 
+ def boolSign (b : Bool) : ℝ := if b then 1 else -1
+ 
++private theorem StrictLegal_of_neg_slopes (L : AffineForm 8)
++    (h_lin : ∀ i, L.linear i ≤ 0)
++    (h_sum : 0 < L.constant + ∑ i, L.linear i) :
++    L.StrictLegal := by
++  intro x
++  have h : ∑ i, L.linear i ≤ ∑ i, L.linear i * bitReal (x i) := by
++    apply Finset.sum_le_sum
++    intro i _
++    have h1 : bitReal (x i) ≤ 1 := by cases x i <;> norm_num [bitReal]
++    have h2 : L.linear i ≤ 0 := h_lin i
++    nlinarith
++  dsimp [AffineForm.eval]
++  linarith
++
++private theorem f8D1_strictLegal : f8D1.StrictLegal := by
++  apply StrictLegal_of_neg_slopes
++  · intro i; fin_cases i <;> norm_num [f8D1, integerAffine8]
++  · rw [Fin.sum_univ_eight]
++    dsimp [f8D1, integerAffine8]
++    norm_num
++
++private theorem f8D1_strictlyOriented : f8D1.StrictlyOriented := by
++  right
++  intro i
++  fin_cases i <;> norm_num [f8D1, integerAffine8]
++
++private theorem f8D2_strictLegal : f8D2.StrictLegal := by
++  apply StrictLegal_of_neg_slopes
++  · intro i; fin_cases i <;> norm_num [f8D2, integerAffine8]
++  · rw [Fin.sum_univ_eight]
++    dsimp [f8D2, integerAffine8]
++    norm_num
++
++private theorem f8D2_strictlyOriented : f8D2.StrictlyOriented := by
++  right
++  intro i
++  fin_cases i <;> norm_num [f8D2, integerAffine8]
++
++private theorem f8D3_strictLegal : f8D3.StrictLegal := by
++  apply StrictLegal_of_neg_slopes
++  · intro i; fin_cases i <;> norm_num [f8D3, integerAffine8]
++  · rw [Fin.sum_univ_eight]
++    dsimp [f8D3, integerAffine8]
++    norm_num
++
++private theorem f8D3_strictlyOriented : f8D3.StrictlyOriented := by
++  right
++  intro i
++  fin_cases i <;> norm_num [f8D3, integerAffine8]
++
+ /-- All three published denominators are exact native denominators. -/
+ theorem f8_denominators_admissible :
+     f8D1.StrictAdmissible ∧
+       f8D2.StrictAdmissible ∧ f8D3.StrictAdmissible := by
+-  sorry
++  refine ⟨⟨f8D1_strictLegal, f8D1_strictlyOriented⟩,
++    ⟨f8D2_strictLegal, f8D2_strictlyOriented⟩,
++    ⟨f8D3_strictLegal, f8D3_strictlyOriented⟩⟩
+ 
+ /-- Exact audit target for the integer certificate: the minimum signed cleared
+ margin over all 256 vertices is at least 58. -/

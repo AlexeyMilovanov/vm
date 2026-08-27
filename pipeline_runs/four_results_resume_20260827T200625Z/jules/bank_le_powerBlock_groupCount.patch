@@ -1,0 +1,25 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/Bank.lean b/HeadComplexity/TypicalLogCloseness/Bank.lean
+index 36b7225..9e008c0 100644
+--- a/HeadComplexity/TypicalLogCloseness/Bank.lean
++++ b/HeadComplexity/TypicalLogCloseness/Bank.lean
+@@ -76,7 +76,19 @@ theorem bank_lower_bound {n : ℕ} (hn : 1 ≤ n) :
+ only a per-function upper bound. -/
+ theorem bank_le_powerBlock_groupCount {n : ℕ} (hn : 2 ≤ n) :
+     Bank n ≤ (powerBlockLocalization n hn).groupCount := by
+-  sorry
++  classical
++  let L := powerBlockLocalization n hn
++  obtain ⟨T, hpositive, hcleared⟩ := exists_legal_fullRank_bank L
++  let B : Fin L.groupCount → AffineForm n := legalPath L T
++  have hlegal : ∀ g, (B g).StrictLegal :=
++    fun g => (hpositive g).strictLegal
++  have hfractional : Matrix.det (fractionalMatrix L B) ≠ 0 :=
++    fractional_det_ne_zero L B hlegal hcleared
++  have hspan : FixedBankSpans B :=
++    fun v => fixedBank_spans L B hlegal hfractional v
++  have hB : IsSpanningBank B :=
++    ⟨fun g => (hpositive g).strictAdmissible, hspan⟩
++  exact Bank_le_of_hasSpanningBank ⟨B, hB⟩
+ 
+ /-- Exact P19 value on power-of-two arities. -/
+ theorem bank_pow_two (m : ℕ) (hm : 1 ≤ m) :

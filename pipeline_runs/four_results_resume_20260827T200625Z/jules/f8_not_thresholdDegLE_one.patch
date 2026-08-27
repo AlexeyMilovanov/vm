@@ -1,0 +1,49 @@
+diff --git a/HeadComplexity/Separations/EightBitHammingThreshold.lean b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+index df0edbc..a2444c5 100644
+--- a/HeadComplexity/Separations/EightBitHammingThreshold.lean
++++ b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+@@ -34,7 +34,43 @@ theorem f8_thresholdDegLE_two : ThresholdDegLE f8 2 := by
+ /-- A two-coordinate checkerboard restriction excludes affine threshold
+ representations. -/
+ theorem f8_not_thresholdDegLE_one : ¬ ThresholdDegLE f8 1 := by
+-  sorry
++  intro hLTF1
++  rw [ThresholdDegLE_one_iff_isLTF] at hLTF1
++  obtain ⟨c, cs, hsign⟩ := hLTF1
++  let x0 : Fin 4 → Bool := ![false, false, false, false]
++  let x1 : Fin 4 → Bool := ![true, false, false, false]
++  let y0 : Fin 4 → Bool := ![false, true, false, false]
++  let y1 : Fin 4 → Bool := ![true, true, false, false]
++  let z00 := blockJoin x0 y0
++  let z11 := blockJoin x1 y1
++  let z01 := blockJoin x0 y1
++  let z10 := blockJoin x1 y0
++  have hpt : ∀ j : Fin (4 + 4),
++      boolToReal (z00 j) + boolToReal (z11 j) =
++        boolToReal (z01 j) + boolToReal (z10 j) := by
++    intro j
++    refine Fin.addCases (fun i => ?_) (fun i => ?_) j
++    · simp only [z00, z11, z01, z10, blockJoin_castAdd]
++    · simp only [z00, z11, z01, z10, blockJoin_natAdd]
++      ring
++  have hsid : (∑ j, cs j * boolToReal (z00 j)) + (∑ j, cs j * boolToReal (z11 j)) =
++              (∑ j, cs j * boolToReal (z01 j)) + (∑ j, cs j * boolToReal (z10 j)) := by
++    rw [← Finset.sum_add_distrib, ← Finset.sum_add_distrib]
++    refine Finset.sum_congr rfl (fun j _ => ?_)
++    rw [← mul_add, ← mul_add, hpt j]
++  have h_z00 : f8 z00 = false := rfl
++  have h_z11 : f8 z11 = false := rfl
++  have h_z01 : f8 z01 = true := rfl
++  have h_z10 : f8 z10 = true := rfl
++  have hpos_01 : 0 < c + ∑ i, cs i * boolToReal (z01 i) := (hsign _).mpr h_z01
++  have hpos_10 : 0 < c + ∑ i, cs i * boolToReal (z10 i) := (hsign _).mpr h_z10
++  have hneg_00 : c + ∑ i, cs i * boolToReal (z00 i) ≤ 0 := by
++    by_contra h; push Not at h
++    have := (hsign _).mp h; rw [h_z00] at this; exact absurd this (by decide)
++  have hneg_11 : c + ∑ i, cs i * boolToReal (z11 i) ≤ 0 := by
++    by_contra h; push Not at h
++    have := (hsign _).mp h; rw [h_z11] at this; exact absurd this (by decide)
++  linarith
+ 
+ theorem thresholdDeg_f8 : thresholdDeg f8 = 2 := by
+   sorry

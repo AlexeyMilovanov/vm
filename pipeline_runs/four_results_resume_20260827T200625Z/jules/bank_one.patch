@@ -1,0 +1,54 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/Bank.lean b/HeadComplexity/TypicalLogCloseness/Bank.lean
+index 36b7225..9ecfa20 100644
+--- a/HeadComplexity/TypicalLogCloseness/Bank.lean
++++ b/HeadComplexity/TypicalLogCloseness/Bank.lean
+@@ -83,8 +83,48 @@ theorem bank_pow_two (m : ℕ) (hm : 1 ≤ m) :
+     Bank (2 ^ m) = 2 ^ (2 ^ m) / 2 ^ m := by
+   sorry
+ 
++/-- Explicit spanning bank for `n = 1` with 1 pole. -/
++private theorem hasSpanningBank_one : HasSpanningBank 1 1 := by
++  let B0 : AffineForm 1 := ⟨2, fun _ => 1⟩
++  use fun _ => B0
++  constructor
++  · intro h
++    constructor
++    · intro x
++      dsimp [B0, AffineForm.eval]
++      have hnonneg : 0 ≤ ∑ i : Fin 1, (1 : ℝ) * bitReal (x i) := by
++        apply Finset.sum_nonneg
++        intro i _
++        exact mul_nonneg zero_le_one (bitReal_nonneg _)
++      linarith
++    · left
++      intro i
++      exact zero_lt_one
++  · intro v
++    let v0 := v (fun _ => false)
++    let v1 := v (fun _ => true)
++    let A0 : AffineForm 1 := ⟨2 * v0, fun _ => 3 * v1 - 2 * v0⟩
++    use fun _ => A0
++    intro x
++    simp only [Finset.univ_unique, Fin.default_eq_zero, Finset.sum_singleton]
++    have hx : x = (fun _ => false) ∨ x = (fun _ => true) := by
++      cases h : x 0
++      · left; ext i; fin_cases i; exact h
++      · right; ext i; fin_cases i; exact h
++    rcases hx with rfl | rfl
++    · dsimp [A0, B0, AffineForm.eval]
++      simp only [Finset.univ_unique, Fin.default_eq_zero, Finset.sum_singleton, mul_zero, add_zero]
++      ring
++    · dsimp [A0, B0, AffineForm.eval]
++      simp only [Finset.univ_unique, Fin.default_eq_zero, Finset.sum_singleton, mul_one]
++      ring
++
+ /-- The one-bit endpoint. -/
+ theorem bank_one : Bank 1 = 1 := by
+-  sorry
++  have h1 : 1 ≤ Bank 1 := by
++    have hbound := bank_dimension_bound 1
++    linarith
++  have h2 : Bank 1 ≤ 1 := Bank_le_of_hasSpanningBank hasSpanningBank_one
++  exact le_antisymm h2 h1
+ 
+ end HeadComplexity.TypicalLogCloseness

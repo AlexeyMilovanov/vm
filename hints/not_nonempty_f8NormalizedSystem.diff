@@ -1,0 +1,18 @@
+diff --git a/HeadComplexity/Separations/EightBitHammingThreshold.lean b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+index df0edbc..fabd0f9 100644
+--- a/HeadComplexity/Separations/EightBitHammingThreshold.lean
++++ b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+@@ -134,6 +134,13 @@ theorem two_heads_yield_f8NormalizedSystem
+     Nonempty F8NormalizedSystem := by
+   sorry
+ 
++private theorem trace_plus_two_sum_eq_sum_univ (M : Matrix (Fin 4) (Fin 4) ℝ)
++    (pick : Fin 4 → Fin 4) :
++    Matrix.trace M + 2 * ∑ j, M (pick j) j =
++      ∑ j, (M j j + 2 * M (pick j) j) := by
++  unfold Matrix.trace Matrix.diag
++  rw [mul_sum, ← sum_add_distrib]
++
+ /-- Paper Lemma 6: the normalized system is impossible. -/
+ theorem not_nonempty_f8NormalizedSystem :
+     ¬ Nonempty F8NormalizedSystem := by

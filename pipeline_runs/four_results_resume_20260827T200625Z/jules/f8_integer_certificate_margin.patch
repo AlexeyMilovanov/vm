@@ -1,0 +1,63 @@
+diff --git a/HeadComplexity/Separations/EightBitHammingThreshold.lean b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+index df0edbc..2ca0e4d 100644
+--- a/HeadComplexity/Separations/EightBitHammingThreshold.lean
++++ b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+@@ -187,11 +187,57 @@ theorem f8_denominators_admissible :
+       f8D2.StrictAdmissible ∧ f8D3.StrictAdmissible := by
+   sorry
+ 
++private def evalFormInt (c : ℤ) (l : Fin 8 → ℤ) (z : Fin 8 → Bool) : ℤ :=
++  c + l 0 * (if z 0 then 1 else 0) + l 1 * (if z 1 then 1 else 0) +
++  l 2 * (if z 2 then 1 else 0) + l 3 * (if z 3 then 1 else 0) +
++  l 4 * (if z 4 then 1 else 0) + l 5 * (if z 5 then 1 else 0) +
++  l 6 * (if z 6 then 1 else 0) + l 7 * (if z 7 then 1 else 0)
++
++private def f8ClearedScoreInt (z : Fin 8 → Bool) : ℤ :=
++  let d1 := evalFormInt 34 ![-1, -6, -1, -8, -1, -1, -1, -1] z
++  let d2 := evalFormInt 31 ![-4, -1, -3, -7, -5, -6, -3, -1] z
++  let d3 := evalFormInt 32 ![-1, -1, -6, -1, -1, -6, -6, -4] z
++  let a1 := evalFormInt (-476) ![1794, 2403, 2934, 132, 1890, -4130, 2868, -661] z
++  let a2 := evalFormInt 622 ![-2333, -1471, 188, 3074, -2633, 2202, 208, -1392] z
++  let a3 := evalFormInt (-1006) ![1501, -577, -1950, -4044, 1799, 1406, -1914, 2472] z
++  d1 * d2 * d3 + a1 * d2 * d3 + a2 * d1 * d3 + a3 * d1 * d2
++
++private def boolSignInt (b : Bool) : ℤ := if b then 1 else -1
++
++private theorem eval_integerAffine8_eq_int (c : ℤ) (l : Fin 8 → ℤ) (z : Fin 8 → Bool) :
++    (integerAffine8 c l).eval z = (evalFormInt c l z : ℝ) := by
++  dsimp [integerAffine8, TypicalLogCloseness.AffineForm.eval, evalFormInt, TypicalLogCloseness.bitReal]
++  rw [Fin.sum_univ_eight]
++  push_cast
++  ring
++
++private theorem f8ClearedScore_eq_int (z : Fin 8 → Bool) :
++    f8ClearedScore z = (f8ClearedScoreInt z : ℝ) := by
++  dsimp [f8ClearedScore, f8ClearedScoreInt, f8D1, f8D2, f8D3, f8A1, f8A2, f8A3]
++  rw [eval_integerAffine8_eq_int, eval_integerAffine8_eq_int, eval_integerAffine8_eq_int,
++      eval_integerAffine8_eq_int, eval_integerAffine8_eq_int, eval_integerAffine8_eq_int]
++  push_cast
++  rfl
++
++private theorem boolSign_eq_int (b : Bool) :
++    boolSign b = (boolSignInt b : ℝ) := by
++  dsimp [boolSign, boolSignInt]
++  split_ifs <;> norm_num
++
+ /-- Exact audit target for the integer certificate: the minimum signed cleared
+ margin over all 256 vertices is at least 58. -/
+ theorem f8_integer_certificate_margin (z : Fin 8 → Bool) :
+     58 ≤ boolSign (f8 z) * f8ClearedScore z := by
+-  sorry
++  rw [boolSign_eq_int, f8ClearedScore_eq_int]
++  norm_cast
++  have hz : z = ![z 0, z 1, z 2, z 3, z 4, z 5, z 6, z 7] := by
++    ext i
++    fin_cases i <;> rfl
++  rw [hz]
++  cases z 0 <;> cases z 1 <;> cases z 2 <;> cases z 3 <;> cases z 4 <;> cases z 5 <;> cases z 6 <;> cases z 7
++  all_goals
++    dsimp [f8ClearedScoreInt, evalFormInt, boolSignInt, f8, distThreshold, hammingDist, leftBits, rightBits]
++    decide
+ 
+ /-- Paper Lemma 7: the explicit certificate realizes `f8` with three heads. -/
+ theorem f8_computableWithHeadsN_three :

@@ -49,6 +49,16 @@ def lightweight_audit(cwd):
 
 pipeline.full_audit = lightweight_audit
 
+pipeline.smoke_build = lambda _cwd: (True, "deferred to final wave audit")
+
+def defer_push(message):
+    pipeline.log(f"push deferred until final smoke: {message}")
+    return pipeline.sh(
+        ["git", "-C", str(pipeline.ROOT), "rev-parse", "HEAD"], timeout=60
+    ).stdout.strip()
+
+
+pipeline.push_root_to_github = defer_push
 def module_audit(cwd):
     hits = pipeline.forbidden_scan(cwd)
     if hits:

@@ -1,0 +1,59 @@
+diff --git a/HeadComplexity/Separations/EightBitHammingThreshold.lean b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+index df0edbc..0ce6d8f 100644
+--- a/HeadComplexity/Separations/EightBitHammingThreshold.lean
++++ b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+@@ -29,7 +29,53 @@ theorem f8_apply (z : Fin 8 → Bool) :
+ 
+ /-- The quadratic distance polynomial gives the upper threshold-degree bound. -/
+ theorem f8_thresholdDegLE_two : ThresholdDegLE f8 2 := by
+-  sorry
++  classical
++  open MvPolynomial in
++  set P : MvPolynomial (Fin 8) ℝ :=
++    (∑ i : Fin 4, (X (Fin.castAdd 4 i) + X (Fin.natAdd 4 i)
++      - C 2 * (X (Fin.castAdd 4 i) * X (Fin.natAdd 4 i)))) - C (3 / 2) with hP
++  refine ⟨P, ?_, ?_⟩
++  · rw [hP]
++    refine (totalDegree_sub _ _).trans (max_le ?_ ?_)
++    · refine totalDegree_finsetSum_le (fun i _ => ?_)
++      refine (totalDegree_sub _ _).trans (max_le ?_ ?_)
++      · exact (totalDegree_add _ _).trans
++          (max_le (by rw [totalDegree_X]; norm_num) (by rw [totalDegree_X]; norm_num))
++      · refine (totalDegree_mul _ _).trans ?_
++        rw [totalDegree_C, zero_add]
++        refine (totalDegree_mul _ _).trans ?_
++        rw [totalDegree_X, totalDegree_X]
++    · rw [totalDegree_C]; norm_num
++  · intro z
++    have hbool : ∀ a b : Bool,
++        boolToReal a + boolToReal b - 2 * (boolToReal a * boolToReal b)
++          = if a ≠ b then (1 : ℝ) else 0 := by
++      intro a b; cases a <;> cases b <;> norm_num [boolToReal]
++    have hpair : ∀ i : Fin 4,
++        eval (cubePoint z) (X (Fin.castAdd 4 i) + X (Fin.natAdd 4 i)
++          - C 2 * (X (Fin.castAdd 4 i) * X (Fin.natAdd 4 i)))
++          = if leftBits 4 4 z i ≠ rightBits 4 4 z i then (1 : ℝ) else 0 := by
++      intro i
++      simp only [map_sub, map_add, map_mul, eval_C, eval_X, cubePoint]
++      exact hbool (z (Fin.castAdd 4 i)) (z (Fin.natAdd 4 i))
++    have hsum : eval (cubePoint z) P
++        = (hammingDist (leftBits 4 4 z) (rightBits 4 4 z) : ℝ) - 3 / 2 := by
++      rw [hP, map_sub, eval_C, map_sum]
++      congr 1
++      unfold hammingDist
++      rw [Finset.card_filter]
++      push_cast
++      exact Finset.sum_congr rfl (fun i _ => hpair i)
++    rw [hsum, f8_apply, decide_eq_true_eq]
++    set D := hammingDist (leftBits 4 4 z) (rightBits 4 4 z) with hD
++    constructor
++    · intro h
++      have hD1 : 3 < 2 * (D : ℝ) := by linarith
++      have hD2 : 3 < 2 * D := by exact_mod_cast hD1
++      omega
++    · intro h
++      have hD_real : (2 : ℝ) ≤ (D : ℝ) := by exact_mod_cast h
++      linarith
+ 
+ /-- A two-coordinate checkerboard restriction excludes affine threshold
+ representations. -/

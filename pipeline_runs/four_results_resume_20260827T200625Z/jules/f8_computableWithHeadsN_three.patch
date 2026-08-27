@@ -1,0 +1,188 @@
+diff --git a/HeadComplexity/Separations/EightBitHammingThreshold.lean b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+index df0edbc..7fed0fd 100644
+--- a/HeadComplexity/Separations/EightBitHammingThreshold.lean
++++ b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+@@ -1,5 +1,5 @@
+ import HeadComplexity.Separations.DistanceThreshold
+-import HeadComplexity.TypicalLogCloseness.AffineForm
++import HeadComplexity.TypicalLogCloseness.FracAtomBridge
+ 
+ set_option linter.style.header false
+ 
+@@ -187,6 +187,98 @@ theorem f8_denominators_admissible :
+       f8D2.StrictAdmissible ∧ f8D3.StrictAdmissible := by
+   sorry
+ 
++private theorem exists_fracAtom_eval_eq_neg {n : ℕ} (A B : AffineForm n)
++    (hB_neg : ∀ i, B.linear i < 0)
++    (hB_all1 : 0 < B.constant + ∑ i, B.linear i) :
++    ∃ φ : HeadComplexity.FracAtom n,
++      ∀ x, φ.eval x = A.eval x / B.eval x := by
++  classical
++  let S : ℝ := ∑ i, B.linear i
++  let C : ℝ := B.constant
++  have hS_le : S ≤ 0 := Finset.sum_nonpos fun i _ => (hB_neg i).le
++  have hC : 0 < C := by linarith
++  let k : ℝ := if S = 0 then 2 else (1 + C / (-S)) / 2
++  have hk1 : 1 < k := by
++    dsimp [k]
++    split_ifs with hS0
++    · norm_num
++    · have hS_lt : S < 0 := lt_of_le_of_ne hS_le hS0
++      have h_div : 1 < C / (-S) := by
++        rw [lt_div_iff₀ (by linarith)]
++        linarith
++      linarith
++  have hkS : 0 < C + k * S := by
++    dsimp [k]
++    split_ifs with hS0
++    · simp [hS0, hC]
++    · have hS_lt : S < 0 := lt_of_le_of_ne hS_le hS0
++      have hnegS : 0 < -S := by linarith
++      have hk_lt : (1 + C / (-S)) / 2 < C / (-S) := by
++        have h_div : 1 < C / (-S) := by
++          rw [lt_div_iff₀ hnegS]
++          linarith
++        linarith
++      have h1 : ((1 + C / (-S)) / 2) * (-S) < C := (lt_div_iff₀ hnegS).mp hk_lt
++      have h_ring : k * S = - (((1 + C / (-S)) / 2) * (-S)) := by dsimp [k]; rw [if_neg hS0]; ring
++      linarith
++  let α : ℝ := 1 - 1 / k
++  have hα0 : 0 < α := by
++    dsimp [α]
++    rw [sub_pos, div_lt_iff₀ (by linarith)]
++    linarith
++  have hα_sub : α - 1 = -1 / k := by dsimp [α]; ring
++  have hα_sub_neg : α - 1 < 0 := by
++    rw [hα_sub]
++    exact div_neg_of_neg_of_pos (by norm_num) (by linarith)
++  let φ : HeadComplexity.FracAtom n := {
++    η := A.constant + k * ∑ i, A.linear i
++    δ := 0
++    γ := C + k * S
++    α := α
++    ρ i := B.linear i / (α - 1)
++    m i := A.linear i / B.linear i
++    hγ := hkS
++    hα := hα0
++    hρ i := div_pos_of_neg_of_neg (hB_neg i) hα_sub_neg
++  }
++  have hden : TypicalLogCloseness.fracDenominator φ = B := by
++    ext i
++    · simp only [TypicalLogCloseness.fracDenominator, φ]
++      change C + k * S + ∑ j, B.linear j / (α - 1) = C
++      rw [← Finset.sum_div, show (∑ j, B.linear j) = S from rfl]
++      rw [hα_sub]
++      have hk0 : k ≠ 0 := (by linarith)
++      field_simp
++      ring
++    · simp only [TypicalLogCloseness.fracDenominator, φ]
++      have h_ne : α - 1 ≠ 0 := hα_sub_neg.ne
++      field_simp
++  have hnum : TypicalLogCloseness.fracNumerator φ = A := by
++    ext i
++    · simp only [TypicalLogCloseness.fracNumerator, φ]
++      have h_sum : (∑ j, (B.linear j / (α - 1)) * (A.linear j / B.linear j)) =
++          -k * ∑ j, A.linear j := by
++        rw [hα_sub]
++        have hk0 : k ≠ 0 := (by linarith)
++        have h_term : ∀ j, (B.linear j / (-1 / k)) *
++            (A.linear j / B.linear j) = -k * A.linear j := by
++          intro j
++          have hBj : B.linear j ≠ 0 := (hB_neg j).ne
++          field_simp
++        simp_rw [h_term]
++        rw [← Finset.mul_sum]
++      rw [h_sum]
++      ring
++    · simp only [TypicalLogCloseness.fracNumerator, φ]
++      have h_ne : α - 1 ≠ 0 := hα_sub_neg.ne
++      have hBi : B.linear i ≠ 0 := (hB_neg i).ne
++      have hk0 : k ≠ 0 := (by linarith)
++      dsimp [α]
++      field_simp
++      ring
++  refine ⟨φ, fun x => ?_⟩
++  rw [TypicalLogCloseness.fracAtom_eval_eq_affine, hden, hnum]
++
+ /-- Exact audit target for the integer certificate: the minimum signed cleared
+ margin over all 256 vertices is at least 58. -/
+ theorem f8_integer_certificate_margin (z : Fin 8 → Bool) :
+@@ -196,7 +288,76 @@ theorem f8_integer_certificate_margin (z : Fin 8 → Bool) :
+ /-- Paper Lemma 7: the explicit certificate realizes `f8` with three heads. -/
+ theorem f8_computableWithHeadsN_three :
+     computableWithHeadsN 8 3 f8 := by
+-  sorry
++  rw [computableWithHeadsN_iff_fracComputable]
++  have hD1_neg : ∀ i, f8D1.linear i < 0 := by
++    intro i; fin_cases i <;> (unfold f8D1 integerAffine8; norm_num)
++  have hD2_neg : ∀ i, f8D2.linear i < 0 := by
++    intro i; fin_cases i <;> (unfold f8D2 integerAffine8; norm_num)
++  have hD3_neg : ∀ i, f8D3.linear i < 0 := by
++    intro i; fin_cases i <;> (unfold f8D3 integerAffine8; norm_num)
++  have hsum1 : (∑ i, f8D1.linear i) = -20 := by
++    rw [Fin.sum_univ_eight]; dsimp [f8D1, integerAffine8]; norm_num
++  have hsum2 : (∑ i, f8D2.linear i) = -30 := by
++    rw [Fin.sum_univ_eight]; dsimp [f8D2, integerAffine8]; norm_num
++  have hsum3 : (∑ i, f8D3.linear i) = -26 := by
++    rw [Fin.sum_univ_eight]; dsimp [f8D3, integerAffine8]; norm_num
++  have hD1_all1 : 0 < f8D1.constant + ∑ i, f8D1.linear i := by
++    rw [hsum1]; norm_num [f8D1, integerAffine8]
++  have hD2_all1 : 0 < f8D2.constant + ∑ i, f8D2.linear i := by
++    rw [hsum2]; norm_num [f8D2, integerAffine8]
++  have hD3_all1 : 0 < f8D3.constant + ∑ i, f8D3.linear i := by
++    rw [hsum3]; norm_num [f8D3, integerAffine8]
++  obtain ⟨φ1, hφ1⟩ := exists_fracAtom_eval_eq_neg f8A1 f8D1 hD1_neg hD1_all1
++  obtain ⟨φ2, hφ2⟩ := exists_fracAtom_eval_eq_neg f8A2 f8D2 hD2_neg hD2_all1
++  obtain ⟨φ3, hφ3⟩ := exists_fracAtom_eval_eq_neg f8A3 f8D3 hD3_neg hD3_all1
++  let φ : Fin 3 → FracAtom 8 := fun i =>
++    match i with
++    | ⟨0, _⟩ => φ1
++    | ⟨1, _⟩ => φ2
++    | ⟨2, _⟩ => φ3
++  refine ⟨φ, 1, fun z => ?_⟩
++  have hsum : ∑ h : Fin 3, (φ h).eval z = (φ 0).eval z + (φ 1).eval z + (φ 2).eval z := by
++    rw [Fin.sum_univ_three]
++  rw [hsum]
++  dsimp [φ]
++  rw [hφ1, hφ2, hφ3]
++  have hD1 : 0 < f8D1.eval z := f8_denominators_admissible.1.1 z
++  have hD2 : 0 < f8D2.eval z := f8_denominators_admissible.2.1.1 z
++  have hD3 : 0 < f8D3.eval z := f8_denominators_admissible.2.2.1 z
++  have hD_prod : 0 < f8D1.eval z * f8D2.eval z * f8D3.eval z := by positivity
++  have h_cleared : 1 + (f8A1.eval z / f8D1.eval z +
++      f8A2.eval z / f8D2.eval z + f8A3.eval z / f8D3.eval z) =
++      f8ClearedScore z / (f8D1.eval z * f8D2.eval z * f8D3.eval z) := by
++    unfold f8ClearedScore
++    have hD1_ne : f8D1.eval z ≠ 0 := hD1.ne'
++    have hD2_ne : f8D2.eval z ≠ 0 := hD2.ne'
++    have hD3_ne : f8D3.eval z ≠ 0 := hD3.ne'
++    field_simp
++    ring
++  rw [h_cleared]
++  have h_div_pos : 0 < f8ClearedScore z /
++      (f8D1.eval z * f8D2.eval z * f8D3.eval z) ↔ 0 < f8ClearedScore z := by
++    constructor
++    · intro h
++      have hm := mul_pos h hD_prod
++      rwa [div_mul_cancel₀ _ hD_prod.ne'] at hm
++    · intro h
++      exact div_pos h hD_prod
++  rw [h_div_pos]
++  have hm := f8_integer_certificate_margin z
++  cases hfz : f8 z
++  · unfold boolSign at hm
++    rw [hfz] at hm
++    dsimp at hm
++    constructor
++    · intro hpos; linarith
++    · intro htrue; cases htrue
++  · unfold boolSign at hm
++    rw [hfz] at hm
++    dsimp at hm
++    constructor
++    · intro _; rfl
++    · intro _; linarith
+ 
+ theorem HStar_f8 : HStar 8 f8 = 3 := by
+   sorry

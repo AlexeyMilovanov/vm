@@ -1,0 +1,2 @@
+VERDICT: ACCEPT
+The patch honestly implements the proof strategy described in T189.2. It constructs the two-coordinate checkerboard restriction by varying one bit from each of the two four-bit blocks and keeping the remaining six bits fixed, which yields the non-linearly-separable XOR pattern. The affine rectangle identity is then proved exactly for this restriction (`z00 + z11 = z01 + z10`), and the proof concludes cleanly by using `linarith` on the resulting margin inequalities. There are no vacuous or irrelevant helper lemmas, and no statement drift on the target.

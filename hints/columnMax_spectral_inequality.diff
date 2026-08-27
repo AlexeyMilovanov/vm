@@ -1,0 +1,246 @@
+diff --git a/HeadComplexity/Separations/EightBitHammingThreshold.lean b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+index df0edbc..30643ed 100644
+--- a/HeadComplexity/Separations/EightBitHammingThreshold.lean
++++ b/HeadComplexity/Separations/EightBitHammingThreshold.lean
+@@ -115,6 +115,164 @@ def DiagonallySymmetrizableWithPositiveIndexTwo4
+     ((Matrix.diagonal d) * M).IsSymm ∧
+     PositiveIndexAtLeastTwo4 ((Matrix.diagonal d) * M)
+ 
++private def offDiagSet (j : Fin 4) : Finset (Fin 4) :=
++  Finset.univ.filter (fun i => i ≠ j)
++
++private lemma offDiagSet_nonempty (j : Fin 4) : (offDiagSet j).Nonempty := by
++  change (Finset.univ.filter (fun i => i ≠ j)).Nonempty
++  fin_cases j
++  · use 1; simp
++  · use 0; simp
++  · use 0; simp
++  · use 0; simp
++
++private lemma exists_offDiag_maximizer (M : Matrix (Fin 4) (Fin 4) ℝ) (j : Fin 4) :
++    ∃ p ∈ offDiagSet j, ∀ i ∈ offDiagSet j, M i j ≤ M p j :=
++  Finset.exists_max_image (offDiagSet j) (fun i => M i j) (offDiagSet_nonempty j)
++
++private noncomputable def columnMaxPicker (M : Matrix (Fin 4) (Fin 4) ℝ) (j : Fin 4) : Fin 4 :=
++  Classical.choose (exists_offDiag_maximizer M j)
++
++private lemma columnMaxPicker_ne (M : Matrix (Fin 4) (Fin 4) ℝ) (j : Fin 4) :
++    columnMaxPicker M j ≠ j := by
++  have h := (Classical.choose_spec (exists_offDiag_maximizer M j)).1
++  dsimp [offDiagSet] at h
++  rw [Finset.mem_filter] at h
++  exact h.2
++
++private lemma columnMaxPicker_le (M : Matrix (Fin 4) (Fin 4) ℝ)
++    (j : Fin 4) (i : Fin 4) (hi : i ≠ j) :
++    M i j ≤ M (columnMaxPicker M j) j := by
++  have hspec := (Classical.choose_spec (exists_offDiag_maximizer M j)).2
++  have hi_mem : i ∈ offDiagSet j := by
++    dsimp [offDiagSet]
++    rw [Finset.mem_filter]
++    exact ⟨Finset.mem_univ i, hi⟩
++  exact hspec i hi_mem
++
++private lemma sum_fin4 (f : Fin 4 → ℝ) :
++    ∑ i : Fin 4, f i = f 0 + f 1 + f 2 + f 3 := by
++  rw [Fin.sum_univ_four]
++
++private lemma diag_mul_apply (d : Fin 4 → ℝ) (M : Matrix (Fin 4) (Fin 4) ℝ) (i j : Fin 4) :
++    ((Matrix.diagonal d) * M) i j = d i * M i j := by
++  rw [Matrix.mul_apply, sum_fin4]
++  fin_cases i <;> fin_cases j <;> simp
++
++private lemma offDiag_sum_bound (d : Fin 4 → ℝ) (M : Matrix (Fin 4) (Fin 4) ℝ)
++    (c : Fin 4 → ℝ) (z : Fin 4 → ℝ) (hz : z 0 + z 1 + z 2 + z 3 = 0)
++    (hc0_1 : M 1 0 ≤ c 0) (hc0_2 : M 2 0 ≤ c 0) (hc0_3 : M 3 0 ≤ c 0)
++    (hc1_0 : M 0 1 ≤ c 1) (hc1_2 : M 2 1 ≤ c 1) (hc1_3 : M 3 1 ≤ c 1)
++    (hc2_0 : M 0 2 ≤ c 2) (hc2_1 : M 1 2 ≤ c 2) (hc2_3 : M 3 2 ≤ c 2)
++    (hc3_0 : M 0 3 ≤ c 3) (hc3_1 : M 1 3 ≤ c 3) (hc3_2 : M 2 3 ≤ c 3)
++    (hsymm : ∀ i j, d j * M j i = d i * M i j)
++    (hd : ∀ i, 0 < d i)
++    (h_le : M 0 0 + M 1 1 + M 2 2 + M 3 3 + 2 * (c 0 + c 1 + c 2 + c 3) ≤ 0) :
++    d 0 * (M 0 0 + M 0 1 + M 0 2 + M 0 3) * z 0 ^ 2 +
++    d 1 * (M 1 0 + M 1 1 + M 1 2 + M 1 3) * z 1 ^ 2 +
++    d 2 * (M 2 0 + M 2 1 + M 2 2 + M 2 3) * z 2 ^ 2 +
++    d 3 * (M 3 0 + M 3 1 + M 3 2 + M 3 3) * z 3 ^ 2 -
++    d 0 * M 0 1 * (z 0 - z 1) ^ 2 - d 0 * M 0 2 * (z 0 - z 2) ^ 2 - d 0 * M 0 3 * (z 0 - z 3) ^ 2 -
++    d 1 * M 1 2 * (z 1 - z 2) ^ 2 - d 1 * M 1 3 * (z 1 - z 3) ^ 2 - d 2 * M 2 3 * (z 2 - z 3) ^ 2 ≤ 0 := by
++  have hc0_1' : d 1 * M 1 0 * z 1 ^ 2 ≤ d 1 * c 0 * z 1 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc0_1 (le_of_lt (hd 1))) (sq_nonneg _)
++  have hc0_2' : d 2 * M 2 0 * z 2 ^ 2 ≤ d 2 * c 0 * z 2 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc0_2 (le_of_lt (hd 2))) (sq_nonneg _)
++  have hc0_3' : d 3 * M 3 0 * z 3 ^ 2 ≤ d 3 * c 0 * z 3 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc0_3 (le_of_lt (hd 3))) (sq_nonneg _)
++  have hc1_0' : d 0 * M 0 1 * z 0 ^ 2 ≤ d 0 * c 1 * z 0 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc1_0 (le_of_lt (hd 0))) (sq_nonneg _)
++  have hc1_2' : d 2 * M 2 1 * z 2 ^ 2 ≤ d 2 * c 1 * z 2 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc1_2 (le_of_lt (hd 2))) (sq_nonneg _)
++  have hc1_3' : d 3 * M 3 1 * z 3 ^ 2 ≤ d 3 * c 1 * z 3 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc1_3 (le_of_lt (hd 3))) (sq_nonneg _)
++  have hc2_0' : d 0 * M 0 2 * z 0 ^ 2 ≤ d 0 * c 2 * z 0 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc2_0 (le_of_lt (hd 0))) (sq_nonneg _)
++  have hc2_1' : d 1 * M 1 2 * z 1 ^ 2 ≤ d 1 * c 2 * z 1 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc2_1 (le_of_lt (hd 1))) (sq_nonneg _)
++  have hc2_3' : d 3 * M 3 2 * z 3 ^ 2 ≤ d 3 * c 2 * z 3 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc2_3 (le_of_lt (hd 3))) (sq_nonneg _)
++  have hc3_0' : d 0 * M 0 3 * z 0 ^ 2 ≤ d 0 * c 3 * z 0 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc3_0 (le_of_lt (hd 0))) (sq_nonneg _)
++  have hc3_1' : d 1 * M 1 3 * z 1 ^ 2 ≤ d 1 * c 3 * z 1 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc3_1 (le_of_lt (hd 1))) (sq_nonneg _)
++  have hc3_2' : d 2 * M 2 3 * z 2 ^ 2 ≤ d 2 * c 3 * z 2 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc3_2 (le_of_lt (hd 2))) (sq_nonneg _)
++  have hc23_0' : d 2 * M 2 3 * z 0 ^ 2 ≤ d 2 * c 3 * z 0 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc3_2 (le_of_lt (hd 2))) (sq_nonneg _)
++  have hc23_1' : d 2 * M 2 3 * z 1 ^ 2 ≤ d 2 * c 3 * z 1 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc3_2 (le_of_lt (hd 2))) (sq_nonneg _)
++  have hc13_0' : d 1 * M 1 3 * z 0 ^ 2 ≤ d 1 * c 3 * z 0 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc3_1 (le_of_lt (hd 1))) (sq_nonneg _)
++  have hc13_2' : d 1 * M 1 3 * z 2 ^ 2 ≤ d 1 * c 3 * z 2 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc3_1 (le_of_lt (hd 1))) (sq_nonneg _)
++  have hc12_0' : d 1 * M 1 2 * z 0 ^ 2 ≤ d 1 * c 2 * z 0 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc2_1 (le_of_lt (hd 1))) (sq_nonneg _)
++  have hc12_3' : d 1 * M 1 2 * z 3 ^ 2 ≤ d 1 * c 2 * z 3 ^ 2 := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hc2_1 (le_of_lt (hd 1))) (sq_nonneg _)
++  have h_le_d0 : d 0 * (M 0 0 + M 1 1 + M 2 2 + M 3 3 + 2 * (c 0 + c 1 + c 2 + c 3)) * z 0 ^ 2 ≤ 0 :=
++    mul_nonpos_of_nonpos_of_nonneg (mul_nonpos_of_nonneg_of_nonpos (le_of_lt (hd 0)) h_le) (sq_nonneg _)
++  have h_le_d1 : d 1 * (M 0 0 + M 1 1 + M 2 2 + M 3 3 + 2 * (c 0 + c 1 + c 2 + c 3)) * z 1 ^ 2 ≤ 0 :=
++    mul_nonpos_of_nonpos_of_nonneg (mul_nonpos_of_nonneg_of_nonpos (le_of_lt (hd 1)) h_le) (sq_nonneg _)
++  have h_le_d2 : d 2 * (M 0 0 + M 1 1 + M 2 2 + M 3 3 + 2 * (c 0 + c 1 + c 2 + c 3)) * z 2 ^ 2 ≤ 0 :=
++    mul_nonpos_of_nonpos_of_nonneg (mul_nonpos_of_nonneg_of_nonpos (le_of_lt (hd 2)) h_le) (sq_nonneg _)
++  have h_le_d3 : d 3 * (M 0 0 + M 1 1 + M 2 2 + M 3 3 + 2 * (c 0 + c 1 + c 2 + c 3)) * z 3 ^ 2 ≤ 0 :=
++    mul_nonpos_of_nonpos_of_nonneg (mul_nonpos_of_nonneg_of_nonpos (le_of_lt (hd 3)) h_le) (sq_nonneg _)
++  have h10_z1 : d 1 * M 1 0 * z 1 ^ 2 = d 0 * M 0 1 * z 1 ^ 2 := by rw [hsymm 0 1]
++  have h20_z2 : d 2 * M 2 0 * z 2 ^ 2 = d 0 * M 0 2 * z 2 ^ 2 := by rw [hsymm 0 2]
++  have h30_z3 : d 3 * M 3 0 * z 3 ^ 2 = d 0 * M 0 3 * z 3 ^ 2 := by rw [hsymm 0 3]
++  have h21_z2 : d 2 * M 2 1 * z 2 ^ 2 = d 1 * M 1 2 * z 2 ^ 2 := by rw [hsymm 1 2]
++  have h31_z3 : d 3 * M 3 1 * z 3 ^ 2 = d 1 * M 1 3 * z 3 ^ 2 := by rw [hsymm 1 3]
++  have h32_z3 : d 3 * M 3 2 * z 3 ^ 2 = d 2 * M 2 3 * z 3 ^ 2 := by rw [hsymm 2 3]
++  have h_quad_eq : d 0 * (M 0 0 + M 0 1 + M 0 2 + M 0 3) * z 0 ^ 2 +
++      d 1 * (M 1 0 + M 1 1 + M 1 2 + M 1 3) * z 1 ^ 2 +
++      d 2 * (M 2 0 + M 2 1 + M 2 2 + M 2 3) * z 2 ^ 2 +
++      d 3 * (M 3 0 + M 3 1 + M 3 2 + M 3 3) * z 3 ^ 2 -
++      d 0 * M 0 1 * (z 0 - z 1) ^ 2 - d 0 * M 0 2 * (z 0 - z 2) ^ 2 - d 0 * M 0 3 * (z 0 - z 3) ^ 2 -
++      d 1 * M 1 2 * (z 1 - z 2) ^ 2 - d 1 * M 1 3 * (z 1 - z 3) ^ 2 - d 2 * M 2 3 * (z 2 - z 3) ^ 2 =
++      d 0 * M 0 1 * (z 0 + z 1) ^ 2 + d 2 * M 2 3 * (z 2 + z 3) ^ 2 +
++      d 0 * M 0 2 * (z 0 + z 2) ^ 2 + d 1 * M 1 3 * (z 1 + z 3) ^ 2 +
++      d 0 * M 0 3 * (z 0 + z 3) ^ 2 + d 1 * M 1 2 * (z 1 + z 2) ^ 2 +
++      d 0 * M 0 0 * z 0 ^ 2 + d 1 * M 1 1 * z 1 ^ 2 + d 2 * M 2 2 * z 2 ^ 2 + d 3 * M 3 3 * z 3 ^ 2 -
++      d 0 * M 0 1 * z 0 ^ 2 - d 0 * M 0 1 * z 1 ^ 2 -
++      d 0 * M 0 2 * z 0 ^ 2 - d 0 * M 0 2 * z 2 ^ 2 -
++      d 0 * M 0 3 * z 0 ^ 2 - d 0 * M 0 3 * z 3 ^ 2 -
++      d 1 * M 1 2 * z 1 ^ 2 - d 1 * M 1 2 * z 2 ^ 2 -
++      d 1 * M 1 3 * z 1 ^ 2 - d 1 * M 1 3 * z 3 ^ 2 -
++      d 2 * M 2 3 * z 2 ^ 2 - d 2 * M 2 3 * z 3 ^ 2 +
++      (d 1 * M 1 0 * z 1 ^ 2 - d 0 * M 0 1 * z 1 ^ 2) +
++      (d 2 * M 2 0 * z 2 ^ 2 - d 0 * M 0 2 * z 2 ^ 2) +
++      (d 3 * M 3 0 * z 3 ^ 2 - d 0 * M 0 3 * z 3 ^ 2) +
++      (d 2 * M 2 1 * z 2 ^ 2 - d 1 * M 1 2 * z 2 ^ 2) +
++      (d 3 * M 3 1 * z 3 ^ 2 - d 1 * M 1 3 * z 3 ^ 2) +
++      (d 3 * M 3 2 * z 3 ^ 2 - d 2 * M 2 3 * z 3 ^ 2) := by ring
++  rw [h10_z1, h20_z2, h30_z3, h21_z2, h31_z3, h32_z3] at h_quad_eq
++  rw [h_quad_eq]
++  have hz3_eq : z 3 = - z 0 - z 1 - z 2 := by linarith [hz]
++  rw [hz3_eq] at h_le_d3 hc0_3' hc1_3' hc2_3' hc12_3' h30_z3 h31_z3 h32_z3 ⊢
++  linear_combination 1 * h_le_d0 + 1 * h_le_d1 + 1 * h_le_d2 + 1 * h_le_d3 +
++    1 * hc0_1' + 1 * hc0_2' + 1 * hc0_3' + 1 * hc1_0' + 1 * hc1_2' + 1 * hc1_3' +
++    1 * hc2_0' + 1 * hc2_1' + 1 * hc2_3' + 1 * hc3_0' + 1 * hc3_1' + 1 * hc3_2'
++
++private lemma quad_expand (M : Matrix (Fin 4) (Fin 4) ℝ) (d : Fin 4 → ℝ)
++    (z : Fin 4 → ℝ)
++    (hsymm : ((Matrix.diagonal d) * M).IsSymm) :
++    dotProduct z (((Matrix.diagonal d) * M).mulVec z) =
++      d 0 * (M 0 0 + M 0 1 + M 0 2 + M 0 3) * z 0 ^ 2 +
++      d 1 * (M 1 0 + M 1 1 + M 1 2 + M 1 3) * z 1 ^ 2 +
++      d 2 * (M 2 0 + M 2 1 + M 2 2 + M 2 3) * z 2 ^ 2 +
++      d 3 * (M 3 0 + M 3 1 + M 3 2 + M 3 3) * z 3 ^ 2 -
++      d 0 * M 0 1 * (z 0 - z 1) ^ 2 -
++      d 0 * M 0 2 * (z 0 - z 2) ^ 2 -
++      d 0 * M 0 3 * (z 0 - z 3) ^ 2 -
++      d 1 * M 1 2 * (z 1 - z 2) ^ 2 -
++      d 1 * M 1 3 * (z 1 - z 3) ^ 2 -
++      d 2 * M 2 3 * (z 2 - z 3) ^ 2 := by
++  have hsymm_apply (i j : Fin 4) : d j * M j i = d i * M i j := by
++    have h := congr_fun (congr_fun hsymm j) i
++    dsimp [Matrix.transpose] at h
++    rw [diag_mul_apply, diag_mul_apply] at h
++    exact h.symm
++  have h10 := hsymm_apply 0 1
++  have h20 := hsymm_apply 0 2
++  have h30 := hsymm_apply 0 3
++  have h21 := hsymm_apply 1 2
++  have h31 := hsymm_apply 1 3
++  have h32 := hsymm_apply 2 3
++  have h1 : dotProduct z (((Matrix.diagonal d) * M).mulVec z) =
++      ∑ i, z i * (((Matrix.diagonal d) * M).mulVec z i) := rfl
++  have h2 (i : Fin 4) : ((Matrix.diagonal d) * M).mulVec z i =
++      ∑ j, ((Matrix.diagonal d) * M) i j * z j := rfl
++  rw [h1, sum_fin4]
++  rw [h2 0, h2 1, h2 2, h2 3]
++  rw [sum_fin4, sum_fin4, sum_fin4, sum_fin4]
++  simp only [diag_mul_apply]
++  linear_combination h10 * (z 0 * z 1 - z 1 ^ 2) + h20 * (z 0 * z 2 - z 2 ^ 2) +
++    h30 * (z 0 * z 3 - z 3 ^ 2) + h21 * (z 1 * z 2 - z 2 ^ 2) +
++    h31 * (z 1 * z 3 - z 3 ^ 2) + h32 * (z 2 * z 3 - z 3 ^ 2)
++
+ /-- Paper Lemma 5, in a max-free but equivalent form: one can choose an
+ off-diagonal maximizer in each column so that the trace-plus-column-max
+ expression is positive. -/
+@@ -125,7 +283,75 @@ theorem columnMax_spectral_inequality
+     ∃ pick : Fin 4 → Fin 4,
+       (∀ j, pick j ≠ j) ∧
+       0 < Matrix.trace M + 2 * ∑ j, M (pick j) j := by
+-  sorry
++  use columnMaxPicker M
++  refine ⟨columnMaxPicker_ne M, ?_⟩
++  by_contra h_le
++  push_neg at h_le
++  obtain ⟨d, hd, hsymm, hpos2⟩ := hspectral
++  set S := (Matrix.diagonal d) * M
++  obtain ⟨u, v, huv⟩ := hpos2
++  set Su := ∑ i, u i
++  set Sv := ∑ i, v i
++  have hab : (if (Su = 0 ∧ Sv = 0) then (1 : ℝ) else -Sv) ≠ 0 ∨
++      (if (Su = 0 ∧ Sv = 0) then (0 : ℝ) else Su) ≠ 0 := by
++    by_cases h : Su = 0 ∧ Sv = 0
++    · left
++      rw [if_pos h]
++      exact one_ne_zero
++    · rw [if_neg h, if_neg h]
++      have h_or : Su ≠ 0 ∨ Sv ≠ 0 := by
++        contrapose! h
++        exact h
++      rcases h_or with h1 | h2
++      · right; exact h1
++      · left; exact neg_ne_zero.mpr h2
++  set a := if (Su = 0 ∧ Sv = 0) then (1 : ℝ) else -Sv
++  set b := if (Su = 0 ∧ Sv = 0) then (0 : ℝ) else Su
++  have hpos := huv a b hab
++  dsimp [quadraticForm4] at hpos
++  set z : Fin 4 → ℝ := fun i => a * u i + b * v i
++  have hsum : ∑ i, z i = 0 := by
++    dsimp [z]
++    rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
++    by_cases h : Su = 0 ∧ Sv = 0
++    · have h_u : ∑ i, u i = 0 := h.1
++      have h_v : ∑ i, v i = 0 := h.2
++      dsimp [a, b]
++      rw [if_pos h, if_pos h]
++      linarith [h_u, h_v]
++    · change a * Su + b * Sv = 0
++      dsimp [a, b]
++      rw [if_neg h, if_neg h]
++      ring
++  have h_quad := quad_expand M d z hsymm
++  rw [h_quad] at hpos
++  set c : Fin 4 → ℝ := fun j => M (columnMaxPicker M j) j
++  have hc0_1 := columnMaxPicker_le M 0 1 (by decide)
++  have hc0_2 := columnMaxPicker_le M 0 2 (by decide)
++  have hc0_3 := columnMaxPicker_le M 0 3 (by decide)
++  have hc1_0 := columnMaxPicker_le M 1 0 (by decide)
++  have hc1_2 := columnMaxPicker_le M 1 2 (by decide)
++  have hc1_3 := columnMaxPicker_le M 1 3 (by decide)
++  have hc2_0 := columnMaxPicker_le M 2 0 (by decide)
++  have hc2_1 := columnMaxPicker_le M 2 1 (by decide)
++  have hc2_3 := columnMaxPicker_le M 2 3 (by decide)
++  have hc3_0 := columnMaxPicker_le M 3 0 (by decide)
++  have hc3_1 := columnMaxPicker_le M 3 1 (by decide)
++  have hc3_2 := columnMaxPicker_le M 3 2 (by decide)
++  have hsymm_apply (i j : Fin 4) : d j * M j i = d i * M i j := by
++    have h := congr_fun (congr_fun hsymm j) i
++    dsimp [Matrix.transpose, S] at h
++    rw [diag_mul_apply, diag_mul_apply] at h
++    exact h.symm
++  rw [sum_fin4] at h_le
++  unfold Matrix.trace at h_le
++  rw [sum_fin4] at h_le
++  unfold Matrix.diag at h_le
++  have hz_sum : z 0 + z 1 + z 2 + z 3 = 0 := by rw [sum_fin4] at hsum; exact hsum
++  have h_bound := offDiag_sum_bound d M c z hz_sum
++    hc0_1 hc0_2 hc0_3 hc1_0 hc1_2 hc1_3 hc2_0 hc2_1 hc2_3 hc3_0 hc3_1 hc3_2
++    hsymm_apply hd h_le
++  linarith [hpos, h_bound]
+ 
+ /-- Paper Lemmas 3 and 4: a two-head realization supplies the normalized
+ system. -/

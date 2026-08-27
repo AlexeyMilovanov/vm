@@ -1,0 +1,56 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/Bank.lean b/HeadComplexity/TypicalLogCloseness/Bank.lean
+index 36b7225..dee3689 100644
+--- a/HeadComplexity/TypicalLogCloseness/Bank.lean
++++ b/HeadComplexity/TypicalLogCloseness/Bank.lean
+@@ -34,7 +34,50 @@ def HasSpanningBank (n H : ℕ) : Prop :=
+ /-- Totality follows from the power-block localization construction (with the
+ small arities handled separately). -/
+ theorem exists_spanningBank (n : ℕ) : ∃ H, HasSpanningBank n H := by
+-  sorry
++  rcases n with _ | _ | n
++  · use 1
++    refine ⟨fun _ => AffineForm.positiveDirection 0, ?_, ?_⟩
++    · intro h
++      exact AffineForm.positiveDirection_positiveCoefficients.strictAdmissible
++    · intro v
++      refine ⟨fun _ => ⟨v (fun _ => false), fun _ => 0⟩, fun x => ?_⟩
++      rw [Fin.sum_univ_one]
++      have hx : x = fun _ => false := funext (fun i => i.elim0)
++      have hB : (AffineForm.positiveDirection 0).eval x = 1 := by
++        simp [AffineForm.eval, AffineForm.positiveDirection]
++      have hA : (AffineForm.mk (v (fun _ => false)) (fun _ => 0)).eval x = v x := by
++        simp [AffineForm.eval, hx]
++      rw [hA, hB, div_one]
++  · use 1
++    refine ⟨fun _ => AffineForm.positiveDirection 1, ?_, ?_⟩
++    · intro h
++      exact AffineForm.positiveDirection_positiveCoefficients.strictAdmissible
++    · intro v
++      let A0 : AffineForm 1 := ⟨v (fun _ => false), fun _ => 2 * v (fun _ => true) - v (fun _ => false)⟩
++      refine ⟨fun _ => A0, ?_⟩
++      have hsingle (i : Fin 1) : i = 0 := Subsingleton.elim i 0
++      intro x
++      rw [Fin.sum_univ_one]
++      rcases hx0 : x 0 with _ | _
++      · have hx : x = fun _ => false := funext (fun i => by rw [hsingle i, hx0]; rfl)
++        subst hx
++        simp [AffineForm.eval, A0, AffineForm.positiveDirection, bitReal, Fin.sum_univ_one]
++      · have hx : x = fun _ => true := funext (fun i => by rw [hsingle i, hx0]; rfl)
++        subst hx
++        simp [AffineForm.eval, A0, AffineForm.positiveDirection, bitReal, Fin.sum_univ_one]
++        ring
++  · have hn2 : 2 ≤ n + 2 := by omega
++    let L := powerBlockLocalization (n + 2) hn2
++    obtain ⟨T, hpositive, hcleared⟩ := exists_legal_fullRank_bank L
++    let B : Fin L.groupCount → AffineForm (n + 2) := legalPath L T
++    refine ⟨L.groupCount, B, ?_, ?_⟩
++    · intro g
++      exact (hpositive g).strictAdmissible
++    · intro v
++      have hlegal : ∀ g, (B g).StrictLegal := fun g => (hpositive g).strictLegal
++      have hdet : Matrix.det (fractionalMatrix L B) ≠ 0 :=
++        fractional_det_ne_zero L B hlegal hcleared
++      exact fixedBank_spans L B hlegal hdet v
+ 
+ /-- Fixed-pole span complexity. -/
+ noncomputable def Bank (n : ℕ) : ℕ := by

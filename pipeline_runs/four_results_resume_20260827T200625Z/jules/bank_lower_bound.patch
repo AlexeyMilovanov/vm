@@ -1,0 +1,19 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/Bank.lean b/HeadComplexity/TypicalLogCloseness/Bank.lean
+index 36b7225..e4fd02b 100644
+--- a/HeadComplexity/TypicalLogCloseness/Bank.lean
++++ b/HeadComplexity/TypicalLogCloseness/Bank.lean
+@@ -70,7 +70,13 @@ theorem bank_dimension_bound (n : ℕ) :
+ /-- P19 lower bound in explicit natural-number ceiling form. -/
+ theorem bank_lower_bound {n : ℕ} (hn : 1 ≤ n) :
+     ((2 ^ n - 1) + (n - 1)) / n ≤ Bank n := by
+-  sorry
++  have hdim := bank_dimension_bound n
++  have hpow : 1 ≤ 2 ^ n := Nat.one_le_two_pow
++  have h1 : (2 ^ n - 1) + (n - 1) < n * (Bank n + 1) := by
++    calc (2 ^ n - 1) + (n - 1) ≤ n * Bank n + (n - 1) := by omega
++    _ < n * Bank n + n := by omega
++    _ = n * (Bank n + 1) := by ring
++  exact Nat.le_of_lt_succ (Nat.div_lt_of_lt_mul h1)
+ 
+ /-- The already-formalized power-block localization is a spanning bank, not
+ only a per-function upper bound. -/

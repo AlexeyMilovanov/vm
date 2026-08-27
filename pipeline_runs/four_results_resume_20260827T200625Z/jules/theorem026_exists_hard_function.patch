@@ -1,0 +1,26 @@
+diff --git a/HeadComplexity/TypicalLogCloseness/CountingLowerBound.lean b/HeadComplexity/TypicalLogCloseness/CountingLowerBound.lean
+index 4f8d887..2e33b6f 100644
+--- a/HeadComplexity/TypicalLogCloseness/CountingLowerBound.lean
++++ b/HeadComplexity/TypicalLogCloseness/CountingLowerBound.lean
+@@ -34,6 +34,20 @@ theorem theorem026_exists_hard_function (n H : ℕ) (hn : 2 ≤ n)
+     (hH0 : 1 ≤ H) (hHN : H ≤ 2 ^ n)
+     (hexp : 64 * n ^ 2 * H < 2 ^ n) :
+     ∃ f : BoolFn n, H < HeadComplexity.HStar n f := by
+-  sorry
++  by_contra h
++  push Not at h
++  have hsub : (Finset.univ : Finset (BoolFn n)) = sublevel (HeadComplexity.HStar n) H := by
++    ext f
++    simp only [Finset.mem_univ, mem_sublevel, true_iff]
++    exact h f
++  have hcard : (Finset.univ : Finset (BoolFn n)).card = 2 ^ (2 ^ n) := by
++    have h1 : Fintype.card (BoolFn n) = 2 ^ (2 ^ n) := by
++      dsimp [BoolFn, Cube]
++      rw [Fintype.card_fun, Fintype.card_bool, Fintype.card_fun, Fintype.card_bool, Fintype.card_fin]
++    rw [Finset.card_univ, h1]
++  have hle := theorem026_counting_lower_bound n H hn hH0 hHN
++  rw [← hsub, hcard] at hle
++  have hstrict : 2 ^ (64 * n ^ 2 * H) < 2 ^ (2 ^ n) := Nat.pow_lt_pow_right (by norm_num) hexp
++  exact Nat.lt_irrefl _ (hstrict.trans_le hle)
+ 
+ end HeadComplexity.TypicalLogCloseness
