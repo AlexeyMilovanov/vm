@@ -34,17 +34,74 @@ def HasSpanningBank (n H : ℕ) : Prop :=
 
 /-- The zero-dimensional cube is spanned by one positive pole. -/
 private theorem hasSpanningBank_zero : HasSpanningBank 0 1 := by
-  sorry
+  refine ⟨fun _ => AffineForm.positiveDirection 0, ?_, ?_⟩
+  · intro h
+    exact AffineForm.positiveDirection_positiveCoefficients.strictAdmissible
+  · intro v
+    refine ⟨fun _ => ⟨v (fun _ => false), fun _ => 0⟩, fun x => ?_⟩
+    rw [Fin.sum_univ_one]
+    have hx : x = fun _ => false := funext (fun i => i.elim0)
+    have hB : (AffineForm.positiveDirection 0).eval x = 1 := by
+      simp [AffineForm.eval, AffineForm.positiveDirection]
+    have hA :
+        (AffineForm.mk (v (fun _ => false)) (fun _ => 0)).eval x = v x := by
+      simp [AffineForm.eval, hx]
+    rw [hA, hB, div_one]
 
 /-- Every table on the one-dimensional cube is one affine numerator divided
 by the fixed positive direction. -/
 private theorem hasSpanningBank_one_totality : HasSpanningBank 1 1 := by
-  sorry
+  let B0 : AffineForm 1 := ⟨2, fun _ => 1⟩
+  use fun _ => B0
+  constructor
+  · intro h
+    constructor
+    · intro x
+      dsimp [B0, AffineForm.eval]
+      have hnonneg : 0 ≤ ∑ i : Fin 1, (1 : ℝ) * bitReal (x i) := by
+        apply Finset.sum_nonneg
+        intro i _
+        exact mul_nonneg zero_le_one (bitReal_nonneg _)
+      linarith
+    · left
+      intro i
+      exact zero_lt_one
+  · intro v
+    let v0 := v (fun _ => false)
+    let v1 := v (fun _ => true)
+    let A0 : AffineForm 1 := ⟨2 * v0, fun _ => 3 * v1 - 2 * v0⟩
+    use fun _ => A0
+    intro x
+    simp only [Finset.univ_unique, Fin.default_eq_zero, Finset.sum_singleton]
+    have hx : x = (fun _ => false) ∨ x = (fun _ => true) := by
+      cases h : x 0
+      · left; ext i; fin_cases i; exact h
+      · right; ext i; fin_cases i; exact h
+    rcases hx with rfl | rfl
+    · dsimp [A0, B0, AffineForm.eval]
+      simp only [Finset.univ_unique, Fin.default_eq_zero,
+        Finset.sum_singleton, mul_zero, add_zero]
+      ring
+    · dsimp [A0, B0, AffineForm.eval]
+      simp only [Finset.univ_unique, Fin.default_eq_zero,
+        Finset.sum_singleton, mul_one]
+      ring
 
 /-- For arity at least two, the localization matrix supplies a spanning bank. -/
 private theorem hasSpanningBank_of_two_le {n : ℕ} (hn : 2 ≤ n) :
     HasSpanningBank n (powerBlockLocalization n hn).groupCount := by
-  sorry
+  let L := powerBlockLocalization n hn
+  obtain ⟨T, hpositive, hcleared⟩ := exists_legal_fullRank_bank L
+  let B : Fin L.groupCount → AffineForm n := legalPath L T
+  refine ⟨B, ?_, ?_⟩
+  · intro g
+    exact (hpositive g).strictAdmissible
+  · intro v
+    have hlegal : ∀ g, (B g).StrictLegal :=
+      fun g => (hpositive g).strictLegal
+    have hdet : Matrix.det (fractionalMatrix L B) ≠ 0 :=
+      fractional_det_ne_zero L B hlegal hcleared
+    exact fixedBank_spans L B hlegal hdet v
 
 /-- Totality follows from the power-block localization construction (with the
 small arities handled separately). -/
