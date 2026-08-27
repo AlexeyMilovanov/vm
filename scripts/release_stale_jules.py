@@ -16,6 +16,7 @@ SESSION_IDS = [
     "5678410110478816212",
 ]
 
+CHECK_ONLY = "--check" in sys.argv
 FINALIZE = (
     "The E40 campaign budget ended many hours ago. Do not start a new search. "
     "Commit any already-created useful artifacts, keep exact/numerical claims "
@@ -27,13 +28,13 @@ for sid in SESSION_IDS:
     code, body = pipeline.api("GET", f"/sessions/{sid}")
     state = (body or {}).get("state", "UNKNOWN")
     action = "none"
-    if state == "AWAITING_PLAN_APPROVAL":
+    if state == "AWAITING_PLAN_APPROVAL" and not CHECK_ONLY:
         trigger = pipeline.latest_trigger(sid, state)
         if trigger:
             code, _ = pipeline.api(
                 "POST", f"/sessions/{sid}:approvePlan", body={})
             action = f"approvePlan:{code}"
-    elif state == "AWAITING_USER_FEEDBACK":
+    elif state == "AWAITING_USER_FEEDBACK" and not CHECK_ONLY:
         code, _ = pipeline.api("POST", f"/sessions/{sid}:sendMessage",
                                body={"prompt": FINALIZE})
         action = f"finalizeMessage:{code}"

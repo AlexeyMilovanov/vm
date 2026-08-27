@@ -7,6 +7,7 @@ and accepts a patch only after a sequential Lean build and semantic review.
 """
 
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -69,6 +70,23 @@ all changed files."""
 
 
 pipeline.jules_prompt = prompt
+original_jules_submit = pipeline.jules_submit
+
+
+def quota_retry_submit(entry, base_sha, logdir):
+    for attempt in range(49):
+        sid = original_jules_submit(entry, base_sha, logdir)
+        if sid:
+            return sid
+        if attempt < 48:
+            pipeline.log(
+                f"Jules submit unavailable for {entry['name']}; "
+                f"quota retry {attempt + 1}/48 in 15m")
+            time.sleep(15 * 60)
+    return None
+
+pipeline.jules_submit = quota_retry_submit
+
 entries = pipeline.validated_entries(
     pipeline.ROOT, ("jules_ready", "hard"))
 if len(entries) != 23:
