@@ -655,7 +655,8 @@ def jules_submit(entry, base_sha, logdir: Path):
     prompt = jules_prompt(entry, base_sha)
     for attempt in range(6):
         try:
-            r = subprocess.run([JULES, "new", "--repo", GH_REPO, prompt],
+            r = subprocess.run([JULES, "remote", "new", "--repo", GH_REPO,
+                                "--session", prompt],
                                text=True, capture_output=True, timeout=180)
         except (OSError, subprocess.TimeoutExpired) as exc:
             (logdir / f"{entry['name']}.submit.log").write_text(str(exc))
