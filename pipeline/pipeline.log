@@ -158,3 +158,4 @@
 [2026-08-27T21:26:24Z] review f8_integer_certificate_margin: audit=ok closed=yes semantic=ACCEPT
 [2026-08-27T21:31:03Z] review f8_computableWithHeadsN_three: audit=ok closed=yes semantic=ACCEPT
 [2026-08-27T21:35:48Z] review HStar_f8: audit=ok closed=yes semantic=ACCEPT
+[2026-08-27T21:35:48Z] push deferred until final smoke: jules merges: theorem026_exists_hard_function, spanningBank_dimension_bound, bank_lower_bound, bank_le_powerBlock_groupCount, bank_pow_two, bank_one, f8_thresholdDegLE_two, f8_not_thresholdDegLE_one, thresholdDeg_f8, f8_denominators_admissible, f8_integer_certificate_margin, f8_computableWithHeadsN_three, HStar_f8

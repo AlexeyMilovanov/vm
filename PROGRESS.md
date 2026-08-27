@@ -1042,3 +1042,7 @@ for both Warren endpoints and `HeadComplexity.ndisj_separation` reports exactly
 ## Jules phase retry_01 (2026-08-26)
 - merged: ['starCenter_card', 'denomMvPoly_totalDegree_le', 'numMvPoly_eval', 'numMvPoly_totalDegree_le', 'clearedScoreMvPoly_eval', 'powerBlockLagrange_delta', 'clearedScoreMvPoly_totalDegree_le']
 - partial (hints saved): ['denomMvPoly_eval', 'powerBlockEll_zero_iff']
+
+## Jules phase four_results_resume_20260827T200625Z (2026-08-27)
+- merged: ['theorem026_exists_hard_function', 'spanningBank_dimension_bound', 'bank_lower_bound', 'bank_le_powerBlock_groupCount', 'bank_pow_two', 'bank_one', 'f8_thresholdDegLE_two', 'f8_not_thresholdDegLE_one', 'thresholdDeg_f8', 'f8_denominators_admissible', 'f8_integer_certificate_margin', 'f8_computableWithHeadsN_three', 'HStar_f8']
+- partial (hints saved): ['strictify_weak_certificate', 'exists_spanningBank', 'HStar_le_Bank', 'f8_quadratic_mixed_negative', 'columnMax_spectral_inequality', 'two_heads_yield_f8NormalizedSystem', 'not_nonempty_f8NormalizedSystem']
