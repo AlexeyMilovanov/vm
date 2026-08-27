@@ -56,6 +56,165 @@ theorem HasCanonicalCertificate.mono {Q R : ℕ} (hQR : Q ≤ R) {f : BoolFn n}
   · exact Or.inl hc
   · exact Or.inr ⟨T, C, hT.trans hQR, hC⟩
 
+open AffineForm
+
+/-- Direction affine form with negative slopes `-1` and constant `n + 1`. -/
+def negDirection (n : ℕ) : AffineForm n where
+  constant := (n : ℝ) + 1
+  linear _ := -1
+
+theorem negDirection_eval (n : ℕ) (x : Cube n) :
+    (negDirection n).eval x = (n : ℝ) + 1 - ∑ i, bitReal (x i) := by
+  simp only [AffineForm.eval, negDirection]
+  have h1 : (∑ i, -1 * bitReal (x i)) = - ∑ i, bitReal (x i) := by
+    rw [← Finset.mul_sum]
+    ring
+  rw [h1]
+  ring
+
+theorem negDirection_strictLegal (n : ℕ) : (negDirection n).StrictLegal := by
+  intro x
+  rw [negDirection_eval]
+  have hsum : ∑ i, bitReal (x i) ≤ (n : ℝ) := by
+    have h1 : ∀ i ∈ Finset.univ, bitReal (x i) ≤ 1 := fun i _ => by
+      cases x i <;> simp [bitReal]
+    have h2 := Finset.sum_le_card_nsmul Finset.univ (fun i => bitReal (x i)) 1 h1
+    simp only [Finset.card_univ, Fintype.card_fin, nsmul_eq_mul, mul_one] at h2
+    exact h2
+  linarith
+
+theorem negDirection_strictlyOriented (n : ℕ) :
+    (negDirection n).StrictlyOriented :=
+  Or.inr fun _ => by simp [negDirection]
+
+/-- For a weakly oriented form `B`, choose a strictly oriented form `dir B`
+such that `dir B` is strictly legal and `B.linear i + dir B.linear i` has the
+same sign for all `i`. -/
+noncomputable def directionForm (B : AffineForm n) : AffineForm n :=
+  if h : ∀ i, 0 ≤ B.linear i then positiveDirection n else negDirection n
+
+theorem directionForm_strictLegal (B : AffineForm n) :
+    (directionForm B).StrictLegal := by
+  classical
+  dsimp [directionForm]
+  split_ifs
+  · exact positiveDirection_strictLegal
+  · exact negDirection_strictLegal n
+
+theorem directionForm_strictlyOriented (B : AffineForm n)
+    (hweak : B.WeaklyOriented) : (directionForm B).StrictlyOriented := by
+  classical
+  dsimp [directionForm]
+  split_ifs with hpos
+  · exact positiveDirection_positiveCoefficients.strictlyOriented
+  · exact negDirection_strictlyOriented n
+
+theorem directionForm_aligned (B : AffineForm n) (hweak : B.WeaklyOriented)
+    (ε : ℝ) (hε : 0 < ε) :
+    ((B.add ((directionForm B).smul ε)).StrictlyOriented) := by
+  classical
+  dsimp [directionForm]
+  split_ifs with hpos
+  · left
+    intro i
+    have h1 : 0 ≤ B.linear i := hpos i
+    have h2 : 0 < ((positiveDirection n).smul ε).linear i := by
+      simp [smul, positiveDirection, hε]
+    simp only [add, smul, positiveDirection]
+    linarith
+  · right
+    intro i
+    have hneg : ∀ i, B.linear i ≤ 0 := by
+      rcases hweak with h | h
+      · contradiction
+      · exact h
+    have h1 : B.linear i ≤ 0 := hneg i
+    have h2 : ((negDirection n).smul ε).linear i < 0 := by
+      simp [smul, negDirection]
+      linarith
+    simp only [add, smul, negDirection]
+    linarith
+
+/-- Perturbed denominator pool. -/
+noncomputable def perturbedDenom {T : Topology} (C : Certificate n T) (ε : ℝ)
+    (j : Fin T.denominatorCount) : AffineForm n :=
+  (C.denominators j).add ((directionForm (C.denominators j)).smul ε)
+
+theorem perturbedDenom_eval {T : Topology} (C : Certificate n T) (ε : ℝ)
+    (j : Fin T.denominatorCount) (x : Cube n) :
+    (perturbedDenom C ε j).eval x =
+      (C.denominators j).eval x + ε * (directionForm (C.denominators j)).eval x := by
+  simp [perturbedDenom]
+
+theorem perturbedDenom_pos {T : Topology} (C : Certificate n T)
+    (ε : ℝ) (hε : 0 ≤ ε) (j : Fin T.denominatorCount) (x : Cube n) :
+    0 < (perturbedDenom C ε j).eval x := by
+  rw [perturbedDenom_eval]
+  have h1 : 0 < (C.denominators j).eval x := (C.denominators j).eval_pos (C.legal j) x
+  have h2 : 0 < (directionForm (C.denominators j)).eval x :=
+    directionForm_strictLegal (C.denominators j) x
+  have h3 : 0 ≤ ε * (directionForm (C.denominators j)).eval x := mul_nonneg hε h2.le
+  linarith
+
+theorem perturbedDenom_strictlyOriented {T : Topology} (C : Certificate n T)
+    (hweak : ∀ j, (C.denominators j).WeaklyOriented)
+    (ε : ℝ) (hε : 0 < ε) (j : Fin T.denominatorCount) :
+    (perturbedDenom C ε j).StrictlyOriented :=
+  directionForm_aligned (C.denominators j) (hweak j) ε hε
+
+theorem perturbedDenom_strictAdmissible {T : Topology} (C : Certificate n T)
+    (hweak : ∀ j, (C.denominators j).WeaklyOriented)
+    (ε : ℝ) (hε : 0 < ε) (j : Fin T.denominatorCount) :
+    (perturbedDenom C ε j).StrictAdmissible :=
+  ⟨fun x => perturbedDenom_pos C ε hε.le j x,
+   perturbedDenom_strictlyOriented C hweak ε hε j⟩
+
+/-- Perturbed certificate at parameter `ε`. -/
+noncomputable def perturbedCert {T : Topology} (C : Certificate n T)
+    (hweak : ∀ j, (C.denominators j).WeaklyOriented)
+    (ε : ℝ) (hε : 0 < ε) : CanonicalCertificate n T where
+  denominators j := perturbedDenom C ε j
+  numerators t := C.numerators t
+  legal j := perturbedDenom_pos C ε hε.le j
+  oriented j := perturbedDenom_strictlyOriented C hweak ε hε j
+
+theorem perturbedCert_forget_eval {T : Topology} (C : Certificate n T)
+    (hweak : ∀ j, (C.denominators j).WeaklyOriented)
+    (ε : ℝ) (hε : 0 < ε) (x : Cube n) :
+    (perturbedCert C hweak ε hε).forget.eval x =
+      ∑ t, (C.numerators t).eval x /
+        ∏ j ∈ (T.incidence t).denoms,
+          ((C.denominators j).eval x + ε * (directionForm (C.denominators j)).eval x) := by
+  simp [perturbedCert, CanonicalCertificate.forget, Certificate.eval,
+    Certificate.termDenominator, perturbedDenom]
+
+/-- The scalar evaluation path before packaging the perturbed certificate. -/
+noncomputable def perturbationEval {T : Topology} (C : Certificate n T)
+    (ε : ℝ) (x : Cube n) : ℝ :=
+  ∑ t, (C.numerators t).eval x /
+    ∏ j ∈ (T.incidence t).denoms,
+      ((C.denominators j).eval x +
+        ε * (directionForm (C.denominators j)).eval x)
+
+@[simp] theorem perturbationEval_zero {T : Topology} (C : Certificate n T)
+    (x : Cube n) : perturbationEval C 0 x = C.eval x := by
+  simp [perturbationEval, Certificate.eval, Certificate.termDenominator]
+
+/-- Each pointwise perturbed score is continuous at the unperturbed parameter. -/
+theorem continuousAt_perturbationEval_zero {T : Topology}
+    (C : Certificate n T) (x : Cube n) :
+    ContinuousAt (fun ε : ℝ => perturbationEval C ε x) 0 := by
+  sorry
+
+/-- A finite family of continuous nonzero values keeps its sign at one common
+strictly positive parameter. -/
+theorem exists_positive_parameter_preserving_sign
+    (g : ℝ → Cube n → ℝ)
+    (hcont : ∀ x, ContinuousAt (fun ε => g ε x) 0)
+    (hne : ∀ x, g 0 x ≠ 0) :
+    ∃ ε : ℝ, 0 < ε ∧ ∀ x, 0 < g ε x * g 0 x := by
+  sorry
+
 /-- Finite-cube closure lemma. A positive weakly oriented certificate can be
 perturbed, without changing its topology or truth-table signs, to an exact
 strictly oriented canonical certificate. -/
@@ -63,7 +222,39 @@ theorem strictify_weak_certificate {T : Topology} (C : Certificate n T)
     (hweak : ∀ j, (C.denominators j).WeaklyOriented)
     {f : BoolFn n} (hrep : C.Represents f) :
     ∃ C' : CanonicalCertificate n T, C'.Represents f := by
-  sorry
+  let g : ℝ → Cube n → ℝ := fun ε x => perturbationEval C ε x
+  have hcont : ∀ x, ContinuousAt (fun ε => g ε x) 0 := by
+    intro x
+    exact continuousAt_perturbationEval_zero C x
+  have hne : ∀ x, g 0 x ≠ 0 := by
+    intro x
+    simpa [g] using Certificate.eval_ne_zero_of_represents hrep x
+  obtain ⟨ε, hε, hsign⟩ :=
+    exists_positive_parameter_preserving_sign g hcont hne
+  refine ⟨perturbedCert C hweak ε hε, ?_⟩
+  intro x
+  have heval :
+      (perturbedCert C hweak ε hε).forget.eval x = g ε x := by
+    rw [perturbedCert_forget_eval]
+    rfl
+  have hzero : g 0 x = C.eval x := by simp [g]
+  constructor
+  · intro hx
+    have hbase : 0 < g 0 x := by
+      rw [hzero]
+      exact (hrep x).1 hx
+    have hp := hsign x
+    change 0 < (perturbedCert C hweak ε hε).forget.eval x
+    rw [heval]
+    nlinarith
+  · intro hx
+    have hbase : g 0 x < 0 := by
+      rw [hzero]
+      exact (hrep x).2 hx
+    have hp := hsign x
+    change (perturbedCert C hweak ε hε).forget.eval x < 0
+    rw [heval]
+    nlinarith
 
 private theorem fracDenominator_weaklyOriented (φ : HeadComplexity.FracAtom n) :
     (fracDenominator φ).WeaklyOriented := by

@@ -32,10 +32,29 @@ def IsSpanningBank (B : Fin H → AffineForm n) : Prop :=
 def HasSpanningBank (n H : ℕ) : Prop :=
   ∃ B : Fin H → AffineForm n, IsSpanningBank B
 
+/-- The zero-dimensional cube is spanned by one positive pole. -/
+private theorem hasSpanningBank_zero : HasSpanningBank 0 1 := by
+  sorry
+
+/-- Every table on the one-dimensional cube is one affine numerator divided
+by the fixed positive direction. -/
+private theorem hasSpanningBank_one_totality : HasSpanningBank 1 1 := by
+  sorry
+
+/-- For arity at least two, the localization matrix supplies a spanning bank. -/
+private theorem hasSpanningBank_of_two_le {n : ℕ} (hn : 2 ≤ n) :
+    HasSpanningBank n (powerBlockLocalization n hn).groupCount := by
+  sorry
+
 /-- Totality follows from the power-block localization construction (with the
 small arities handled separately). -/
 theorem exists_spanningBank (n : ℕ) : ∃ H, HasSpanningBank n H := by
-  sorry
+  rcases n with _ | _ | n
+  · exact ⟨1, hasSpanningBank_zero⟩
+  · exact ⟨1, hasSpanningBank_one_totality⟩
+  · have hn2 : 2 ≤ n + 2 := by omega
+    exact ⟨(powerBlockLocalization (n + 2) hn2).groupCount,
+      hasSpanningBank_of_two_le hn2⟩
 
 /-- Fixed-pole span complexity. -/
 noncomputable def Bank (n : ℕ) : ℕ := by
@@ -51,10 +70,29 @@ theorem Bank_le_of_hasSpanningBank {n H : ℕ} (h : HasSpanningBank n H) :
   classical
   exact Nat.find_min' (exists_spanningBank n) h
 
+/-- Every quotient by a strictly admissible pole is one native fractional
+atom, including the negative-slope orientation. -/
+private theorem exists_fracAtom_eval_eq_of_strictAdmissible
+    (A B : AffineForm n) (hB : B.StrictAdmissible) :
+    ∃ φ : HeadComplexity.FracAtom n,
+      ∀ x, φ.eval x = A.eval x / B.eval x := by
+  sorry
+
 /-- One spanning bank works for every Boolean target, hence bounds H*. -/
 theorem HStar_le_Bank (f : BoolFn n) :
     HeadComplexity.HStar n f ≤ Bank n := by
-  sorry
+  classical
+  obtain ⟨B, hB_spans⟩ := hasSpanningBank_bank n
+  rcases hB_spans with ⟨hB_adm, hB_span⟩
+  let v : Cube n → ℝ := fun x => if f x then 1 else -1
+  obtain ⟨A, hA⟩ := hB_span v
+  choose φ hφ using fun h =>
+    exists_fracAtom_eval_eq_of_strictAdmissible (A h) (B h) (hB_adm h)
+  apply HStar_le_of_fracComputable
+  refine ⟨φ, 0, fun x => ?_⟩
+  simp_rw [hφ]
+  rw [zero_add, ← hA x]
+  cases hx : f x <;> simp [v, hx]
 
 private noncomputable def affineEvalLinearMap (n : ℕ) :
     (ℝ × (Fin n → ℝ)) →ₗ[ℝ] (Cube n → ℝ) where
