@@ -2317,12 +2317,398 @@ private theorem trace_plus_two_sum_eq_sum_univ
   rw [mul_sum, ← sum_add_distrib]
 
 
+private lemma neg_abs_sub_le (X Y t : ℝ) (ht : t = 1 ∨ t = -1) :
+    -|X - Y| ≤ -t * X + t * Y := by
+  rcases ht with rfl | rfl
+  · linarith [le_abs_self (X - Y)]
+  · linarith [neg_le_abs (X - Y)]
+
+private lemma neg_abs_add_le (X Y t : ℝ) (ht : t = 1 ∨ t = -1) :
+    -|X + Y| ≤ -t * X - t * Y := by
+  rcases ht with rfl | rfl
+  · linarith [le_abs_self (X + Y)]
+  · linarith [neg_le_abs (X + Y)]
+
+private lemma signed_contraction_fin4
+    (s U V : Fin 4 → ℝ) (w : ℝ) (j i : Fin 4) (hij : i ≠ j)
+    (hsign : s j = 1 ∨ s j = -1)
+    (hc : |w| + |U i - V i| +
+      ∑ k with k ≠ i ∧ k ≠ j, |U k + V k| < U j)
+    (hw : s j * w ≤ |w|)
+    (hsub : s j * s i * (-(U i - V i)) ≤ |U i - V i|)
+    (hadd : ∀ k, s j * s k * (-(U k + V k)) ≤ |U k + V k|) :
+    s j * (w - ∑ k, s k * U k) <
+      s j * (∑ k ∈ offDiagSet j, s k * V k) -
+        2 * s j * s i * V i := by
+  fin_cases j <;> fin_cases i <;>
+    simp_all [offDiagSet, Finset.sum_filter, Fin.sum_univ_four]
+  all_goals rcases hsign with hs | hs
+  all_goals simp [hs] at *
+  all_goals
+    have hk0 := hadd 0
+    have hk1 := hadd 1
+    have hk2 := hadd 2
+    have hk3 := hadd 3
+    ring_nf at ⊢
+    linarith only [hc, hw, hsub, hk0, hk1, hk2, hk3]
+
 /-- The algebraic part of paper Lemma 6. Once every null-vector coordinate is
 nonzero, rowwise contraction and the column-max spectral inequality contradict
 the strict intercept inequality. -/
 private theorem f8NormalizedSystem_false_of_mu_ne_zero
     (sys : F8NormalizedSystem) (hμ : ∀ i, sys.μ i ≠ 0) : False := by
-  sorry
+  set r : Fin 4 → ℝ := fun i => |sys.μ i|
+  have hr : ∀ i, 0 < r i := fun i => abs_pos.mpr (hμ i)
+  set s : Fin 4 → ℝ := fun i => sys.μ i / r i
+  have hs_sq : ∀ i, s i ^ 2 = 1 := by
+    intro i
+    dsimp [s, r]
+    rw [div_pow, sq_abs, div_self (pow_ne_zero 2 (hμ i))]
+  have hs_mul_r : ∀ i, s i * r i = sys.μ i := by
+    intro i
+    dsimp [s, r]
+    exact div_mul_cancel₀ (sys.μ i) (hr i).ne'
+  have hs_mul_mu : ∀ i, s i * sys.μ i = r i := by
+    intro i
+    calc
+      s i * sys.μ i = s i * (s i * r i) := by rw [← hs_mul_r i]
+      _ = (s i ^ 2) * r i := by ring
+      _ = 1 * r i := by rw [hs_sq i]
+      _ = r i := by ring
+  set q : Fin 4 → ℝ := fun i => 1 / r i
+  have hq : ∀ i, 0 < q i := fun i => one_div_pos.mpr (hr i)
+
+  set H : Matrix (Fin 4) (Fin 4) ℝ := (Matrix.diagonal sys.μ) * sys.V * (Matrix.diagonal sys.μ)
+  have hH_apply (i j : Fin 4) : H i j = sys.μ i * sys.V i j * sys.μ j := by
+    change ((Matrix.diagonal sys.μ) * sys.V * (Matrix.diagonal sys.μ)) i j = _
+    rw [Matrix.mul_apply, sum_fin4]
+    simp only [diag_mul_apply]
+    fin_cases i <;> fin_cases j <;> simp
+  set g : Fin 4 → ℝ := H.mulVec 1
+  have hg_apply (i : Fin 4) : g i = sys.μ i * (sys.V.mulVec sys.μ) i := by
+    dsimp [g, Matrix.mulVec, dotProduct]
+    rw [sum_fin4]
+    rw [hH_apply i 0, hH_apply i 1, hH_apply i 2, hH_apply i 3]
+    rw [sum_fin4]
+    ring
+  have hg_H (i : Fin 4) : g i = H i 0 + H i 1 + H i 2 + H i 3 := by
+    change H.mulVec 1 i = H i 0 + H i 1 + H i 2 + H i 3
+    dsimp [Matrix.mulVec, dotProduct]
+    rw [sum_fin4]
+    ring
+  have hs_g : ∀ i, 0 < s i * g i := by
+    intro i
+    rw [hg_apply i]
+    have h1 : s i * (sys.μ i * (sys.V.mulVec sys.μ) i) = (s i * sys.μ i) * (sys.V.mulVec sys.μ) i := by ring
+    rw [h1, hs_mul_mu i]
+    exact mul_pos (hr i) (sys.rightSlope_pos i)
+  have habs_g : ∀ i, |g i| = s i * g i := by
+    intro i
+    have hpos := hs_g i
+    have h_or : s i = 1 ∨ s i = -1 := by
+      have hsq := hs_sq i
+      have h_factor : (s i - 1) * (s i + 1) = 0 := by linarith [hsq]
+      cases mul_eq_zero.mp h_factor with
+      | inl h1 => left; linarith
+      | inr h2 => right; linarith
+    rcases h_or with h1 | h1
+    · rw [h1] at hpos ⊢
+      rw [one_mul] at hpos ⊢
+      exact abs_of_pos hpos
+    · rw [h1] at hpos ⊢
+      have hg_neg : g i < 0 := by linarith [hpos]
+      rw [neg_mul, one_mul] at hpos ⊢
+      exact abs_of_neg hg_neg
+
+  set C : Matrix (Fin 4) (Fin 4) ℝ := H + Matrix.diagonal (fun i => |g i| - g i)
+  have hC_apply (i j : Fin 4) : C i j = H i j + if i = j then |g i| - g i else 0 := by
+    change (H + Matrix.diagonal (fun k => |g k| - g k)) i j = _
+    rw [Matrix.add_apply]
+    by_cases hij : i = j
+    · subst hij
+      rw [if_pos rfl, Matrix.diagonal_apply_eq]
+    · rw [if_neg hij, Matrix.diagonal_apply_ne _ hij, add_zero]
+  set M : Matrix (Fin 4) (Fin 4) ℝ := Matrix.diagonal q * C
+  have hM_apply (i j : Fin 4) : M i j = q i * C i j := by
+    change ((Matrix.diagonal q) * C) i j = _
+    rw [diag_mul_apply]
+
+  have hrow : ∀ i, 0 < (M.mulVec (fun _ => 1)) i := by
+    intro i
+    have h_sum_C : C i 0 + C i 1 + C i 2 + C i 3 = |g i| := by
+      rw [hC_apply i 0, hC_apply i 1, hC_apply i 2, hC_apply i 3]
+      rw [hg_H i]
+      fin_cases i <;> simp [if_pos rfl, if_neg] <;> linarith
+    have h_g_pos : 0 < |g i| := by rw [habs_g i]; exact hs_g i
+    calc (M.mulVec (fun _ => 1)) i
+        = q i * C i 0 * 1 + q i * C i 1 * 1 + q i * C i 2 * 1 + q i * C i 3 * 1 := by
+          dsimp [Matrix.mulVec, dotProduct]
+          rw [sum_fin4]
+          rw [hM_apply i 0, hM_apply i 1, hM_apply i 2, hM_apply i 3]
+      _ = q i * (C i 0 + C i 1 + C i 2 + C i 3) := by ring
+      _ = q i * |g i| := by rw [h_sum_C]
+      _ > 0 := mul_pos (hq i) h_g_pos
+
+  have hC_symm : C.IsSymm := by
+    ext i j
+    dsimp [Matrix.transpose]
+    rw [hC_apply i j, hC_apply j i]
+    have hV_symm := congr_fun (congr_fun sys.V_inertia.1 i) j
+    dsimp [Matrix.transpose] at hV_symm
+    by_cases hij : i = j
+    · rw [hij]
+    · rw [if_neg hij, if_neg (Ne.symm hij)]
+      rw [hH_apply i j, hH_apply j i]
+      rw [hV_symm]
+      ring
+
+  have h_rM (i j : Fin 4) : ((Matrix.diagonal r) * M) i j = C i j := by
+    change (Matrix.diagonal r * (Matrix.diagonal q * C)) i j = C i j
+    rw [diag_mul_apply, diag_mul_apply]
+    have h_rq : r i * q i = 1 := by
+      dsimp [q]
+      exact mul_one_div_cancel (hr i).ne'
+    rw [← mul_assoc, h_rq, one_mul]
+
+  have h_rM_mulVec (z : Fin 4 → ℝ) : ((Matrix.diagonal r) * M).mulVec z = C.mulVec z := by
+    ext i
+    dsimp [Matrix.mulVec, dotProduct]
+    rw [sum_fin4, sum_fin4]
+    rw [h_rM i 0, h_rM i 1, h_rM i 2, h_rM i 3]
+
+  have hspectral : DiagonallySymmetrizableWithPositiveIndexTwo4 M := by
+    use r
+    refine ⟨hr, ?_, ?_⟩
+    · ext i j
+      dsimp [Matrix.transpose]
+      rw [h_rM i j, h_rM j i]
+      exact congr_fun (congr_fun hC_symm i) j
+    · obtain ⟨u, v, huv⟩ := sys.V_inertia.2.1
+      set u' : Fin 4 → ℝ := fun i => u i / sys.μ i
+      set v' : Fin 4 → ℝ := fun i => v i / sys.μ i
+      use u', v'
+      intro a b hab
+      have hpos := huv a b hab
+      dsimp [quadraticForm4] at hpos ⊢
+      have h_C_eq (z : Fin 4 → ℝ) : dotProduct z (C.mulVec z) =
+          dotProduct (fun i => sys.μ i * z i) (sys.V.mulVec (fun i => sys.μ i * z i)) +
+          ∑ i, (|g i| - g i) * z i ^ 2 := by
+        change dotProduct z (C.mulVec z) = _
+        dsimp [dotProduct, Matrix.mulVec]
+        rw [sum_fin4]
+        rw [sum_fin4, sum_fin4, sum_fin4, sum_fin4]
+        rw [hC_apply 0 0, hC_apply 0 1, hC_apply 0 2, hC_apply 0 3]
+        rw [hC_apply 1 0, hC_apply 1 1, hC_apply 1 2, hC_apply 1 3]
+        rw [hC_apply 2 0, hC_apply 2 1, hC_apply 2 2, hC_apply 2 3]
+        rw [hC_apply 3 0, hC_apply 3 1, hC_apply 3 2, hC_apply 3 3]
+        rw [hH_apply 0 0, hH_apply 0 1, hH_apply 0 2, hH_apply 0 3]
+        rw [hH_apply 1 0, hH_apply 1 1, hH_apply 1 2, hH_apply 1 3]
+        rw [hH_apply 2 0, hH_apply 2 1, hH_apply 2 2, hH_apply 2 3]
+        rw [hH_apply 3 0, hH_apply 3 1, hH_apply 3 2, hH_apply 3 3]
+        dsimp [Matrix.mulVec, dotProduct]
+        rw [sum_fin4, sum_fin4, sum_fin4, sum_fin4, sum_fin4, sum_fin4]
+        ring
+      have h_sub : (fun i => sys.μ i * (a * u' i + b * v' i)) = fun i => a * u i + b * v i := by
+        ext i
+        dsimp [u', v']
+        have h_mu := hμ i
+        have h_div1 : sys.μ i * (a * (u i / sys.μ i)) = a * u i := by
+          calc sys.μ i * (a * (u i / sys.μ i)) = a * (sys.μ i * (u i / sys.μ i)) := by ring
+          _ = a * u i := by rw [mul_div_cancel₀ (u i) h_mu]
+        have h_div2 : sys.μ i * (b * (v i / sys.μ i)) = b * v i := by
+          calc sys.μ i * (b * (v i / sys.μ i)) = b * (sys.μ i * (v i / sys.μ i)) := by ring
+          _ = b * v i := by rw [mul_div_cancel₀ (v i) h_mu]
+        linarith [h_div1, h_div2]
+      rw [h_rM_mulVec]
+      rw [h_C_eq]
+      rw [h_sub]
+      have h_nonneg : 0 ≤ ∑ i, (|g i| - g i) * (a * u' i + b * v' i) ^ 2 := by
+        rw [sum_fin4]
+        have h0 : 0 ≤ |g 0| - g 0 := sub_nonneg.mpr (le_abs_self (g 0))
+        have h1 : 0 ≤ |g 1| - g 1 := sub_nonneg.mpr (le_abs_self (g 1))
+        have h2 : 0 ≤ |g 2| - g 2 := sub_nonneg.mpr (le_abs_self (g 2))
+        have h3 : 0 ≤ |g 3| - g 3 := sub_nonneg.mpr (le_abs_self (g 3))
+        have sq0 : 0 ≤ (a * u' 0 + b * v' 0) ^ 2 := sq_nonneg _
+        have sq1 : 0 ≤ (a * u' 1 + b * v' 1) ^ 2 := sq_nonneg _
+        have sq2 : 0 ≤ (a * u' 2 + b * v' 2) ^ 2 := sq_nonneg _
+        have sq3 : 0 ≤ (a * u' 3 + b * v' 3) ^ 2 := sq_nonneg _
+        nlinarith
+      linarith
+  obtain ⟨pick, hpick_ne, hspec_pos⟩ := columnMax_spectral_inequality M hspectral hrow
+  rw [trace_plus_two_sum_eq_sum_univ] at hspec_pos
+  rw [sum_fin4] at hspec_pos
+
+  have h_M_diag (j : Fin 4) : M j j = r j * sys.V j j + (1 - s j) * (sys.V.mulVec sys.μ) j := by
+    rw [hM_apply j j, hC_apply j j, if_pos rfl, hH_apply j j, habs_g j, hg_apply j]
+    have h_mu : sys.μ j = s j * r j := (hs_mul_r j).symm
+    have hsq : s j ^ 2 = 1 := hs_sq j
+    have hr_ne : r j ≠ 0 := (hr j).ne'
+    dsimp [q]
+    rw [h_mu]
+    have hC_eq : (s j * r j) * sys.V j j * (s j * r j) +
+        (s j * ((s j * r j) * (sys.V.mulVec sys.μ) j) - (s j * r j) * (sys.V.mulVec sys.μ) j) =
+        r j * (r j * sys.V j j + (1 - s j) * (sys.V.mulVec sys.μ) j) := by
+      calc
+        (s j * r j) * sys.V j j * (s j * r j) + (s j * ((s j * r j) * (sys.V.mulVec sys.μ) j) - (s j * r j) * (sys.V.mulVec sys.μ) j)
+          = (s j ^ 2 * r j) * r j * sys.V j j + (s j ^ 2 * r j - s j * r j) * (sys.V.mulVec sys.μ) j := by ring
+        _ = (1 * r j) * r j * sys.V j j + (1 * r j - s j * r j) * (sys.V.mulVec sys.μ) j := by rw [hsq]
+        _ = r j * (r j * sys.V j j + (1 - s j) * (sys.V.mulVec sys.μ) j) := by ring
+    rw [hC_eq]
+    rw [← mul_assoc, one_div_mul_cancel hr_ne, one_mul]
+
+  have h_M_off (i j : Fin 4) (hij : i ≠ j) : M i j = s i * s j * r j * sys.V i j := by
+    rw [hM_apply i j, hC_apply i j, if_neg hij, add_zero, hH_apply i j]
+    have hmi : sys.μ i = s i * r i := (hs_mul_r i).symm
+    have hmj : sys.μ j = s j * r j := (hs_mul_r j).symm
+    have hri := (hr i).ne'
+    dsimp [q]
+    rw [hmi, hmj]
+    calc (1 / r i) * (s i * r i * sys.V i j * (s j * r j))
+        = (1 / r i * r i) * (s i * s j * r j * sys.V i j) := by ring
+      _ = 1 * (s i * s j * r j * sys.V i j) := by rw [one_div_mul_cancel hri]
+      _ = s i * s j * r j * sys.V i j := by ring
+
+  have hs_or (k : Fin 4) : s k = 1 ∨ s k = -1 := by
+    have hsq := hs_sq k
+    have h_factor : (s k - 1) * (s k + 1) = 0 := by linarith [hsq]
+    cases mul_eq_zero.mp h_factor with
+    | inl h1 => left; linarith
+    | inr h2 => right; linarith
+
+  have h_s_a (j : Fin 4) : s j * (sys.U.transpose.mulVec sys.μ) j ≤ (sys.U.transpose.mulVec sys.μ) j := by
+    have ha_pos := sys.leftSlope_pos j
+    rcases hs_or j with h1 | h1
+    · rw [h1, one_mul]
+    · rw [h1, neg_one_mul]
+      linarith
+
+  have h_sum_s_a : ∑ j, s j * (sys.U.transpose.mulVec sys.μ) j ≤ ∑ j, (sys.U.transpose.mulVec sys.μ) j := by
+    rw [sum_fin4, sum_fin4]
+    have ha0 := h_s_a 0
+    have ha1 := h_s_a 1
+    have ha2 := h_s_a 2
+    have ha3 := h_s_a 3
+    linarith
+
+  have h_signed_le_abs (x t : ℝ) (ht : t = 1 ∨ t = -1) :
+      t * x ≤ |x| := by
+    rcases ht with rfl | rfl
+    · simpa using le_abs_self x
+    · simpa using neg_le_abs x
+
+  have hs_prod (i j : Fin 4) : s i * s j = 1 ∨ s i * s j = -1 := by
+    rcases hs_or i with hi | hi <;> rcases hs_or j with hj | hj <;>
+      simp [hi, hj]
+
+  have h_row_bound (j i : Fin 4) (hij : i ≠ j) :
+      sys.μ j * (sys.w j - ∑ k, s k * sys.U j k) <
+        sys.μ j * (∑ k ∈ offDiagSet j, s k * sys.V j k) -
+          2 * sys.μ j * s i * sys.V j i := by
+    have hc := sys.contraction i j hij
+    have hw : s j * sys.w j ≤ |sys.w j| :=
+      h_signed_le_abs (sys.w j) (s j) (hs_or j)
+    have hsub :
+        (s j * s i) * (-(sys.U j i - sys.V j i)) ≤
+          |sys.U j i - sys.V j i| :=
+      by simpa only [abs_neg] using
+        h_signed_le_abs (-(sys.U j i - sys.V j i)) (s j * s i) (hs_prod j i)
+    have hadd (k : Fin 4) :
+        (s j * s k) * (-(sys.U j k + sys.V j k)) ≤
+          |sys.U j k + sys.V j k| :=
+      by simpa only [abs_neg] using
+        h_signed_le_abs (-(sys.U j k + sys.V j k)) (s j * s k) (hs_prod j k)
+    have hcore :
+        s j * (sys.w j - ∑ k, s k * sys.U j k) <
+          s j * (∑ k ∈ offDiagSet j, s k * sys.V j k) -
+            2 * s j * s i * sys.V j i := by
+      exact signed_contraction_fin4 s (fun k => sys.U j k)
+        (fun k => sys.V j k) (sys.w j) j i hij (hs_or j)
+        hc hw hsub hadd
+    calc
+      sys.μ j * (sys.w j - ∑ k, s k * sys.U j k) =
+          r j * (s j * (sys.w j - ∑ k, s k * sys.U j k)) := by
+            rw [← hs_mul_r j]
+            ring
+      _ < r j * (s j * (∑ k ∈ offDiagSet j, s k * sys.V j k) -
+          2 * s j * s i * sys.V j i) :=
+        mul_lt_mul_of_pos_left hcore (hr j)
+      _ = sys.μ j * (∑ k ∈ offDiagSet j, s k * sys.V j k) -
+          2 * sys.μ j * s i * sys.V j i := by
+            rw [← hs_mul_r j]
+            ring
+
+  let Rmin : ℝ :=
+    ∑ j, (sys.μ j * (∑ k ∈ offDiagSet j, s k * sys.V j k) -
+      2 * sys.μ j * s (pick j) * sys.V j (pick j))
+
+  have h_rows :
+      dotProduct sys.μ sys.w -
+          ∑ i, s i * (sys.U.transpose.mulVec sys.μ) i < Rmin := by
+    have h0 := h_row_bound 0 (pick 0) (hpick_ne 0)
+    have h1 := h_row_bound 1 (pick 1) (hpick_ne 1)
+    have h2 := h_row_bound 2 (pick 2) (hpick_ne 2)
+    have h3 := h_row_bound 3 (pick 3) (hpick_ne 3)
+    have hleft :
+        dotProduct sys.μ sys.w -
+            ∑ i, s i * (sys.U.transpose.mulVec sys.μ) i =
+          ∑ j, sys.μ j * (sys.w j - ∑ k, s k * sys.U j k) := by
+      simp only [dotProduct, Matrix.mulVec, Matrix.transpose_apply,
+        Fin.sum_univ_four]
+      ring
+    rw [hleft]
+    dsimp [Rmin]
+    simp only [Fin.sum_univ_four]
+    simp only [Fin.sum_univ_four] at h0 h1 h2 h3
+    have h01 := add_lt_add h0 h1
+    have h012 := add_lt_add h01 h2
+    exact add_lt_add h012 h3
+
+  have hb_lt_Rmin : ∑ i, (sys.V.mulVec sys.μ) i < Rmin := by
+    have hint := sys.intercept
+    linarith only [hint, h_rows, h_sum_s_a]
+
+  have hVpick (j : Fin 4) :
+      sys.V (pick j) j = sys.V j (pick j) := by
+    exact congr_fun (congr_fun sys.V_inertia.1 j) (pick j)
+
+  have hV01 : sys.V 0 1 = sys.V 1 0 :=
+    congr_fun (congr_fun sys.V_inertia.1 1) 0
+  have hV02 : sys.V 0 2 = sys.V 2 0 :=
+    congr_fun (congr_fun sys.V_inertia.1 2) 0
+  have hV03 : sys.V 0 3 = sys.V 3 0 :=
+    congr_fun (congr_fun sys.V_inertia.1 3) 0
+  have hV12 : sys.V 1 2 = sys.V 2 1 :=
+    congr_fun (congr_fun sys.V_inertia.1 2) 1
+  have hV13 : sys.V 1 3 = sys.V 3 1 :=
+    congr_fun (congr_fun sys.V_inertia.1 3) 1
+  have hV23 : sys.V 2 3 = sys.V 3 2 :=
+    congr_fun (congr_fun sys.V_inertia.1 3) 2
+
+  have h_spectral_sum :
+      ∑ j, (M j j + 2 * M (pick j) j) =
+        (∑ i, (sys.V.mulVec sys.μ) i) - Rmin := by
+    rw [Fin.sum_univ_four]
+    rw [h_M_diag 0, h_M_diag 1, h_M_diag 2, h_M_diag 3]
+    rw [h_M_off (pick 0) 0 (hpick_ne 0),
+      h_M_off (pick 1) 1 (hpick_ne 1),
+      h_M_off (pick 2) 2 (hpick_ne 2),
+      h_M_off (pick 3) 3 (hpick_ne 3)]
+    rw [hVpick 0, hVpick 1, hVpick 2, hVpick 3]
+    dsimp [Rmin]
+    simp [offDiagSet, Finset.sum_filter, Matrix.mulVec, dotProduct,
+      Fin.sum_univ_four]
+    rw [← hs_mul_r 0, ← hs_mul_r 1, ← hs_mul_r 2, ← hs_mul_r 3]
+    rw [← hV01, ← hV02, ← hV03, ← hV12, ← hV13, ← hV23]
+    ring_nf
+    rw [hs_sq 0, hs_sq 1, hs_sq 2, hs_sq 3]
+    ring
+
+  have h_sum_neg : ∑ j, (M j j + 2 * M (pick j) j) < 0 := by
+    rw [h_spectral_sum]
+    linarith only [hb_lt_Rmin]
+
+  rw [Fin.sum_univ_four] at h_sum_neg
+  linarith only [hspec_pos, h_sum_neg]
 
 private lemma quad_null_expansion (sys : F8NormalizedSystem) (t α : ℝ) (h : Fin 4 → ℝ) (k : Fin 4) :
     quadraticForm4 sys.V (sys.μ + t • h + α • Pi.single k 1) =
