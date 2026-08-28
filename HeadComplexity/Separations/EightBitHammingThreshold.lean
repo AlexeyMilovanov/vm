@@ -1403,6 +1403,16 @@ private structure F8FactorData where
   denominator_intercept :
     (∑ i, P 3 i) + (∑ i, Q 3 i) < r 3
 
+/-- The finite ±1 minimization step in paper Lemma 4. -/
+private theorem f8FactorData_shell_bound (D : F8FactorData) :
+    ∀ i j, i ≠ j →
+      |2 * splitPair (factorD D.Q j) D.r| +
+        |2 * splitPair (factorD D.Q j) (factorB D.P D.Q i)| +
+        ∑ k ∈ Finset.univ.filter (fun k => k ≠ i ∧ k ≠ j),
+          |2 * splitPair (factorD D.Q j) (factorA D.P D.Q k)| <
+        factorDelta D.P D.Q j := by
+  sorry
+
 /-- The spectral hypothesis used in the paper: a positive diagonal left
 multiplier symmetrizes `M`, and the resulting symmetric form has positive
 index at least two. Encoding the index on the symmetrized matrix avoids any
