@@ -1360,6 +1360,49 @@ structure F8NormalizedSystem where
     (∑ i, (U.transpose.mulVec μ) i) +
       (∑ i, (V.mulVec μ) i) < dotProduct μ w
 
+private noncomputable def factorA
+    (P Q : Matrix (Fin 4) (Fin 4) ℝ) (i : Fin 4) : Fin 4 → ℝ :=
+  fun a => P a i + Q a i
+
+private noncomputable def factorB
+    (P Q : Matrix (Fin 4) (Fin 4) ℝ) (i : Fin 4) : Fin 4 → ℝ :=
+  fun a => P a i - Q a i
+
+private noncomputable def factorD
+    (Q : Matrix (Fin 4) (Fin 4) ℝ) (i : Fin 4) : Fin 4 → ℝ :=
+  fun a => -2 * Q a i
+
+private noncomputable def factorDelta
+    (P Q : Matrix (Fin 4) (Fin 4) ℝ) (j : Fin 4) : ℝ :=
+  -4 * splitPair (column4 P j) (column4 Q j)
+
+private noncomputable def factorCurvature
+    (P Q : Matrix (Fin 4) (Fin 4) ℝ) :
+    Matrix (Fin 4) (Fin 4) ℝ :=
+  fun i j => 4 *
+    (splitPair (column4 P i) (column4 Q j) +
+      splitPair (column4 P j) (column4 Q i))
+
+/-- Exact factor-map output of paper Lemma 3, with the shell information
+needed by Lemma 4 and no reference to fractional-atom implementation details. -/
+private structure F8FactorData where
+  P : Matrix (Fin 4) (Fin 4) ℝ
+  Q : Matrix (Fin 4) (Fin 4) ℝ
+  r : Fin 4 → ℝ
+  curvature : NegativeDefinite4 (factorCurvature P Q)
+  transition : ∀ i j, i ≠ j → ∀ ε : Fin 4 → Bool,
+    0 < factorDelta P Q j +
+      2 * splitPair (factorD Q j) r * hammingSign (ε j) +
+      2 * splitPair (factorD Q j) (factorB P Q i) *
+        hammingSign (ε i) * hammingSign (ε j) +
+      ∑ k ∈ Finset.univ.filter (fun k => k ≠ i ∧ k ≠ j),
+        2 * splitPair (factorD Q j) (factorA P Q k) *
+          hammingSign (ε j) * hammingSign (ε k)
+  denominator_left_pos : ∀ i, 0 < P 3 i
+  denominator_right_pos : ∀ i, 0 < Q 3 i
+  denominator_intercept :
+    (∑ i, P 3 i) + (∑ i, Q 3 i) < r 3
+
 /-- The spectral hypothesis used in the paper: a positive diagonal left
 multiplier symmetrizes `M`, and the resulting symmetric form has positive
 index at least two. Encoding the index on the symmetrized matrix avoids any
