@@ -2450,7 +2450,144 @@ private theorem normalized_k4_edge_matrix
         (v 1 + v 3 - v 1 * v 3 * (y 1 - y 3) ^ 2) / 2 ∧
       A 2 3 + A 3 2 =
         (v 2 + v 3 - v 2 * v 3 * (y 2 - y 3) ^ 2) / 2 := by
-  sorry
+  have hv0 := (hv 0).le
+  have hv1 := (hv 1).le
+  have hv2 := (hv 2).le
+  have hv3 := (hv 3).le
+  have hmean4 :
+      v 0 * y 0 + v 1 * y 1 + v 2 * y 2 + v 3 * y 3 = 0 := by
+    simpa only [Fin.sum_univ_four] using hmean
+  have henergy4 :
+      v 0 * (y 0) ^ 2 + v 1 * (y 1) ^ 2 +
+        v 2 * (y 2) ^ 2 + v 3 * (y 3) ^ 2 = 1 := by
+    simpa only [Fin.sum_univ_four] using henergy
+  have ht0 : 0 ≤ v 0 * (y 0) ^ 2 := mul_nonneg hv0 (sq_nonneg _)
+  have ht1 : 0 ≤ v 1 * (y 1) ^ 2 := mul_nonneg hv1 (sq_nonneg _)
+  have ht2 : 0 ≤ v 2 * (y 2) ^ 2 := mul_nonneg hv2 (sq_nonneg _)
+  have ht3 : 0 ≤ v 3 * (y 3) ^ 2 := mul_nonneg hv3 (sq_nonneg _)
+  have he01 : v 0 * (y 0) ^ 2 + v 1 * (y 1) ^ 2 ≤ 1 := by
+    linarith only [henergy4, ht2, ht3]
+  have he02 : v 0 * (y 0) ^ 2 + v 2 * (y 2) ^ 2 ≤ 1 := by
+    linarith only [henergy4, ht1, ht3]
+  have he03 : v 0 * (y 0) ^ 2 + v 3 * (y 3) ^ 2 ≤ 1 := by
+    linarith only [henergy4, ht1, ht2]
+  have he12 : v 1 * (y 1) ^ 2 + v 2 * (y 2) ^ 2 ≤ 1 := by
+    linarith only [henergy4, ht0, ht3]
+  have he13 : v 1 * (y 1) ^ 2 + v 3 * (y 3) ^ 2 ≤ 1 := by
+    linarith only [henergy4, ht0, ht2]
+  have he23 : v 2 * (y 2) ^ 2 + v 3 * (y 3) ^ 2 ≤ 1 := by
+    linarith only [henergy4, ht0, ht1]
+  have hd01 := weighted_two_distance_le (v 0) (v 1) (y 0) (y 1) hv0 hv1 he01
+  have hd02 := weighted_two_distance_le (v 0) (v 2) (y 0) (y 2) hv0 hv2 he02
+  have hd03 := weighted_two_distance_le (v 0) (v 3) (y 0) (y 3) hv0 hv3 he03
+  have hd12 := weighted_two_distance_le (v 1) (v 2) (y 1) (y 2) hv1 hv2 he12
+  have hd13 := weighted_two_distance_le (v 1) (v 3) (y 1) (y 3) hv1 hv3 he13
+  have hd23 := weighted_two_distance_le (v 2) (v 3) (y 2) (y 3) hv2 hv3 he23
+  let c01 : ℝ := (v 0 + v 1 - v 0 * v 1 * (y 0 - y 1) ^ 2) / 2
+  let c02 : ℝ := (v 0 + v 2 - v 0 * v 2 * (y 0 - y 2) ^ 2) / 2
+  let c03 : ℝ := (v 0 + v 3 - v 0 * v 3 * (y 0 - y 3) ^ 2) / 2
+  let c12 : ℝ := (v 1 + v 2 - v 1 * v 2 * (y 1 - y 2) ^ 2) / 2
+  let c13 : ℝ := (v 1 + v 3 - v 1 * v 3 * (y 1 - y 3) ^ 2) / 2
+  let c23 : ℝ := (v 2 + v 3 - v 2 * v 3 * (y 2 - y 3) ^ 2) / 2
+  have hc01 : 0 ≤ c01 := by
+    exact canonical_capacity_nonneg _ _ _ hd01
+  have hc02 : 0 ≤ c02 := by
+    exact canonical_capacity_nonneg _ _ _ hd02
+  have hc03 : 0 ≤ c03 := by
+    exact canonical_capacity_nonneg _ _ _ hd03
+  have hc12 : 0 ≤ c12 := by
+    exact canonical_capacity_nonneg _ _ _ hd12
+  have hc13 : 0 ≤ c13 := by
+    exact canonical_capacity_nonneg _ _ _ hd13
+  have hc23 : 0 ≤ c23 := by
+    exact canonical_capacity_nonneg _ _ _ hd23
+  have hvariance :
+      v 0 * v 1 * (y 0 - y 1) ^ 2 + v 0 * v 2 * (y 0 - y 2) ^ 2 +
+        v 0 * v 3 * (y 0 - y 3) ^ 2 + v 1 * v 2 * (y 1 - y 2) ^ 2 +
+        v 1 * v 3 * (y 1 - y 3) ^ 2 + v 2 * v 3 * (y 2 - y 3) ^ 2 =
+          v 0 + v 1 + v 2 + v 3 := by
+    calc
+      _ = (v 0 + v 1 + v 2 + v 3) *
+            (v 0 * (y 0) ^ 2 + v 1 * (y 1) ^ 2 +
+              v 2 * (y 2) ^ 2 + v 3 * (y 3) ^ 2) -
+            (v 0 * y 0 + v 1 * y 1 + v 2 * y 2 + v 3 * y 3) ^ 2 := by ring
+      _ = v 0 + v 1 + v 2 + v 3 := by rw [henergy4, hmean4]; ring
+  have htotal :
+      v 0 + v 1 + v 2 + v 3 = c01 + c02 + c03 + c12 + c13 + c23 := by
+    simpa [c01, c02, c03, c12, c13, c23] using
+      (canonical_k4_capacity_total (v 0) (v 1) (v 2) (v 3) y hvariance)
+  have hp01 : c01 ≤ v 0 + v 1 := by
+    exact canonical_capacity_le _ _ _ hv0 hv1 (sq_nonneg _)
+  have hp02 : c02 ≤ v 0 + v 2 := by
+    exact canonical_capacity_le _ _ _ hv0 hv2 (sq_nonneg _)
+  have hp03 : c03 ≤ v 0 + v 3 := by
+    exact canonical_capacity_le _ _ _ hv0 hv3 (sq_nonneg _)
+  have hp12 : c12 ≤ v 1 + v 2 := by
+    exact canonical_capacity_le _ _ _ hv1 hv2 (sq_nonneg _)
+  have hp13 : c13 ≤ v 1 + v 3 := by
+    exact canonical_capacity_le _ _ _ hv1 hv3 (sq_nonneg _)
+  have hp23 : c23 ≤ v 2 + v 3 := by
+    exact canonical_capacity_le _ _ _ hv2 hv3 (sq_nonneg _)
+  have hinc0 : v 0 ≤ c01 + c02 + c03 := by
+    simpa [c01, c02, c03] using
+      (normalized_vertex_bound (v 0) (v 1) (v 2) (v 3)
+        (y 0) (y 1) (y 2) (y 3) hv1 hv2 hv3 hmean4 henergy4)
+  have hm1 : v 1 * y 1 + v 0 * y 0 + v 2 * y 2 + v 3 * y 3 = 0 := by
+    linarith only [hmean4]
+  have he1 :
+      v 1 * (y 1) ^ 2 + v 0 * (y 0) ^ 2 +
+        v 2 * (y 2) ^ 2 + v 3 * (y 3) ^ 2 = 1 := by
+    linarith only [henergy4]
+  have hinc1raw := normalized_vertex_bound (v 1) (v 0) (v 2) (v 3)
+    (y 1) (y 0) (y 2) (y 3) hv0 hv2 hv3 hm1 he1
+  have hinc1 : v 1 ≤ c01 + c12 + c13 := by
+    dsimp [c01, c12, c13]
+    convert hinc1raw using 1 <;> ring
+  have hm2 : v 2 * y 2 + v 0 * y 0 + v 1 * y 1 + v 3 * y 3 = 0 := by
+    linarith only [hmean4]
+  have he2 :
+      v 2 * (y 2) ^ 2 + v 0 * (y 0) ^ 2 +
+        v 1 * (y 1) ^ 2 + v 3 * (y 3) ^ 2 = 1 := by
+    linarith only [henergy4]
+  have hinc2raw := normalized_vertex_bound (v 2) (v 0) (v 1) (v 3)
+    (y 2) (y 0) (y 1) (y 3) hv0 hv1 hv3 hm2 he2
+  have hinc2 : v 2 ≤ c02 + c12 + c23 := by
+    dsimp [c02, c12, c23]
+    convert hinc2raw using 1 <;> ring
+  have hm3 : v 3 * y 3 + v 0 * y 0 + v 1 * y 1 + v 2 * y 2 = 0 := by
+    linarith only [hmean4]
+  have he3 :
+      v 3 * (y 3) ^ 2 + v 0 * (y 0) ^ 2 +
+        v 1 * (y 1) ^ 2 + v 2 * (y 2) ^ 2 = 1 := by
+    linarith only [henergy4]
+  have hinc3raw := normalized_vertex_bound (v 3) (v 0) (v 1) (v 2)
+    (y 3) (y 0) (y 1) (y 2) hv0 hv1 hv2 hm3 he3
+  have hinc3 : v 3 ≤ c03 + c13 + c23 := by
+    dsimp [c03, c13, c23]
+    convert hinc3raw using 1 <;> ring
+  have ht012 : c01 + c02 + c12 ≤ v 0 + v 1 + v 2 := by
+    linarith only [htotal, hinc3]
+  have ht013 : c01 + c03 + c13 ≤ v 0 + v 1 + v 3 := by
+    linarith only [htotal, hinc2]
+  have ht023 : c02 + c03 + c23 ≤ v 0 + v 2 + v 3 := by
+    linarith only [htotal, hinc1]
+  have ht123 : c12 + c13 + c23 ≤ v 1 + v 2 + v 3 := by
+    linarith only [htotal, hinc0]
+  obtain ⟨A, hA0, hAdiag, hArow, hA01, hA02, hA03, hA12, hA13, hA23⟩ :=
+    k4_edge_allocation c01 c02 c03 c12 c13 c23
+      (v 0) (v 1) (v 2) (v 3)
+      hc01 hc02 hc03 hc12 hc13 hc23 hv0 hv1 hv2 hv3 htotal
+      hp01 hp02 hp03 hp12 hp13 hp23 ht012 ht013 ht023 ht123
+  refine ⟨A, hA0, hAdiag, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro i
+    have hi := hArow i
+    fin_cases i <;> simpa using hi
+  · simpa [c01] using hA01
+  · simpa [c02] using hA02
+  · simpa [c03] using hA03
+  · simpa [c12] using hA12
+  · simpa [c13] using hA13
+  · simpa [c23] using hA23
 
 private theorem probabilities_of_canonical_edge_matrix
     (q v y : Fin 4 → ℝ) (hq : ∀ i, 0 < q i)
