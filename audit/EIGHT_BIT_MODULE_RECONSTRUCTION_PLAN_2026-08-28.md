@@ -2,6 +2,24 @@
 
 Date: 2026-08-28
 
+## Implementation status
+
+Implemented on 2026-08-28.
+
+- The original 4,817-line compilation unit is now a 50-line public wrapper.
+- The proof is split into `Core` (323 lines), `Curvature` (1,119),
+  `K4Cone` (1,263), `Normalization` (1,231), `Obstruction` (695), and
+  `Certificate` (332).
+- Cross-module helpers live in `HeadComplexity.EightBitInternal`; helpers that
+  do not cross a boundary remain `private`.
+- The old public declaration set and final theorem statements are preserved.
+- Every new module and the wrapper compile with no `sorry` or `admit`.
+- The reconstructed package itself emits no Lean or strict style-linter
+  warnings. Warnings replayed from older imported modules are outside this
+  package.
+- The cached complete target build takes about eight seconds; the wrapper
+  itself elaborates in roughly 2.5 seconds.
+
 Target:
 
 `HeadComplexity/Separations/EightBitHammingThreshold.lean`
