@@ -2263,6 +2263,422 @@ private theorem clearedTwoAtom_denominator_slopes_ne_zero
       (∀ i, (fracDenominator (φ 1)).linear i ≠ 0) := by
   sorry
 
+private def factorFormA (φ : Fin 2 → FracAtom 8) (c : ℝ) : AffineForm 8 where
+  constant := c * (fracDenominator (φ 0)).constant + (fracNumerator (φ 0)).constant
+  linear i := c * (fracDenominator (φ 0)).linear i + (fracNumerator (φ 0)).linear i
+
+private theorem eval_factorFormA (φ : Fin 2 → FracAtom 8) (c : ℝ) (x : Fin 8 → Bool) :
+    (factorFormA φ c).eval x =
+      c * (fracDenominator (φ 0)).eval x + (fracNumerator (φ 0)).eval x := by
+  dsimp [factorFormA, AffineForm.eval]
+  simp_rw [add_mul, Finset.sum_add_distrib, mul_assoc, ← Finset.mul_sum]
+  ring
+
+private noncomputable def factorRowForm (φ : Fin 2 → FracAtom 8) (c : ℝ) (row : Fin 4) : AffineForm 8 :=
+  match row with
+  | 0 => factorFormA φ c
+  | 1 => fracDenominator (φ 1)
+  | 2 => fracNumerator (φ 1)
+  | 3 => fracDenominator (φ 0)
+
+private noncomputable def factorOrientation (φ : Fin 2 → FracAtom 8) : ℝ :=
+  if ∀ i, 0 < (fracDenominator (φ 0)).linear i then 1 else -1
+
+private theorem factorOrientation_cases (φ : Fin 2 → FracAtom 8) :
+    factorOrientation φ = 1 ∨ factorOrientation φ = -1 := by
+  dsimp [factorOrientation]
+  split_ifs <;> simp
+
+private theorem factorOrientation_pos (φ : Fin 2 → FracAtom 8)
+    (h : ∀ i, (fracDenominator (φ 0)).linear i ≠ 0) (k : Fin 8) :
+    0 < factorOrientation φ * (fracDenominator (φ 0)).linear k := by
+  have hB_orient := fracDenominator_strictlyOriented_of_slopes_ne_zero (φ 0) h
+  dsimp [factorOrientation]
+  split_ifs with hpos
+  · simp only [one_mul]
+    exact hpos k
+  · simp only [neg_one_mul, neg_pos]
+    rcases hB_orient with hpos' | hneg
+    · contradiction
+    · exact hneg k
+
+private noncomputable def factorR (φ : Fin 2 → FracAtom 8) (c : ℝ) (row : Fin 4) : ℝ :=
+  (factorRowForm φ c row).constant + ∑ k : Fin 8, (factorRowForm φ c row).linear k / 2
+
+private noncomputable def factorP (φ : Fin 2 → FracAtom 8) (c : ℝ) (s : ℝ) : Matrix (Fin 4) (Fin 4) ℝ :=
+  fun row i => s * (factorRowForm φ c row).linear (Fin.castAdd 4 i) / 2
+
+private noncomputable def factorQ (φ : Fin 2 → FracAtom 8) (c : ℝ) (s : ℝ) : Matrix (Fin 4) (Fin 4) ℝ :=
+  fun row i => s * (factorRowForm φ c row).linear (Fin.natAdd 4 i) / 2
+
+private noncomputable def orientBit (s : ℝ) (b : Bool) : Bool :=
+  if s = 1 then b else !b
+
+private theorem hammingSign_orientBit (s : ℝ) (hs : s = 1 ∨ s = -1) (b : Bool) :
+    hammingSign (orientBit s b) = s * hammingSign b := by
+  rcases hs with rfl | rfl
+  · dsimp [orientBit]; rw [if_pos rfl]; ring
+  · dsimp [orientBit]
+    have h : ¬(-1 : ℝ) = 1 := by norm_num
+    rw [if_neg h]
+    cases b <;> norm_num [hammingSign]
+
+private noncomputable def xOriented (s : ℝ) (x : Fin 8 → Bool) : Fin 8 → Bool :=
+  fun k => orientBit s (x k)
+
+private theorem f8_xOriented (s : ℝ) (hs : s = 1 ∨ s = -1) (x : Fin 8 → Bool) :
+    f8 (xOriented s x) = f8 x := by
+  rcases hs with rfl | rfl
+  · have h : xOriented 1 x = x := by
+      ext k
+      dsimp [xOriented, orientBit]
+      rw [if_pos rfl]
+    rw [h]
+  · have h : xOriented (-1) x = (fun k => !x k) := by
+      ext k
+      dsimp [xOriented, orientBit]
+      have hne : ¬(-1 : ℝ) = 1 := by norm_num
+      rw [if_neg hne]
+    rw [h, f8_complement]
+
+private theorem eval_affineForm_eq_factor (L : AffineForm 8) (s : ℝ) (hs : s = 1 ∨ s = -1)
+    (x : Fin 8 → Bool) :
+    L.eval (xOriented s x) =
+      (L.constant + ∑ k, L.linear k / 2) +
+        (∑ i : Fin 4, (s * L.linear (Fin.castAdd 4 i) / 2) * hammingSign (x (Fin.castAdd 4 i))) +
+        (∑ i : Fin 4, (s * L.linear (Fin.natAdd 4 i) / 2) * hammingSign (x (Fin.natAdd 4 i))) := by
+  dsimp [AffineForm.eval]
+  have h_sum1 : (∑ i : Fin 8, L.linear i * bitReal (xOriented s x i)) =
+      (∑ i : Fin 4, L.linear (Fin.castAdd 4 i) * bitReal (xOriented s x (Fin.castAdd 4 i))) +
+      (∑ i : Fin 4, L.linear (Fin.natAdd 4 i) * bitReal (xOriented s x (Fin.natAdd 4 i))) :=
+    Fin.sum_univ_add (fun (k : Fin (4 + 4)) => L.linear k * bitReal (xOriented s x k))
+  have h_sum2 : (∑ k : Fin 8, L.linear k / 2) =
+      (∑ i : Fin 4, L.linear (Fin.castAdd 4 i) / 2) +
+      (∑ i : Fin 4, L.linear (Fin.natAdd 4 i) / 2) :=
+    Fin.sum_univ_add (fun (k : Fin (4 + 4)) => L.linear k / 2)
+  rw [h_sum1, h_sum2]
+  have h_bit (k : Fin 8) : bitReal (xOriented s x k) = (s * hammingSign (x k) + 1) / 2 := by
+    dsimp [xOriented]
+    rw [bitReal_eq_hammingSign, hammingSign_orientBit s hs]
+  simp_rw [h_bit]
+  have h1 : (∑ x_1 : Fin 4, L.linear (Fin.castAdd 4 x_1) * ((s * hammingSign (x (Fin.castAdd 4 x_1)) + 1) / 2)) =
+      (∑ x_1 : Fin 4, L.linear (Fin.castAdd 4 x_1) / 2) +
+      ∑ x_1 : Fin 4, (s * L.linear (Fin.castAdd 4 x_1) / 2) * hammingSign (x (Fin.castAdd 4 x_1)) := by
+    rw [← Finset.sum_add_distrib]
+    refine Finset.sum_congr rfl (fun i _ => ?_)
+    ring
+  have h2 : (∑ x_1 : Fin 4, L.linear (Fin.natAdd 4 x_1) * ((s * hammingSign (x (Fin.natAdd 4 x_1)) + 1) / 2)) =
+      (∑ x_1 : Fin 4, L.linear (Fin.natAdd 4 x_1) / 2) +
+      ∑ x_1 : Fin 4, (s * L.linear (Fin.natAdd 4 x_1) / 2) * hammingSign (x (Fin.natAdd 4 x_1)) := by
+    rw [← Finset.sum_add_distrib]
+    refine Finset.sum_congr rfl (fun i _ => ?_)
+    ring
+  rw [h1, h2]
+  ring
+
+private theorem eval_blockJoin_single (L : AffineForm 8) (i j : Fin 4)
+    (bi bj : Bool) :
+    L.eval (blockJoin (fun k => k = i ∧ bi) (fun k => k = j ∧ bj)) =
+      L.constant +
+        L.linear (Fin.castAdd 4 i) * (if bi then 1 else 0) +
+        L.linear (Fin.natAdd 4 j) * (if bj then 1 else 0) := by
+  dsimp [AffineForm.eval]
+  have h_sum : (∑ k : Fin 8, L.linear k * bitReal (blockJoin (fun k => k = i ∧ bi) (fun k => k = j ∧ bj) k)) =
+      (∑ x : Fin 4, L.linear (Fin.castAdd 4 x) * bitReal (blockJoin (fun k => k = i ∧ bi) (fun k => k = j ∧ bj) (Fin.castAdd 4 x))) +
+      (∑ x : Fin 4, L.linear (Fin.natAdd 4 x) * bitReal (blockJoin (fun k => k = i ∧ bi) (fun k => k = j ∧ bj) (Fin.natAdd 4 x))) :=
+    Fin.sum_univ_add (fun (k : Fin (4 + 4)) => L.linear k * bitReal (blockJoin (fun k => k = i ∧ bi) (fun k => k = j ∧ bj) k))
+  rw [h_sum]
+  have hL : (∑ x : Fin 4, L.linear (Fin.castAdd 4 x) * bitReal (blockJoin (fun k => k = i ∧ bi) (fun k => k = j ∧ bj) (Fin.castAdd 4 x))) =
+      L.linear (Fin.castAdd 4 i) * (if bi then 1 else 0) := by
+    simp_rw [blockJoin_castAdd]
+    rw [Finset.sum_eq_single i]
+    · cases bi <;> simp [bitReal]
+    · intro k _ hk
+      have h_ne : ¬(k = i) := hk
+      cases bi <;> simp [bitReal, h_ne]
+    · intro h; exact False.elim (h (Finset.mem_univ i))
+  have hR : (∑ x : Fin 4, L.linear (Fin.natAdd 4 x) * bitReal (blockJoin (fun k => k = i ∧ bi) (fun k => k = j ∧ bj) (Fin.natAdd 4 x))) =
+      L.linear (Fin.natAdd 4 j) * (if bj then 1 else 0) := by
+    simp_rw [blockJoin_natAdd]
+    rw [Finset.sum_eq_single j]
+    · cases bj <;> simp [bitReal]
+    · intro k _ hk
+      have h_ne : ¬(k = j) := hk
+      cases bj <;> simp [bitReal, h_ne]
+    · intro h; exact False.elim (h (Finset.mem_univ j))
+  rw [hL, hR]
+  ring
+
+private theorem mixedMatrix4_clearedTwoAtomPoly (φ : Fin 2 → FracAtom 8) (c : ℝ) (i j : Fin 4) :
+    mixedMatrix4 (toMultilinear (clearedTwoAtomPoly φ c)) i j =
+      (factorFormA φ c).linear (Fin.castAdd 4 i) * (fracDenominator (φ 1)).linear (Fin.natAdd 4 j) +
+      (fracDenominator (φ 1)).linear (Fin.castAdd 4 i) * (factorFormA φ c).linear (Fin.natAdd 4 j) +
+      (fracNumerator (φ 1)).linear (Fin.castAdd 4 i) * (fracDenominator (φ 0)).linear (Fin.natAdd 4 j) +
+      (fracDenominator (φ 0)).linear (Fin.castAdd 4 i) * (fracNumerator (φ 1)).linear (Fin.natAdd 4 j) := by
+  set P_poly := toMultilinear (clearedTwoAtomPoly φ c)
+  have hdeg : P_poly.totalDegree ≤ 2 :=
+    (totalDegree_toMultilinear _).trans (clearedTwoAtomPoly_totalDegree_le φ c)
+  let x0 : Fin 4 → Bool := fun k => k = i
+  let x1 : Fin 4 → Bool := fun _ => false
+  let y0 : Fin 4 → Bool := fun k => k = j
+  let y1 : Fin 4 → Bool := fun _ => false
+  have hdiff : bilinear4 (mixedMatrix4 P_poly) (bitDiff4 x0 x1) (bitDiff4 y0 y1) =
+      mixedMatrix4 P_poly i j := by
+    unfold bilinear4 bitDiff4
+    rw [Finset.sum_eq_single i]
+    · rw [Finset.sum_eq_single j]
+      · simp [x0, y0, x1, y1, boolToReal]
+      · intro k _ hk
+        have h_ne : ¬(k = j) := hk
+        simp [x0, y0, x1, y1, boolToReal, h_ne]
+      · intro h; exact False.elim (h (Finset.mem_univ j))
+    · intro k _ hk
+      have h_ne : ¬(k = i) := hk
+      have h_zero : (∑ j_1 : Fin 4, (boolToReal (x0 k) - boolToReal (x1 k)) * mixedMatrix4 P_poly k j_1 * (boolToReal (y0 j_1) - boolToReal (y1 j_1))) = 0 := by
+        refine Finset.sum_eq_zero (fun k' _ => ?_)
+        simp [x0, y0, x1, y1, boolToReal, h_ne]
+      exact h_zero
+    · intro h; exact False.elim (h (Finset.mem_univ i))
+  rw [← hdiff]
+  rw [← quadratic_checkerboard_difference P_poly hdeg x0 x1 y0 y1]
+  have h_eval (u v : Fin 4 → Bool) :
+      eval (cubePoint (blockJoin u v)) P_poly =
+        (factorFormA φ c).eval (blockJoin u v) * (fracDenominator (φ 1)).eval (blockJoin u v) +
+        (fracNumerator (φ 1)).eval (blockJoin u v) * (fracDenominator (φ 0)).eval (blockJoin u v) := by
+    rw [eval_toMultilinear, eval_clearedTwoAtomPoly]
+    rw [FracAtom.eval_eq_numPoly_div_denPoly (φ 0) (blockJoin u v)]
+    rw [FracAtom.eval_eq_numPoly_div_denPoly (φ 1) (blockJoin u v)]
+    rw [FracAtom.denPoly_eval (φ 0) (blockJoin u v)]
+    rw [FracAtom.denPoly_eval (φ 1) (blockJoin u v)]
+    rw [FracAtom.numPoly_eval (φ 0) (blockJoin u v)]
+    rw [FracAtom.numPoly_eval (φ 1) (blockJoin u v)]
+    rw [← fracDenominator_eval (φ 0) (blockJoin u v)]
+    rw [← fracDenominator_eval (φ 1) (blockJoin u v)]
+    rw [← fracNumerator_eval (φ 0) (blockJoin u v)]
+    rw [← fracNumerator_eval (φ 1) (blockJoin u v)]
+    have hd0 : 0 < (fracDenominator (φ 0)).eval (blockJoin u v) := fracDenominator_strictLegal (φ 0) _
+    have hd1 : 0 < (fracDenominator (φ 1)).eval (blockJoin u v) := fracDenominator_strictLegal (φ 1) _
+    have h0 : (fracDenominator (φ 0)).eval (blockJoin u v) ≠ 0 := hd0.ne'
+    have h1 : (fracDenominator (φ 1)).eval (blockJoin u v) ≠ 0 := hd1.ne'
+    generalize h_n0 : (fracNumerator (φ 0)).eval (blockJoin u v) = n0
+    generalize h_d0 : (fracDenominator (φ 0)).eval (blockJoin u v) = d0
+    generalize h_n1 : (fracNumerator (φ 1)).eval (blockJoin u v) = n1
+    generalize h_d1 : (fracDenominator (φ 1)).eval (blockJoin u v) = d1
+    have h_alg : d0 * d1 * (c + n0 / d0 + n1 / d1) = (c * d0 + n0) * d1 + n1 * d0 := by
+      rw [h_d0] at h0; rw [h_d1] at h1
+      field_simp
+    rw [h_alg, ← h_d0, ← h_n0, ← h_d1, ← h_n1, eval_factorFormA]
+  rw [h_eval x0 y0, h_eval x0 y1, h_eval x1 y0, h_eval x1 y1]
+  have h_x0y0_A : (factorFormA φ c).eval (blockJoin x0 y0) = (factorFormA φ c).constant + (factorFormA φ c).linear (Fin.castAdd 4 i) + (factorFormA φ c).linear (Fin.natAdd 4 j) := by
+    have h := eval_blockJoin_single (factorFormA φ c) i j true true; simpa using h
+  have h_x0y0_D : (fracDenominator (φ 1)).eval (blockJoin x0 y0) = (fracDenominator (φ 1)).constant + (fracDenominator (φ 1)).linear (Fin.castAdd 4 i) + (fracDenominator (φ 1)).linear (Fin.natAdd 4 j) := by
+    have h := eval_blockJoin_single (fracDenominator (φ 1)) i j true true; simpa using h
+  have h_x0y0_C : (fracNumerator (φ 1)).eval (blockJoin x0 y0) = (fracNumerator (φ 1)).constant + (fracNumerator (φ 1)).linear (Fin.castAdd 4 i) + (fracNumerator (φ 1)).linear (Fin.natAdd 4 j) := by
+    have h := eval_blockJoin_single (fracNumerator (φ 1)) i j true true; simpa using h
+  have h_x0y0_B : (fracDenominator (φ 0)).eval (blockJoin x0 y0) = (fracDenominator (φ 0)).constant + (fracDenominator (φ 0)).linear (Fin.castAdd 4 i) + (fracDenominator (φ 0)).linear (Fin.natAdd 4 j) := by
+    have h := eval_blockJoin_single (fracDenominator (φ 0)) i j true true; simpa using h
+
+  have h_x0y1_A : (factorFormA φ c).eval (blockJoin x0 y1) = (factorFormA φ c).constant + (factorFormA φ c).linear (Fin.castAdd 4 i) := by
+    have h := eval_blockJoin_single (factorFormA φ c) i j true false; simpa using h
+  have h_x0y1_D : (fracDenominator (φ 1)).eval (blockJoin x0 y1) = (fracDenominator (φ 1)).constant + (fracDenominator (φ 1)).linear (Fin.castAdd 4 i) := by
+    have h := eval_blockJoin_single (fracDenominator (φ 1)) i j true false; simpa using h
+  have h_x0y1_C : (fracNumerator (φ 1)).eval (blockJoin x0 y1) = (fracNumerator (φ 1)).constant + (fracNumerator (φ 1)).linear (Fin.castAdd 4 i) := by
+    have h := eval_blockJoin_single (fracNumerator (φ 1)) i j true false; simpa using h
+  have h_x0y1_B : (fracDenominator (φ 0)).eval (blockJoin x0 y1) = (fracDenominator (φ 0)).constant + (fracDenominator (φ 0)).linear (Fin.castAdd 4 i) := by
+    have h := eval_blockJoin_single (fracDenominator (φ 0)) i j true false; simpa using h
+
+  have h_x1y0_A : (factorFormA φ c).eval (blockJoin x1 y0) = (factorFormA φ c).constant + (factorFormA φ c).linear (Fin.natAdd 4 j) := by
+    have h := eval_blockJoin_single (factorFormA φ c) i j false true; simpa using h
+  have h_x1y0_D : (fracDenominator (φ 1)).eval (blockJoin x1 y0) = (fracDenominator (φ 1)).constant + (fracDenominator (φ 1)).linear (Fin.natAdd 4 j) := by
+    have h := eval_blockJoin_single (fracDenominator (φ 1)) i j false true; simpa using h
+  have h_x1y0_C : (fracNumerator (φ 1)).eval (blockJoin x1 y0) = (fracNumerator (φ 1)).constant + (fracNumerator (φ 1)).linear (Fin.natAdd 4 j) := by
+    have h := eval_blockJoin_single (fracNumerator (φ 1)) i j false true; simpa using h
+  have h_x1y0_B : (fracDenominator (φ 0)).eval (blockJoin x1 y0) = (fracDenominator (φ 0)).constant + (fracDenominator (φ 0)).linear (Fin.natAdd 4 j) := by
+    have h := eval_blockJoin_single (fracDenominator (φ 0)) i j false true; simpa using h
+
+  have h_x1y1_A : (factorFormA φ c).eval (blockJoin x1 y1) = (factorFormA φ c).constant := by
+    have h := eval_blockJoin_single (factorFormA φ c) i j false false; simpa using h
+  have h_x1y1_D : (fracDenominator (φ 1)).eval (blockJoin x1 y1) = (fracDenominator (φ 1)).constant := by
+    have h := eval_blockJoin_single (fracDenominator (φ 1)) i j false false; simpa using h
+  have h_x1y1_C : (fracNumerator (φ 1)).eval (blockJoin x1 y1) = (fracNumerator (φ 1)).constant := by
+    have h := eval_blockJoin_single (fracNumerator (φ 1)) i j false false; simpa using h
+  have h_x1y1_B : (fracDenominator (φ 0)).eval (blockJoin x1 y1) = (fracDenominator (φ 0)).constant := by
+    have h := eval_blockJoin_single (fracDenominator (φ 0)) i j false false; simpa using h
+
+  rw [h_x0y0_A, h_x0y0_D, h_x0y0_C, h_x0y0_B]
+  rw [h_x0y1_A, h_x0y1_D, h_x0y1_C, h_x0y1_B]
+  rw [h_x1y0_A, h_x1y0_D, h_x1y0_C, h_x1y0_B]
+  rw [h_x1y1_A, h_x1y1_D, h_x1y1_C, h_x1y1_B]
+  ring
+
+private theorem factorCurvature_eq_clearedTwoAtomPoly_mixed
+    (φ : Fin 2 → FracAtom 8) (c : ℝ) :
+    factorCurvature (factorP φ c (factorOrientation φ)) (factorQ φ c (factorOrientation φ)) =
+      symmetricPart4 (mixedMatrix4 (toMultilinear (clearedTwoAtomPoly φ c))) := by
+  ext i j
+  dsimp [factorCurvature, symmetricPart4, splitPair, column4, factorP, factorQ, factorRowForm]
+  rw [splitJ_pair_formula, splitJ_pair_formula]
+  rw [mixedMatrix4_clearedTwoAtomPoly φ c i j, mixedMatrix4_clearedTwoAtomPoly φ c j i]
+  dsimp [column4, factorP, factorQ, factorRowForm]
+  have hs_sq : (factorOrientation φ) ^ 2 = 1 := by
+    rcases factorOrientation_cases φ with h | h <;> rw [h] <;> ring
+  linear_combination (1 / 2 * hs_sq - 1 / 2) *
+    ((factorFormA φ c).linear (Fin.castAdd 4 i) * (fracDenominator (φ 1)).linear (Fin.natAdd 4 j) +
+     (fracDenominator (φ 1)).linear (Fin.castAdd 4 i) * (factorFormA φ c).linear (Fin.natAdd 4 j) +
+     (fracNumerator (φ 1)).linear (Fin.castAdd 4 i) * (fracDenominator (φ 0)).linear (Fin.natAdd 4 j) +
+     (fracDenominator (φ 0)).linear (Fin.castAdd 4 i) * (fracNumerator (φ 1)).linear (Fin.natAdd 4 j) +
+     (factorFormA φ c).linear (Fin.castAdd 4 j) * (fracDenominator (φ 1)).linear (Fin.natAdd 4 i) +
+     (fracDenominator (φ 1)).linear (Fin.castAdd 4 j) * (factorFormA φ c).linear (Fin.natAdd 4 i) +
+     (fracNumerator (φ 1)).linear (Fin.castAdd 4 j) * (fracDenominator (φ 0)).linear (Fin.natAdd 4 i) +
+     (fracDenominator (φ 0)).linear (Fin.castAdd 4 j) * (fracNumerator (φ 1)).linear (Fin.natAdd 4 i))
+
+private noncomputable def defect1 (i : Fin 4) (ε : Fin 4 → Bool) : Fin 8 → Bool :=
+  blockJoin ε (fun k => if k = i then !ε i else ε k)
+
+private noncomputable def defect2 (i j : Fin 4) (ε : Fin 4 → Bool) : Fin 8 → Bool :=
+  blockJoin ε (fun k => if k = i ∨ k = j then !ε k else ε k)
+
+private theorem f8_defect1 (i : Fin 4) (ε : Fin 4 → Bool) :
+    f8 (defect1 i ε) = false := by
+  rw [f8_apply]
+  dsimp [hammingDist, defect1]
+  simp only [leftBits_blockJoin, rightBits_blockJoin]
+  simp only [decide_eq_false_iff_not, not_le]
+
+  have hset : (Finset.univ.filter (fun x : Fin 4 => ε x ≠ if x = i then !ε i else ε x)) = {i} := by
+    ext x
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
+    constructor
+    · intro h
+      by_contra hne
+      rw [if_neg hne] at h
+      exact h rfl
+    · intro hx
+      subst hx
+      rw [if_pos rfl]
+      cases ε x <;> decide
+  rw [hset, Finset.card_singleton]
+  norm_num
+
+private theorem f8_defect2 (i j : Fin 4) (hij : i ≠ j) (ε : Fin 4 → Bool) :
+    f8 (defect2 i j ε) = true := by
+  rw [f8_apply]
+  dsimp [hammingDist, defect2]
+  simp only [leftBits_blockJoin, rightBits_blockJoin]
+  simp only [decide_eq_true_eq]
+  have hset : (Finset.univ.filter (fun x : Fin 4 => ε x ≠ if x = i ∨ x = j then !ε x else ε x)) = {i, j} := by
+    ext x
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_insert, Finset.mem_singleton]
+    constructor
+    · intro h
+      by_contra hne
+      push Not at hne
+      rw [if_neg (by simp [hne])] at h
+      exact h rfl
+    · rintro (hx | hx) <;> subst hx
+      · rw [if_pos (Or.inl rfl)]
+        cases ε x <;> decide
+      · rw [if_pos (Or.inr rfl)]
+        cases ε x <;> decide
+  rw [hset, Finset.card_pair hij]
+
+
+private noncomputable def factorValue
+    (P Q : Matrix (Fin 4) (Fin 4) ℝ) (r : Fin 4 → ℝ)
+    (x : Fin 8 → Bool) : Fin 4 → ℝ :=
+  fun row => r row +
+    (∑ k : Fin 4, P row k * hammingSign (x (Fin.castAdd 4 k))) +
+    (∑ k : Fin 4, Q row k * hammingSign (x (Fin.natAdd 4 k)))
+
+private theorem factor_transition_of_defects
+    (P Q : Matrix (Fin 4) (Fin 4) ℝ) (r : Fin 4 → ℝ)
+    (i j : Fin 4) (hij : i ≠ j) (ε : Fin 4 → Bool)
+    (hdiff : 0 <
+      splitPair (factorValue P Q r (defect2 i j ε))
+          (factorValue P Q r (defect2 i j ε)) -
+        splitPair (factorValue P Q r (defect1 i ε))
+          (factorValue P Q r (defect1 i ε))) :
+    0 < factorDelta P Q j +
+      2 * splitPair (factorD Q j) r * hammingSign (ε j) +
+      2 * splitPair (factorD Q j) (factorB P Q i) *
+        hammingSign (ε i) * hammingSign (ε j) +
+      ∑ k ∈ Finset.univ.filter (fun k => k ≠ i ∧ k ≠ j),
+        2 * splitPair (factorD Q j) (factorA P Q k) *
+          hammingSign (ε j) * hammingSign (ε k) := by
+  have h_hs_not (b : Bool) : hammingSign (!b) = -hammingSign b := by
+    cases b <;> simp [hammingSign]
+  fin_cases i <;> fin_cases j
+  all_goals try contradiction
+  all_goals
+    have h0 : (hammingSign (ε 0)) ^ 2 = 1 := by
+      rcases hammingSign_cases (ε 0) with h | h <;> rw [h] <;> ring
+    have h1 : (hammingSign (ε 1)) ^ 2 = 1 := by
+      rcases hammingSign_cases (ε 1) with h | h <;> rw [h] <;> ring
+    have h2 : (hammingSign (ε 2)) ^ 2 = 1 := by
+      rcases hammingSign_cases (ε 2) with h | h <;> rw [h] <;> ring
+    have h3 : (hammingSign (ε 3)) ^ 2 = 1 := by
+      rcases hammingSign_cases (ε 3) with h | h <;> rw [h] <;> ring
+    simp only [factorDelta] at hdiff ⊢
+    simp_rw [splitPair_formula] at hdiff ⊢
+    simp only [factorD, factorA, factorB, column4] at hdiff ⊢
+    simp only [factorValue, defect1, defect2, blockJoin_castAdd,
+      blockJoin_natAdd] at hdiff
+    simp_rw [Finset.sum_filter, Fin.sum_univ_four] at hdiff ⊢
+    simp [h_hs_not] at hdiff ⊢
+    first
+    | linear_combination hdiff -
+        (2 * (P 0 0 * Q 1 0 + Q 0 0 * P 1 0 + P 2 0 * Q 3 0 + Q 2 0 * P 3 0)) * h0
+    | linear_combination hdiff -
+        (2 * (P 0 1 * Q 1 1 + Q 0 1 * P 1 1 + P 2 1 * Q 3 1 + Q 2 1 * P 3 1)) * h1
+    | linear_combination hdiff -
+        (2 * (P 0 2 * Q 1 2 + Q 0 2 * P 1 2 + P 2 2 * Q 3 2 + Q 2 2 * P 3 2)) * h2
+    | linear_combination hdiff -
+        (2 * (P 0 3 * Q 1 3 + Q 0 3 * P 1 3 + P 2 3 * Q 3 3 + Q 2 3 * P 3 3)) * h3
+private theorem clearedTwoAtomPoly_eval_eq_splitPair
+    (φ : Fin 2 → FracAtom 8) (c : ℝ) (s : ℝ) (hs : s = 1 ∨ s = -1) (x : Fin 8 → Bool) :
+    eval (cubePoint (xOriented s x)) (clearedTwoAtomPoly φ c) =
+      splitPair
+        (fun row => (factorR φ c row) +
+          (∑ i : Fin 4, (factorP φ c s) row i * hammingSign (x (Fin.castAdd 4 i))) +
+          (∑ i : Fin 4, (factorQ φ c s) row i * hammingSign (x (Fin.natAdd 4 i))))
+        (fun row => (factorR φ c row) +
+          (∑ i : Fin 4, (factorP φ c s) row i * hammingSign (x (Fin.castAdd 4 i))) +
+          (∑ i : Fin 4, (factorQ φ c s) row i * hammingSign (x (Fin.natAdd 4 i)))) := by
+  have h_eval_poly : eval (cubePoint (xOriented s x)) (clearedTwoAtomPoly φ c) =
+      (factorFormA φ c).eval (xOriented s x) * (fracDenominator (φ 1)).eval (xOriented s x) +
+      (fracNumerator (φ 1)).eval (xOriented s x) * (fracDenominator (φ 0)).eval (xOriented s x) := by
+    rw [eval_clearedTwoAtomPoly]
+    rw [FracAtom.eval_eq_numPoly_div_denPoly (φ 0) (xOriented s x)]
+    rw [FracAtom.eval_eq_numPoly_div_denPoly (φ 1) (xOriented s x)]
+    rw [FracAtom.denPoly_eval (φ 0) (xOriented s x)]
+    rw [FracAtom.denPoly_eval (φ 1) (xOriented s x)]
+    rw [FracAtom.numPoly_eval (φ 0) (xOriented s x)]
+    rw [FracAtom.numPoly_eval (φ 1) (xOriented s x)]
+    rw [← fracDenominator_eval (φ 0) (xOriented s x)]
+    rw [← fracDenominator_eval (φ 1) (xOriented s x)]
+    rw [← fracNumerator_eval (φ 0) (xOriented s x)]
+    rw [← fracNumerator_eval (φ 1) (xOriented s x)]
+    have hd0 : 0 < (fracDenominator (φ 0)).eval (xOriented s x) := fracDenominator_strictLegal (φ 0) _
+    have hd1 : 0 < (fracDenominator (φ 1)).eval (xOriented s x) := fracDenominator_strictLegal (φ 1) _
+    have h0 : (fracDenominator (φ 0)).eval (xOriented s x) ≠ 0 := hd0.ne'
+    have h1 : (fracDenominator (φ 1)).eval (xOriented s x) ≠ 0 := hd1.ne'
+    generalize h_n0 : (fracNumerator (φ 0)).eval (xOriented s x) = n0
+    generalize h_d0 : (fracDenominator (φ 0)).eval (xOriented s x) = d0
+    generalize h_n1 : (fracNumerator (φ 1)).eval (xOriented s x) = n1
+    generalize h_d1 : (fracDenominator (φ 1)).eval (xOriented s x) = d1
+    have h_alg : d0 * d1 * (c + n0 / d0 + n1 / d1) = (c * d0 + n0) * d1 + n1 * d0 := by
+      rw [h_d0] at h0; rw [h_d1] at h1
+      field_simp
+    rw [h_alg, ← h_d0, ← h_n0, ← h_d1, ← h_n1, eval_factorFormA]
+  rw [h_eval_poly, splitPair_formula]
+  have hA := eval_affineForm_eq_factor (factorFormA φ c) s hs x
+  have hD := eval_affineForm_eq_factor (fracDenominator (φ 1)) s hs x
+  have hC := eval_affineForm_eq_factor (fracNumerator (φ 1)) s hs x
+  have hB := eval_affineForm_eq_factor (fracDenominator (φ 0)) s hs x
+  dsimp [factorR, factorP, factorQ, factorRowForm] at hA hD hC hB ⊢
+  rw [← hA, ← hD, ← hC, ← hB]
+  ring
+
 /-- Paper Lemma 3 after the rank obstruction: two nonconstant, strictly
 oriented denominators supply the exact factor map and shell transitions. -/
 private theorem nondegenerate_twoAtoms_yield_f8FactorData
@@ -2276,7 +2692,63 @@ private theorem nondegenerate_twoAtoms_yield_f8FactorData
       (∀ i, (fracDenominator (φ 0)).linear i ≠ 0) ∧
         (∀ i, (fracDenominator (φ 1)).linear i ≠ 0)) :
     Nonempty F8FactorData := by
-  sorry
+  set s := factorOrientation φ
+  have hs : s = 1 ∨ s = -1 := factorOrientation_cases φ
+  refine ⟨{
+    P := factorP φ c s
+    Q := factorQ φ c s
+    r := factorR φ c
+    curvature := by
+      rw [factorCurvature_eq_clearedTwoAtomPoly_mixed]
+      exact hneg
+    denominator_left_pos := by
+      intro i
+      dsimp [factorP, factorRowForm]
+      exact div_pos (factorOrientation_pos φ hslopes.1 _) (by norm_num)
+    denominator_right_pos := by
+      intro i
+      dsimp [factorQ, factorRowForm]
+      exact div_pos (factorOrientation_pos φ hslopes.1 _) (by norm_num)
+    denominator_intercept := by
+      have h_int := strictLegal_sign_intercept (fracDenominator (φ 0)) (fracDenominator_strictLegal (φ 0)) s hs
+      dsimp [factorR, factorP, factorQ, factorRowForm]
+      have h1 : (∑ i : Fin 4, s * (fracDenominator (φ 0)).linear (Fin.castAdd 4 i) / 2) +
+          (∑ i : Fin 4, s * (fracDenominator (φ 0)).linear (Fin.natAdd 4 i) / 2) =
+          ∑ i : Fin 8, s * (fracDenominator (φ 0)).linear i / 2 :=
+        (Fin.sum_univ_add (fun (k : Fin (4 + 4)) => s * (fracDenominator (φ 0)).linear k / 2)).symm
+      rw [h1]
+      exact h_int
+    transition := by
+      intro i j hij ε
+      set x1 := defect1 i ε
+      set x2 := defect2 i j ε
+      have hf1 : f8 x1 = false := f8_defect1 i ε
+      have hf2 : f8 x2 = true := f8_defect2 i j hij ε
+      set z1 := xOriented s x1
+      set z2 := xOriented s x2
+      have hfz1 : f8 z1 = false := by rw [f8_xOriented s hs]; exact hf1
+      have hfz2 : f8 z2 = true := by rw [f8_xOriented s hs]; exact hf2
+      have hsc1 : eval (cubePoint z1) (clearedTwoAtomPoly φ c) ≤ 0 := by
+        by_contra h
+        push Not at h
+        have ht := (clearedTwoAtomPoly_signRepresents φ c hsign z1).mp h
+        rw [hfz1] at ht
+        exact absurd ht (by decide)
+      have hsc2 : 0 < eval (cubePoint z2) (clearedTwoAtomPoly φ c) :=
+        (clearedTwoAtomPoly_signRepresents φ c hsign z2).mpr hfz2
+      have hdiff : 0 < eval (cubePoint z2) (clearedTwoAtomPoly φ c) - eval (cubePoint z1) (clearedTwoAtomPoly φ c) :=
+        sub_pos.mpr (lt_of_le_of_lt hsc1 hsc2)
+      rw [clearedTwoAtomPoly_eval_eq_splitPair φ c s hs x1, clearedTwoAtomPoly_eval_eq_splitPair φ c s hs x2] at hdiff
+      change 0 <
+        splitPair
+            (factorValue (factorP φ c s) (factorQ φ c s) (factorR φ c) (defect2 i j ε))
+            (factorValue (factorP φ c s) (factorQ φ c s) (factorR φ c) (defect2 i j ε)) -
+          splitPair
+            (factorValue (factorP φ c s) (factorQ φ c s) (factorR φ c) (defect1 i ε))
+            (factorValue (factorP φ c s) (factorQ φ c s) (factorR φ c) (defect1 i ε)) at hdiff
+      exact factor_transition_of_defects
+        (factorP φ c s) (factorQ φ c s) (factorR φ c) i j hij ε hdiff
+  }⟩
 
 /-- Paper Lemma 4 is now a proved direct-algebra consequence of the factor
 data; this wrapper composes it with the remaining Lemma 3 extraction. -/
