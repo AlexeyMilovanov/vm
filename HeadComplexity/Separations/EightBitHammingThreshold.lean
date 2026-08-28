@@ -612,6 +612,13 @@ private theorem zeroRow_choiceCone_nonpositive
     ∀ z, quadraticForm4 B z ≤ 0 := by
   sorry
 
+private lemma quadraticForm4_sub_rankOne (C : Matrix (Fin 4) (Fin 4) ℝ) (g z : Fin 4 → ℝ) (sigma : ℝ) :
+    quadraticForm4 (fun i j => C i j - g i * g j / sigma) z =
+      quadraticForm4 C z - (dotProduct g z) ^ 2 / sigma := by
+  dsimp [quadraticForm4, Matrix.mulVec, dotProduct]
+  simp_rw [sum_fin4]
+  ring
+
 /-- Correct rank-one reduction for paper Lemma 5. Positive row sums permit
 subtracting `g gᵀ / sum g` to reach the preceding zero-row-sum cone; adding
 one positive rank-one form back cannot create positive index two. -/
@@ -623,7 +630,147 @@ private theorem columnFunctional_nonpos_forbids_positiveIndexTwo
     (h_le : Matrix.trace M +
       2 * ∑ j, M (columnMaxPicker M j) j ≤ 0) :
     ¬ PositiveIndexAtLeastTwo4 ((Matrix.diagonal d) * M) := by
-  sorry
+  intro hpos2
+  set C := Matrix.diagonal d * M with hC_def
+  set g := C.mulVec (fun _ => 1) with hg_def
+  set sigma := ∑ i, g i with hsigma_def
+  have hg_pos (i : Fin 4) : 0 < g i := by
+    have hgi : g i = d i * (M.mulVec (fun _ => 1) i) := by
+      change (C.mulVec (fun _ => 1)) i = d i * (M.mulVec (fun _ => 1) i)
+      dsimp [C, Matrix.mulVec, dotProduct]
+      simp_rw [sum_fin4]
+      simp only [diag_mul_apply]
+      ring
+    rw [hgi]
+    exact mul_pos (hd i) (hrow i)
+  have hsigma_pos : 0 < sigma := by
+    change 0 < ∑ i, g i
+    simp_rw [sum_fin4]
+    have h0 := hg_pos 0; have h1 := hg_pos 1; have h2 := hg_pos 2; have h3 := hg_pos 3
+    linarith
+  set B : Matrix (Fin 4) (Fin 4) ℝ := fun i j => C i j - g i * g j / sigma with hB_def
+  set q : Fin 4 → ℝ := fun i => 1 / d i with hq_def
+  have hq_pos (i : Fin 4) : 0 < q i := div_pos (by norm_num) (hd i)
+  have hB_symm : B.IsSymm := by
+    ext i j
+    change B j i = B i j
+    dsimp [B]
+    have hC_ij : C j i = C i j := congr_fun (congr_fun hsymm i) j
+    rw [hC_ij]
+    ring
+  have hB_zero : B.mulVec (fun _ => 1) = 0 := by
+    ext i
+    dsimp [Matrix.mulVec, dotProduct, B]
+    simp_rw [sum_fin4]
+    have hg_i : C i 0 + C i 1 + C i 2 + C i 3 = g i := by
+      have h : (C.mulVec (fun _ => 1)) i = g i := rfl
+      unfold Matrix.mulVec dotProduct at h
+      rw [sum_fin4] at h
+      linarith
+    have hsigma : g 0 + g 1 + g 2 + g 3 = sigma := by
+      have h : (∑ k, g k) = sigma := rfl
+      simp_rw [sum_fin4] at h
+      exact h
+    have hsig_ne : sigma ≠ 0 := hsigma_pos.ne'
+    have h_sum : (C i 0 - g i * g 0 / sigma) * 1 + (C i 1 - g i * g 1 / sigma) * 1 +
+        (C i 2 - g i * g 2 / sigma) * 1 + (C i 3 - g i * g 3 / sigma) * 1 =
+        (C i 0 + C i 1 + C i 2 + C i 3) - g i / sigma * (g 0 + g 1 + g 2 + g 3) := by ring
+    rw [h_sum, hg_i, hsigma]
+    field_simp; ring
+  have hchoice (pick : Fin 4 → Fin 4) (hpick : ∀ j, pick j ≠ j) :
+      (∑ i, q i * B i i) + 2 * ∑ j, q (pick j) * B (pick j) j ≤ 0 := by
+    have hqC_diag (i : Fin 4) : q i * C i i = M i i := by
+      change (1 / d i) * ((Matrix.diagonal d * M) i i) = M i i
+      rw [diag_mul_apply]
+      have hdi := (hd i).ne'
+      field_simp
+    have hqC_pick (j : Fin 4) : q (pick j) * C (pick j) j = M (pick j) j := by
+      change (1 / d (pick j)) * ((Matrix.diagonal d * M) (pick j) j) = M (pick j) j
+      rw [diag_mul_apply]
+      have hd_pj := (hd (pick j)).ne'
+      field_simp
+    have hB_expand : (∑ i, q i * B i i) + 2 * ∑ j, q (pick j) * B (pick j) j =
+        (Matrix.trace M + 2 * ∑ j, M (pick j) j) -
+        (1 / sigma) * ((∑ i, q i * g i ^ 2) + 2 * ∑ j, q (pick j) * g (pick j) * g j) := by
+      unfold Matrix.trace Matrix.diag
+      simp_rw [sum_fin4]
+      dsimp [B]
+      have h0 := hqC_diag 0; have h1 := hqC_diag 1; have h2 := hqC_diag 2; have h3 := hqC_diag 3
+      have hp0 := hqC_pick 0; have hp1 := hqC_pick 1; have hp2 := hqC_pick 2; have hp3 := hqC_pick 3
+      linear_combination h0 + h1 + h2 + h3 + 2 * hp0 + 2 * hp1 + 2 * hp2 + 2 * hp3
+    have hpick_sum_le : ∑ j, M (pick j) j ≤ ∑ j, M (columnMaxPicker M j) j := by
+      simp_rw [sum_fin4]
+      have h0 := columnMaxPicker_le M 0 (pick 0) (hpick 0)
+      have h1 := columnMaxPicker_le M 1 (pick 1) (hpick 1)
+      have h2 := columnMaxPicker_le M 2 (pick 2) (hpick 2)
+      have h3 := columnMaxPicker_le M 3 (pick 3) (hpick 3)
+      linarith
+    have hpick_le : Matrix.trace M + 2 * ∑ j, M (pick j) j ≤ 0 := by
+      linarith [h_le, hpick_sum_le]
+    have hpos_term : 0 < (1 / sigma) * ((∑ i, q i * g i ^ 2) + 2 * ∑ j, q (pick j) * g (pick j) * g j) := by
+      have hsigma_inv : 0 < 1 / sigma := one_div_pos.mpr hsigma_pos
+      have hsum_pos : 0 < (∑ i, q i * g i ^ 2) + 2 * ∑ j, q (pick j) * g (pick j) * g j := by
+        simp_rw [sum_fin4]
+        have hq0 := hq_pos 0; have hq1 := hq_pos 1; have hq2 := hq_pos 2; have hq3 := hq_pos 3
+        have hqp0 := hq_pos (pick 0); have hqp1 := hq_pos (pick 1)
+        have hqp2 := hq_pos (pick 2); have hqp3 := hq_pos (pick 3)
+        have hg0 := hg_pos 0; have hg1 := hg_pos 1; have hg2 := hg_pos 2; have hg3 := hg_pos 3
+        have hgp0 := hg_pos (pick 0); have hgp1 := hg_pos (pick 1)
+        have hgp2 := hg_pos (pick 2); have hgp3 := hg_pos (pick 3)
+        have h_sq0 : 0 < q 0 * g 0 ^ 2 := mul_pos hq0 (sq_pos_of_ne_zero (hg0.ne'))
+        have h_sq1 : 0 < q 1 * g 1 ^ 2 := mul_pos hq1 (sq_pos_of_ne_zero (hg1.ne'))
+        have h_sq2 : 0 < q 2 * g 2 ^ 2 := mul_pos hq2 (sq_pos_of_ne_zero (hg2.ne'))
+        have h_sq3 : 0 < q 3 * g 3 ^ 2 := mul_pos hq3 (sq_pos_of_ne_zero (hg3.ne'))
+        have hp0 : 0 < q (pick 0) * g (pick 0) * g 0 := mul_pos (mul_pos hqp0 hgp0) hg0
+        have hp1 : 0 < q (pick 1) * g (pick 1) * g 1 := mul_pos (mul_pos hqp1 hgp1) hg1
+        have hp2 : 0 < q (pick 2) * g (pick 2) * g 2 := mul_pos (mul_pos hqp2 hgp2) hg2
+        have hp3 : 0 < q (pick 3) * g (pick 3) * g 3 := mul_pos (mul_pos hqp3 hgp3) hg3
+        linarith
+      exact mul_pos hsigma_inv hsum_pos
+    rw [hB_expand]
+    linarith
+  have hB_nonpos := zeroRow_choiceCone_nonpositive q B hq_pos hB_symm hB_zero hchoice
+  obtain ⟨u, v, huv⟩ := hpos2
+  set gu := dotProduct g u with hgu_def
+  set gv := dotProduct g v with hgv_def
+  by_cases hg_zero : gu = 0 ∧ gv = 0
+  · set z := u
+    have hnz : (1 : ℝ) ≠ 0 ∨ (0 : ℝ) ≠ 0 := Or.inl one_ne_zero
+    have hCz : 0 < quadraticForm4 C z := by
+      have h := huv 1 0 hnz
+      have h_eq : (fun i => (1 : ℝ) * u i + (0 : ℝ) * v i) = z := by ext i; ring
+      rwa [h_eq] at h
+    have hBz : quadraticForm4 B z = quadraticForm4 C z := by
+      change quadraticForm4 (fun i j => C i j - g i * g j / sigma) z = quadraticForm4 C z
+      rw [quadraticForm4_sub_rankOne]
+      have hgu_zero : dotProduct g z = 0 := hg_zero.1
+      rw [hgu_zero]
+      ring
+    have hB_le := hB_nonpos z
+    linarith
+  · have hg_not : ¬(gu = 0 ∧ gv = 0) := hg_zero
+    set a := -gv
+    set b := gu
+    have hab : a ≠ 0 ∨ b ≠ 0 := by
+      by_contra hab_zero
+      push_neg at hab_zero
+      have ha : a = 0 := hab_zero.1
+      have hb : b = 0 := hab_zero.2
+      have hgv_zero : gv = 0 := by linarith [ha]
+      have hgu_zero : gu = 0 := hb
+      exact hg_not ⟨hgu_zero, hgv_zero⟩
+    set z : Fin 4 → ℝ := fun i => a * u i + b * v i
+    have hCz : 0 < quadraticForm4 C z := huv a b hab
+    have hgz : dotProduct g z = 0 := by
+      dsimp [dotProduct, z, a, b, gu, gv]
+      simp_rw [sum_fin4]
+      ring
+    have hBz : quadraticForm4 B z = quadraticForm4 C z := by
+      change quadraticForm4 (fun i j => C i j - g i * g j / sigma) z = quadraticForm4 C z
+      rw [quadraticForm4_sub_rankOne, hgz]
+      ring
+    have hB_le := hB_nonpos z
+    linarith
 
 private lemma quad_expand (M : Matrix (Fin 4) (Fin 4) ℝ) (d : Fin 4 → ℝ)
     (z : Fin 4 → ℝ)
