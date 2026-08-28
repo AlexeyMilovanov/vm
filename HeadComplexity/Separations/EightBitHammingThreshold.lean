@@ -1696,6 +1696,122 @@ private theorem f8NormalizedSystem_false_of_mu_ne_zero
     (sys : F8NormalizedSystem) (hμ : ∀ i, sys.μ i ≠ 0) : False := by
   sorry
 
+private lemma quad_null_expansion (sys : F8NormalizedSystem) (t α : ℝ) (h : Fin 4 → ℝ) (k : Fin 4) :
+    quadraticForm4 sys.V (sys.μ + t • h + α • Pi.single k 1) =
+      quadraticForm4 sys.V sys.μ +
+      2 * t * dotProduct (sys.V.mulVec sys.μ) h +
+      2 * α * (sys.V.mulVec sys.μ) k +
+      t ^ 2 * quadraticForm4 sys.V h +
+      2 * t * α * (sys.V.mulVec h) k +
+      α ^ 2 * sys.V k k := by
+  have hsymm := sys.V_inertia.1
+  dsimp [quadraticForm4, dotProduct, Matrix.mulVec]
+  simp only [Fin.sum_univ_four, Pi.single_apply]
+  have hS (i j : Fin 4) : sys.V j i = sys.V i j := congr_fun (congr_fun hsymm i) j
+  have h01 := hS 0 1; have h02 := hS 0 2; have h03 := hS 0 3
+  have h12 := hS 1 2; have h13 := hS 1 3; have h23 := hS 2 3
+  fin_cases k
+  · dsimp; rw [← h01, ← h02, ← h03, ← h12, ← h13, ← h23]; ring
+  · dsimp; rw [← h01, ← h02, ← h03, ← h12, ← h13, ← h23]; ring
+  · dsimp; rw [← h01, ← h02, ← h03, ← h12, ← h13, ← h23]; ring
+  · dsimp; rw [← h01, ← h02, ← h03, ← h12, ← h13, ← h23]; ring
+
+private lemma quad_root_spec (A B C : ℝ) (hA : A ≠ 0) (hdisc : 0 ≤ B ^ 2 - 4 * A * C) :
+    let x := (-B + Real.sqrt (B ^ 2 - 4 * A * C)) / (2 * A)
+    A * x ^ 2 + B * x + C = 0 := by
+  intro x
+  dsimp [x]
+  have h2A : 2 * A ≠ 0 := mul_ne_zero (by norm_num) hA
+  have hsq := Real.sq_sqrt hdisc
+  have h : A * ((-B + Real.sqrt (B ^ 2 - 4 * A * C)) / (2 * A)) ^ 2 +
+      B * ((-B + Real.sqrt (B ^ 2 - 4 * A * C)) / (2 * A)) + C =
+      ((Real.sqrt (B ^ 2 - 4 * A * C)) ^ 2 - (B ^ 2 - 4 * A * C)) / (4 * A) := by
+    field_simp; ring
+  rw [h, hsq, sub_self, zero_div]
+
+private lemma alpha_tendsto_zero (sys : F8NormalizedSystem) (h : Fin 4 → ℝ) (k : Fin 4)
+    (hVk : 0 < (sys.V.mulVec sys.μ) k) :
+    let A := sys.V k k
+    let B (t : ℝ) := 2 * (sys.V.mulVec sys.μ) k + 2 * t * (sys.V.mulVec h) k
+    let C (t : ℝ) := 2 * t * dotProduct (sys.V.mulVec sys.μ) h + t ^ 2 * quadraticForm4 sys.V h
+    let Δ (t : ℝ) := B t ^ 2 - 4 * A * C t
+    let α (t : ℝ) := if A = 0 then - C t / B t else (- B t + Real.sqrt (Δ t)) / (2 * A)
+    Filter.Tendsto α (nhds 0) (nhds 0) ∧ ∀ᶠ t in nhds 0, quadraticForm4 sys.V (sys.μ + t • h + (α t) • Pi.single k 1) = 0 := by
+  intro A B C Δ α
+  have hB0 : B 0 = 2 * (sys.V.mulVec sys.μ) k := by dsimp [B]; ring
+  have hB0_pos : 0 < B 0 := by rw [hB0]; linarith
+  have hC0 : C 0 = 0 := by dsimp [C]; ring
+  have hcontB : Continuous B := by
+    dsimp [B]
+    exact continuous_const.add ((continuous_const.mul continuous_id).mul continuous_const)
+  have hcontC : Continuous C := by
+    dsimp [C]
+    exact ((continuous_const.mul continuous_id).mul continuous_const).add ((continuous_id.pow 2).mul continuous_const)
+  have hcontΔ : Continuous Δ := by
+    dsimp [Δ]
+    exact (hcontB.pow 2).sub (continuous_const.mul hcontC)
+  have hΔ0 : Δ 0 = (B 0) ^ 2 := by
+    dsimp [Δ]
+    rw [hC0, mul_zero, sub_zero]
+  have hΔ0_pos : 0 < Δ 0 := by rw [hΔ0]; positivity
+  have hB_evt : ∀ᶠ t in nhds 0, 0 < B t := hcontB.tendsto 0 (Ioi_mem_nhds hB0_pos)
+  have hΔ_evt : ∀ᶠ t in nhds 0, 0 ≤ Δ t := hcontΔ.tendsto 0 (mem_nhds_iff.mpr ⟨Set.Ioi 0, Set.Ioi_subset_Ici_self, isOpen_Ioi, hΔ0_pos⟩)
+  by_cases hA : A = 0
+  · have hα_def : α = fun t => - C t / B t := by ext t; dsimp [α]; rw [if_pos hA]
+    rw [hα_def]
+    refine ⟨?_, ?_⟩
+    · have hC_lim : Filter.Tendsto C (nhds 0) (nhds 0) := by
+        have h := hcontC.tendsto 0
+        rwa [hC0] at h
+      have hB_lim : Filter.Tendsto B (nhds 0) (nhds (B 0)) := hcontB.tendsto 0
+      have hdiv := Filter.Tendsto.div hC_lim.neg hB_lim hB0_pos.ne'
+      rw [neg_zero, zero_div] at hdiv
+      exact hdiv
+    · filter_upwards [hB_evt] with t ht
+      have hnull_exp := quad_null_expansion sys t (-C t / B t) h k
+      rw [hnull_exp, sys.null]
+      dsimp [A, B, C] at *
+      have hBt_ne : 2 * (sys.V.mulVec sys.μ) k + 2 * t * (sys.V.mulVec h) k ≠ 0 := ht.ne'
+      rw [hA]
+      have h_alg : 0 + 2 * t * dotProduct (sys.V.mulVec sys.μ) h +
+          2 * (- (2 * t * dotProduct (sys.V.mulVec sys.μ) h + t ^ 2 * quadraticForm4 sys.V h) /
+            (2 * (sys.V.mulVec sys.μ) k + 2 * t * (sys.V.mulVec h) k)) * (sys.V.mulVec sys.μ) k +
+          t ^ 2 * quadraticForm4 sys.V h +
+          2 * t * (- (2 * t * dotProduct (sys.V.mulVec sys.μ) h + t ^ 2 * quadraticForm4 sys.V h) /
+            (2 * (sys.V.mulVec sys.μ) k + 2 * t * (sys.V.mulVec h) k)) * (sys.V.mulVec h) k +
+          (- (2 * t * dotProduct (sys.V.mulVec sys.μ) h + t ^ 2 * quadraticForm4 sys.V h) /
+            (2 * (sys.V.mulVec sys.μ) k + 2 * t * (sys.V.mulVec h) k)) ^ 2 * 0 =
+          (2 * t * dotProduct (sys.V.mulVec sys.μ) h + t ^ 2 * quadraticForm4 sys.V h) *
+          (1 - (2 * (sys.V.mulVec sys.μ) k + 2 * t * (sys.V.mulVec h) k) /
+            (2 * (sys.V.mulVec sys.μ) k + 2 * t * (sys.V.mulVec h) k)) := by
+        field_simp
+        ring
+      rw [h_alg, div_self hBt_ne, sub_self, mul_zero]
+  · have hα_def : α = fun t => (- B t + Real.sqrt (Δ t)) / (2 * A) := by
+      ext t; dsimp [α]; rw [if_neg hA]
+    rw [hα_def]
+    refine ⟨?_, ?_⟩
+    · have hB_lim : Filter.Tendsto B (nhds 0) (nhds (B 0)) := hcontB.tendsto 0
+      have hΔ_lim : Filter.Tendsto Δ (nhds 0) (nhds (Δ 0)) := hcontΔ.tendsto 0
+      have hsqrt : Filter.Tendsto (fun t => Real.sqrt (Δ t)) (nhds 0) (nhds (Real.sqrt (Δ 0))) :=
+        Continuous.tendsto (Real.continuous_sqrt) _ |>.comp hΔ_lim
+      rw [hΔ0, Real.sqrt_sq hB0_pos.le] at hsqrt
+      have hnum : Filter.Tendsto (fun t => - B t + Real.sqrt (Δ t)) (nhds 0) (nhds (- B 0 + B 0)) :=
+        hB_lim.neg.add hsqrt
+      rw [neg_add_cancel] at hnum
+      have hdiv2 : Filter.Tendsto (fun t => (- B t + Real.sqrt (Δ t)) * (1 / (2 * A))) (nhds 0) (nhds (0 * (1 / (2 * A)))) :=
+        Filter.Tendsto.mul_const (1 / (2 * A)) hnum
+      rw [zero_mul] at hdiv2
+      have h_eq : (fun t => (- B t + Real.sqrt (Δ t)) / (2 * A)) = (fun t => (- B t + Real.sqrt (Δ t)) * (1 / (2 * A))) := by
+        ext t; ring
+      rwa [h_eq]
+    · filter_upwards [hΔ_evt] with t ht
+      have hnull_exp := quad_null_expansion sys t ((- B t + Real.sqrt (Δ t)) / (2 * A)) h k
+      rw [hnull_exp, sys.null]
+      have hspec := quad_root_spec A (B t) (C t) hA ht
+      dsimp [A, B, C] at *
+      linarith [hspec]
+
 /-- The perturbative part of paper Lemma 6. The null cone is smooth at `μ`
 because `V μ` is coordinatewise positive. Hence one can remove zero
 coordinates while preserving the four strict open conditions. -/
@@ -1708,7 +1824,118 @@ private theorem exists_nonzero_null_perturbation
       quadraticForm4 sys.V ν = 0 ∧
       (∑ i, (sys.U.transpose.mulVec ν) i) +
         (∑ i, (sys.V.mulVec ν) i) < dotProduct ν sys.w := by
-  sorry
+  by_cases hμ_all : ∀ i, sys.μ i ≠ 0
+  · exact ⟨sys.μ, hμ_all, sys.leftSlope_pos, sys.rightSlope_pos, sys.null, sys.intercept⟩
+  · have hμ_not_all : ¬ ∀ i, sys.μ i ≠ 0 := hμ_all
+    clear hμ_all
+    have hμ_ne_zero : sys.μ ≠ 0 := by
+      intro h_zero
+      have h_right0 := sys.rightSlope_pos 0
+      rw [h_zero, Matrix.mulVec_zero] at h_right0
+      dsimp at h_right0
+      linarith
+    have h_ex_k : ∃ k : Fin 4, sys.μ k ≠ 0 := by
+      by_contra h_all_zero
+      push Not at h_all_zero
+      apply hμ_ne_zero
+      ext k
+      exact h_all_zero k
+    obtain ⟨k, hk⟩ := h_ex_k
+    let h : Fin 4 → ℝ := fun i => if sys.μ i = 0 then 1 else 0
+    have hVk : 0 < (sys.V.mulVec sys.μ) k := sys.rightSlope_pos k
+    set A := sys.V k k
+    set B : ℝ → ℝ := fun t => 2 * (sys.V.mulVec sys.μ) k + 2 * t * (sys.V.mulVec h) k
+    set C : ℝ → ℝ := fun t => 2 * t * dotProduct (sys.V.mulVec sys.μ) h + t ^ 2 * quadraticForm4 sys.V h
+    set Δ : ℝ → ℝ := fun t => B t ^ 2 - 4 * A * C t
+    set α : ℝ → ℝ := fun t => if A = 0 then - C t / B t else (- B t + Real.sqrt (Δ t)) / (2 * A)
+    obtain ⟨hα_lim, hα_null⟩ := alpha_tendsto_zero sys h k hVk
+    let ν (t : ℝ) : Fin 4 → ℝ := sys.μ + t • h + (α t) • Pi.single k 1
+    have hν_lim : Filter.Tendsto ν (nhds 0) (nhds sys.μ) := by
+      change Filter.Tendsto (fun t => sys.μ + t • h + α t • Pi.single k 1) (nhds 0) (nhds sys.μ)
+      have h1 : Filter.Tendsto (fun t : ℝ => sys.μ + t • h) (nhds 0) (nhds sys.μ) := by
+        have h_cont1 : Continuous (fun t : ℝ => sys.μ + t • h) :=
+          continuous_const.add (continuous_id.smul continuous_const)
+        have h1_sub := h_cont1.tendsto 0
+        change Filter.Tendsto (fun t => sys.μ + t • h) (nhds 0) (nhds (sys.μ + (0:ℝ) • h)) at h1_sub
+        rw [zero_smul, add_zero] at h1_sub
+        exact h1_sub
+      have h2 : Filter.Tendsto (fun t : ℝ => (α t) • Pi.single k 1) (nhds 0) (nhds 0) := by
+        have h2_sub := Filter.Tendsto.smul hα_lim (tendsto_const_nhds : Filter.Tendsto (fun _ : ℝ => Pi.single k (1:ℝ)) (nhds 0) (nhds (Pi.single k 1)))
+        change Filter.Tendsto (fun t => (α t) • Pi.single k 1) (nhds 0) (nhds ((0:ℝ) • Pi.single k 1)) at h2_sub
+        rw [zero_smul] at h2_sub
+        exact h2_sub
+      have h3 := h1.add h2
+      rw [add_zero] at h3
+      exact h3
+    have h_left_evt : ∀ᶠ t in nhds 0, ∀ i, 0 < (sys.U.transpose.mulVec (ν t)) i := by
+      have h_open (i : Fin 4) : ∀ᶠ t in nhds 0, 0 < (sys.U.transpose.mulVec (ν t)) i := by
+        have h_cont : Continuous (fun v : Fin 4 → ℝ => (sys.U.transpose.mulVec v) i) := by
+          dsimp [Matrix.mulVec, dotProduct]
+          exact continuous_finsetSum _ (fun j _ => continuous_const.mul (continuous_apply j))
+        exact h_cont.tendsto sys.μ |>.comp hν_lim (Ioi_mem_nhds (sys.leftSlope_pos i))
+      exact Filter.eventually_all.mpr h_open
+    have h_right_evt : ∀ᶠ t in nhds 0, ∀ i, 0 < (sys.V.mulVec (ν t)) i := by
+      have h_open (i : Fin 4) : ∀ᶠ t in nhds 0, 0 < (sys.V.mulVec (ν t)) i := by
+        have h_cont : Continuous (fun v : Fin 4 → ℝ => (sys.V.mulVec v) i) := by
+          dsimp [Matrix.mulVec, dotProduct]
+          exact continuous_finsetSum _ (fun j _ => continuous_const.mul (continuous_apply j))
+        exact h_cont.tendsto sys.μ |>.comp hν_lim (Ioi_mem_nhds (sys.rightSlope_pos i))
+      exact Filter.eventually_all.mpr h_open
+    have h_intercept_evt : ∀ᶠ t in nhds 0,
+        (∑ i, (sys.U.transpose.mulVec (ν t)) i) + (∑ i, (sys.V.mulVec (ν t)) i) < dotProduct (ν t) sys.w := by
+      have h_cont : Continuous (fun v : Fin 4 → ℝ =>
+          (∑ i, (sys.U.transpose.mulVec v) i) + (∑ i, (sys.V.mulVec v) i) - dotProduct v sys.w) := by
+        dsimp [Matrix.mulVec, dotProduct]
+        have c1 : Continuous (fun v : Fin 4 → ℝ => ∑ i : Fin 4, ∑ j : Fin 4, sys.U.transpose i j * v j) :=
+          continuous_finsetSum _ (fun i _ => continuous_finsetSum _ (fun j _ => continuous_const.mul (continuous_apply j)))
+        have c2 : Continuous (fun v : Fin 4 → ℝ => ∑ i : Fin 4, ∑ j : Fin 4, sys.V i j * v j) :=
+          continuous_finsetSum _ (fun i _ => continuous_finsetSum _ (fun j _ => continuous_const.mul (continuous_apply j)))
+        have c3 : Continuous (fun v : Fin 4 → ℝ => ∑ i : Fin 4, v i * sys.w i) :=
+          continuous_finsetSum _ (fun i _ => (continuous_apply i).mul continuous_const)
+        exact (c1.add c2).sub c3
+      have h_init : (∑ i, (sys.U.transpose.mulVec sys.μ) i) + (∑ i, (sys.V.mulVec sys.μ) i) - dotProduct sys.μ sys.w < 0 :=
+        sub_neg.mpr sys.intercept
+      have h_evt := h_cont.tendsto sys.μ |>.comp hν_lim (Iio_mem_nhds h_init)
+      filter_upwards [h_evt] with t ht
+      change (∑ i, (sys.U.transpose.mulVec (ν t)) i) + (∑ i, (sys.V.mulVec (ν t)) i) - dotProduct (ν t) sys.w < 0 at ht
+      linarith
+    have h_ne_k_evt : ∀ᶠ t in nhds 0, (ν t) k ≠ 0 := by
+      have h_cont : Continuous (fun v : Fin 4 → ℝ => v k) := continuous_apply k
+      exact h_cont.tendsto sys.μ |>.comp hν_lim (isOpen_ne.mem_nhds hk)
+    have h_pos_freq : ∃ᶠ t in nhds (0 : ℝ), 0 < t := frequently_gt_nhds 0
+    have h_all_evt : ∀ᶠ t in nhds (0 : ℝ),
+        quadraticForm4 sys.V (ν t) = 0 ∧
+        (∀ i, 0 < (sys.U.transpose.mulVec (ν t)) i) ∧
+        (∀ i, 0 < (sys.V.mulVec (ν t)) i) ∧
+        ((∑ i, (sys.U.transpose.mulVec (ν t)) i) + (∑ i, (sys.V.mulVec (ν t)) i) < dotProduct (ν t) sys.w) ∧
+        (ν t) k ≠ 0 :=
+      hα_null.and (h_left_evt.and (h_right_evt.and (h_intercept_evt.and h_ne_k_evt)))
+    have h_freq_all : ∃ t : ℝ, 0 < t ∧
+        quadraticForm4 sys.V (ν t) = 0 ∧
+        (∀ i, 0 < (sys.U.transpose.mulVec (ν t)) i) ∧
+        (∀ i, 0 < (sys.V.mulVec (ν t)) i) ∧
+        ((∑ i, (sys.U.transpose.mulVec (ν t)) i) + (∑ i, (sys.V.mulVec (ν t)) i) < dotProduct (ν t) sys.w) ∧
+        (ν t) k ≠ 0 :=
+      Filter.Frequently.exists (Filter.Frequently.and_eventually h_pos_freq h_all_evt)
+    obtain ⟨t, ht_pos, ht_null, ht_left, ht_right, ht_intercept, ht_ne_k⟩ := h_freq_all
+    refine ⟨ν t, ?_, ht_left, ht_right, ht_null, ht_intercept⟩
+    intro i
+    by_cases hk_i : i = k
+    · rw [hk_i]; exact ht_ne_k
+    · have h_single : (α t * (Pi.single k 1 : Fin 4 → ℝ) i) = 0 := by
+        have h1 : (Pi.single k 1 : Fin 4 → ℝ) i = 0 := Pi.single_eq_of_ne hk_i 1
+        rw [h1, mul_zero]
+      change sys.μ i + t * h i + α t * (Pi.single k 1 : Fin 4 → ℝ) i ≠ 0
+      rw [h_single, add_zero]
+      by_cases hμ_i : sys.μ i = 0
+      · dsimp [h]
+        rw [hμ_i, if_pos rfl, mul_one, zero_add]
+        exact ht_pos.ne'
+      · have h_h_i : h i = 0 := by
+          dsimp [h]
+          rw [if_neg hμ_i]
+        rw [h_h_i, mul_zero, add_zero]
+        exact hμ_i
 
 /-- Paper Lemma 6: the normalized system is impossible. -/
 theorem not_nonempty_f8NormalizedSystem :
