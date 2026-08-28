@@ -1250,7 +1250,7 @@ private theorem curvatureCertificate_negative
       linarith
     · have h20 : a2 = 0 := ha2_eq.symm
       rw [h20]
-      simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add]
+      simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero]
       rcases lt_or_eq_of_le ha3 with ha3_lt | ha3_eq
       · have t3_strict : a3 ^ 2 * B33 < 0 :=
           hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha3_lt)) hp3p3
@@ -1266,7 +1266,7 @@ private theorem curvatureCertificate_negative
           linarith
         · have h40 : a4 = 0 := ha4_eq.symm
           rw [h40]
-          simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add, sub_zero]
+          simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, sub_zero]
           have ha1_pos : 0 < a1 := by linarith [hw0_pos]
           have t1_strict : a1 ^ 2 * B11 < 0 :=
             hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha1_pos)) hp1p1
@@ -1309,21 +1309,21 @@ private theorem curvatureCertificate_negative
       linarith
     · have h20 : a2 = 0 := ha2_eq.symm
       rw [h20]
-      simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add]
+      simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero]
       rcases lt_or_eq_of_le ha3 with ha3_lt | ha3_eq
       · have t3_strict : a3 ^ 2 * B33 < 0 :=
           hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha3_lt)) hp3p3
         linarith
       · have h30 : a3 = 0 := ha3_eq.symm
         rw [h30]
-        simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add]
+        simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero]
         rcases lt_or_eq_of_le ha1 with ha1_lt | ha1_eq
         · have t1_strict : a1 ^ 2 * B11 < 0 :=
             hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha1_lt)) hp1p1
           linarith
         · have h10 : a1 = 0 := ha1_eq.symm
           rw [h10]
-          simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add, sub_zero]
+          simp only [zero_pow (by decide : 2 ≠ 0), zero_mul, add_zero, zero_add, sub_zero]
           have ha4_pos : 0 < a4 := by linarith [hw0_pos]
           have t4_strict : a4 ^ 2 * B44 < 0 :=
             hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha4_pos)) hp4p4
@@ -2210,8 +2210,8 @@ private theorem choiceCone_of_probabilities
     ∃ w : (Fin 4 → Fin 4) → ℝ,
       (∀ pick, 0 ≤ w pick) ∧
       (∀ pick, w pick ≠ 0 → ∀ j, pick j ≠ j) ∧
-      ∀ (B : Matrix (Fin 4) (Fin 4) ℝ) (hsymm : B.IsSymm)
-        (hzero : B.mulVec (fun _ => 1) = 0),
+      ∀ (B : Matrix (Fin 4) (Fin 4) ℝ) (_hsymm : B.IsSymm)
+        (_hzero : B.mulVec (fun _ => 1) = 0),
         (∑ pick, w pick * choiceFunctional q B pick) =
           -B 0 1 * d₀₁ - B 0 2 * d₀₂ - B 0 3 * d₀₃ -
           B 1 2 * d₁₂ - B 1 3 * d₁₃ - B 2 3 * d₂₃ := by
@@ -2542,7 +2542,7 @@ private theorem normalized_k4_edge_matrix
     (y 1) (y 0) (y 2) (y 3) hv0 hv2 hv3 hm1 he1
   have hinc1 : v 1 ≤ c01 + c12 + c13 := by
     dsimp [c01, c12, c13]
-    convert hinc1raw using 1 <;> ring
+    (convert hinc1raw using 1; ring)
   have hm2 : v 2 * y 2 + v 0 * y 0 + v 1 * y 1 + v 3 * y 3 = 0 := by
     linarith only [hmean4]
   have he2 :
@@ -2553,7 +2553,7 @@ private theorem normalized_k4_edge_matrix
     (y 2) (y 0) (y 1) (y 3) hv0 hv1 hv3 hm2 he2
   have hinc2 : v 2 ≤ c02 + c12 + c23 := by
     dsimp [c02, c12, c23]
-    convert hinc2raw using 1 <;> ring
+    (convert hinc2raw using 1; ring)
   have hm3 : v 3 * y 3 + v 0 * y 0 + v 1 * y 1 + v 2 * y 2 = 0 := by
     linarith only [hmean4]
   have he3 :
@@ -2564,7 +2564,7 @@ private theorem normalized_k4_edge_matrix
     (y 3) (y 0) (y 1) (y 2) hv0 hv1 hv2 hm3 he3
   have hinc3 : v 3 ≤ c03 + c13 + c23 := by
     dsimp [c03, c13, c23]
-    convert hinc3raw using 1 <;> ring
+    (convert hinc3raw using 1; ring)
   have ht012 : c01 + c02 + c12 ≤ v 0 + v 1 + v 2 := by
     linarith only [htotal, hinc3]
   have ht013 : c01 + c03 + c13 ≤ v 0 + v 1 + v 3 := by
@@ -2789,7 +2789,7 @@ private theorem k4_choiceCone_allocation
     ∃ w : (Fin 4 → Fin 4) → ℝ,
       (∀ pick, 0 ≤ w pick) ∧
       (∀ pick, w pick ≠ 0 → ∀ j, pick j ≠ j) ∧
-      ∀ (B : Matrix (Fin 4) (Fin 4) ℝ) (hsymm : B.IsSymm) (hzero : B.mulVec (fun _ => 1) = 0),
+      ∀ (B : Matrix (Fin 4) (Fin 4) ℝ) (_hsymm : B.IsSymm) (_hzero : B.mulVec (fun _ => 1) = 0),
         (∑ pick, w pick * choiceFunctional q B pick) =
           - B 0 1 * (z 0 - z 1) ^ 2 -
           B 0 2 * (z 0 - z 2) ^ 2 -
@@ -2993,7 +2993,7 @@ private theorem columnFunctional_nonpos_forbids_positiveIndexTwo
     set b := gu
     have hab : a ≠ 0 ∨ b ≠ 0 := by
       by_contra hab_zero
-      push_neg at hab_zero
+      push Not at hab_zero
       have ha : a = 0 := hab_zero.1
       have hb : b = 0 := hab_zero.2
       have hgv_zero : gv = 0 := by linarith [ha]
@@ -3061,7 +3061,7 @@ theorem columnMax_spectral_inequality
       0 < Matrix.trace M + 2 * ∑ j, M (pick j) j := by
   refine ⟨columnMaxPicker M, columnMaxPicker_ne M, ?_⟩
   by_contra h_le
-  push_neg at h_le
+  push Not at h_le
   obtain ⟨d, hd, hsymm, hpos2⟩ := hspectral
   exact (columnFunctional_nonpos_forbids_positiveIndexTwo
     M d hd hsymm hrow h_le) hpos2
@@ -3541,7 +3541,7 @@ private theorem factorCurvature_eq_clearedTwoAtomPoly_mixed
   dsimp [column4, factorP, factorQ, factorRowForm]
   have hs_sq : (factorOrientation φ) ^ 2 = 1 := by
     rcases factorOrientation_cases φ with h | h <;> rw [h] <;> ring
-  linear_combination (1 / 2 * hs_sq - 1 / 2) *
+  linear_combination (1 / 2 * hs_sq) *
     ((factorFormA φ c).linear (Fin.castAdd 4 i) * (fracDenominator (φ 1)).linear (Fin.natAdd 4 j) +
      (fracDenominator (φ 1)).linear (Fin.castAdd 4 i) * (factorFormA φ c).linear (Fin.natAdd 4 j) +
      (fracNumerator (φ 1)).linear (Fin.castAdd 4 i) * (fracDenominator (φ 0)).linear (Fin.natAdd 4 j) +
@@ -3929,7 +3929,7 @@ private theorem f8NormalizedSystem_false_of_mu_ne_zero
     have h_sum_C : C i 0 + C i 1 + C i 2 + C i 3 = |g i| := by
       rw [hC_apply i 0, hC_apply i 1, hC_apply i 2, hC_apply i 3]
       rw [hg_H i]
-      fin_cases i <;> simp [if_pos rfl, if_neg] <;> linarith
+      fin_cases i <;> simp <;> linarith
     have h_g_pos : 0 < |g i| := by rw [habs_g i]; exact hs_g i
     calc (M.mulVec (fun _ => 1)) i
         = q i * C i 0 * 1 + q i * C i 1 * 1 + q i * C i 2 * 1 + q i * C i 3 * 1 := by
@@ -3984,7 +3984,6 @@ private theorem f8NormalizedSystem_false_of_mu_ne_zero
       have h_C_eq (z : Fin 4 → ℝ) : dotProduct z (C.mulVec z) =
           dotProduct (fun i => sys.μ i * z i) (sys.V.mulVec (fun i => sys.μ i * z i)) +
           ∑ i, (|g i| - g i) * z i ^ 2 := by
-        change dotProduct z (C.mulVec z) = _
         dsimp [dotProduct, Matrix.mulVec]
         rw [sum_fin4]
         rw [sum_fin4, sum_fin4, sum_fin4, sum_fin4]
