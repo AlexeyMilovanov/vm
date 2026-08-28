@@ -212,7 +212,31 @@ private theorem quadratic_checkerboard_difference
         eval (cubePoint (blockJoin x₁ y₀)) P +
         eval (cubePoint (blockJoin x₁ y₁)) P =
       bilinear4 (mixedMatrix4 P) (bitDiff4 x₀ x₁) (bitDiff4 y₀ y₁) := by
-  sorry
+  have hP : P = ∑ s ∈ P.support, monomial s (coeff s P) := P.as_sum
+  have h_eval (z : Fin 8 → ℝ) : eval z P = ∑ s ∈ P.support, eval z (monomial s (coeff s P)) := by
+    nth_rw 1 [hP]
+    exact map_sum (eval z) (fun s => monomial s (coeff s P)) P.support
+  rw [h_eval (cubePoint (blockJoin x₀ y₀)), h_eval (cubePoint (blockJoin x₀ y₁)),
+      h_eval (cubePoint (blockJoin x₁ y₀)), h_eval (cubePoint (blockJoin x₁ y₁))]
+  rw [← Finset.sum_sub_distrib, ← Finset.sum_sub_distrib, ← Finset.sum_add_distrib]
+  have h_mono : ∀ s ∈ P.support,
+      eval (cubePoint (blockJoin x₀ y₀)) (monomial s (coeff s P)) -
+          eval (cubePoint (blockJoin x₀ y₁)) (monomial s (coeff s P)) -
+          eval (cubePoint (blockJoin x₁ y₀)) (monomial s (coeff s P)) +
+          eval (cubePoint (blockJoin x₁ y₁)) (monomial s (coeff s P)) =
+        bilinear4 (mixedMatrix4 (monomial s (coeff s P)))
+          (bitDiff4 x₀ x₁) (bitDiff4 y₀ y₁) := by
+    intro s hs
+    have hdeg_s : s.sum (fun _ e => e) ≤ 2 := (le_totalDegree hs).trans hdeg
+    exact bounded_monomial_checkerboard_difference s (coeff s P) hdeg_s x₀ x₁ y₀ y₁
+  rw [Finset.sum_congr rfl h_mono]
+  dsimp [bilinear4, mixedMatrix4]
+  conv_rhs => rw [hP]
+  simp_rw [coeff_sum]
+  simp_rw [Finset.mul_sum, Finset.sum_mul]
+  rw [Finset.sum_comm]
+  congr 1; ext i
+  rw [Finset.sum_comm]
 
 /-- A simultaneous signed coordinate permutation. The Boolean action
 complements flipped coordinates on both blocks, so it preserves Hamming
