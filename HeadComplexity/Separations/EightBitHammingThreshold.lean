@@ -1383,6 +1383,14 @@ private noncomputable def factorCurvature
     (splitPair (column4 P i) (column4 Q j) +
       splitPair (column4 P j) (column4 Q i))
 
+private theorem factorCurvature_quadratic_formula
+    (P Q : Matrix (Fin 4) (Fin 4) ℝ) (z : Fin 4 → ℝ) :
+    quadraticForm4 (factorCurvature P Q) z =
+      8 * splitPair (P.mulVec z) (Q.mulVec z) := by
+  simp only [quadraticForm4, factorCurvature, Matrix.mulVec, dotProduct,
+    splitPair_formula, column4, Fin.sum_univ_four]
+  ring
+
 /-- Exact factor-map output of paper Lemma 3, with the shell information
 needed by Lemma 4 and no reference to fractional-atom implementation details. -/
 private structure F8FactorData where
@@ -1402,6 +1410,25 @@ private structure F8FactorData where
   denominator_right_pos : ∀ i, 0 < Q 3 i
   denominator_intercept :
     (∑ i, P 3 i) + (∑ i, Q 3 i) < r 3
+
+private theorem f8FactorData_Q_mulVec_injective (D : F8FactorData) :
+    Function.Injective D.Q.mulVec := by
+  intro x y hxy
+  by_contra hne
+  have hdiff : x - y ≠ 0 := sub_ne_zero.mpr hne
+  have hQ : D.Q.mulVec (x - y) = 0 := by
+    rw [Matrix.mulVec_sub, hxy, sub_self]
+  have hzero :
+      quadraticForm4 (factorCurvature D.P D.Q) (x - y) = 0 := by
+    rw [factorCurvature_quadratic_formula, hQ]
+    simp [splitPair]
+  have hneg := D.curvature (x - y) hdiff
+  linarith
+
+private theorem f8FactorData_Q_mulVec_surjective (D : F8FactorData) :
+    Function.Surjective D.Q.mulVec :=
+  Matrix.mulVec_surjective_iff_isUnit.mpr
+    (Matrix.mulVec_injective_iff_isUnit.mp (f8FactorData_Q_mulVec_injective D))
 
 /-- The finite ±1 minimization step in paper Lemma 4. -/
 private theorem f8FactorData_shell_bound (D : F8FactorData) :
