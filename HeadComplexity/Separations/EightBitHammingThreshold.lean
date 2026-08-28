@@ -59,6 +59,25 @@ private theorem fracDenominator_strictlyOriented_of_slopes_ne_zero
     change 0 < φ.ρ i * (φ.α - 1)
     exact mul_pos (φ.hρ i) (sub_pos.mpr hgt)
 
+/-- Strict legality gives the sign-coordinate intercept margin in either orientation. -/
+private theorem strictLegal_sign_intercept
+    (L : AffineForm 8) (hL : L.StrictLegal)
+    (s : ℝ) (hs : s = 1 ∨ s = -1) :
+    (∑ i, s * L.linear i / 2) <
+      L.constant + ∑ i, L.linear i / 2 := by
+  have hfalse := hL (fun _ => false)
+  have htrue := hL (fun _ => true)
+  simp only [AffineForm.eval, bitReal_false, mul_zero, Finset.sum_const_zero,
+    add_zero] at hfalse
+  simp only [AffineForm.eval, bitReal_true, mul_one] at htrue
+  rcases hs with rfl | rfl
+  · simp only [one_mul]
+    linarith
+  · simp only [neg_one_mul, neg_div]
+    rw [Finset.sum_neg_distrib]
+    rw [← Finset.sum_div]
+    linarith
+
 /-- The quadratic distance polynomial gives the upper threshold-degree bound. -/
 theorem f8_thresholdDegLE_two : ThresholdDegLE f8 2 := by
   classical
