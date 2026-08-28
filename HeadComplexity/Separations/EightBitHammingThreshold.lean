@@ -224,6 +224,116 @@ private structure SignedPerm4 where
 private def SignedPerm4.act (T : SignedPerm4) (z : Fin 4 → ℝ) : Fin 4 → ℝ :=
   fun i => if T.flip i then -z (T.perm i) else z (T.perm i)
 
+private def SignedPerm4.actBool (T : SignedPerm4)
+    (x : Fin 4 → Bool) : Fin 4 → Bool :=
+  fun i => if T.flip i then !(x (T.perm i)) else x (T.perm i)
+
+/-- Boolean signed permutations transport checkerboard difference vectors. -/
+private theorem bitDiff4_actBool (T : SignedPerm4)
+    (x₀ x₁ : Fin 4 → Bool) :
+    bitDiff4 (T.actBool x₀) (T.actBool x₁) =
+      T.act (bitDiff4 x₀ x₁) := by
+  funext i
+  cases hflip : T.flip i <;>
+    cases hx0 : x₀ (T.perm i) <;>
+    cases hx1 : x₁ (T.perm i) <;>
+    simp [SignedPerm4.actBool, SignedPerm4.act, bitDiff4,
+      hflip, hx0, hx1, boolToReal]
+
+/-- Swapping the two four-bit blocks preserves the distance threshold. -/
+private theorem f8_blockJoin_swap (x y : Fin 4 → Bool) :
+    f8 (blockJoin x y) = f8 (blockJoin y x) := by
+  simp [f8, distThreshold, hammingDist, ne_comm]
+
+/-- Applying the same signed permutation to both blocks preserves f8. -/
+private theorem f8_blockJoin_actBool (T : SignedPerm4)
+    (x y : Fin 4 → Bool) :
+    f8 (blockJoin (T.actBool x) (T.actBool y)) =
+      f8 (blockJoin x y) := by
+  sorry
+
+/-- Bilinear evaluation on the symmetric part is the average of both orders. -/
+private theorem bilinear4_symmetricPart
+    (K : Matrix (Fin 4) (Fin 4) ℝ) (u v : Fin 4 → ℝ) :
+    bilinear4 (symmetricPart4 K) u v =
+      (bilinear4 K u v + bilinear4 K v u) / 2 := by
+  unfold bilinear4 symmetricPart4
+  simp only [Fin.sum_univ_four]
+  ring
+
+/-- One negative-positive-positive-negative rectangle controls the symmetric
+mixed bilinear form in its two checkerboard directions. -/
+private theorem checkerboard_symmetric_sign_neg
+    (P : MvPolynomial (Fin 8) ℝ) (hdeg : P.totalDegree ≤ 2)
+    (hrep : SignRepresents P f8)
+    (x₀ x₁ y₀ y₁ : Fin 4 → Bool)
+    (h00 : f8 (blockJoin x₀ y₀) = false)
+    (h01 : f8 (blockJoin x₀ y₁) = true)
+    (h10 : f8 (blockJoin x₁ y₀) = true)
+    (h11 : f8 (blockJoin x₁ y₁) = false) :
+    bilinear4 (symmetricPart4 (mixedMatrix4 P))
+      (bitDiff4 x₀ x₁) (bitDiff4 y₀ y₁) < 0 := by
+  have hnonpos (a b : Fin 4 → Bool)
+      (hf : f8 (blockJoin a b) = false) :
+      eval (cubePoint (blockJoin a b)) P ≤ 0 := by
+    by_contra h
+    push Not at h
+    have ht := (hrep (blockJoin a b)).mp h
+    rw [hf] at ht
+    exact absurd ht (by decide)
+  have hpos (a b : Fin 4 → Bool)
+      (ht : f8 (blockJoin a b) = true) :
+      0 < eval (cubePoint (blockJoin a b)) P :=
+    (hrep (blockJoin a b)).mpr ht
+  have huv : bilinear4 (mixedMatrix4 P)
+      (bitDiff4 x₀ x₁) (bitDiff4 y₀ y₁) < 0 := by
+    have hid := quadratic_checkerboard_difference P hdeg x₀ x₁ y₀ y₁
+    linarith [hnonpos x₀ y₀ h00, hpos x₀ y₁ h01,
+      hpos x₁ y₀ h10, hnonpos x₁ y₁ h11]
+  have h00' : f8 (blockJoin y₀ x₀) = false := by
+    rw [f8_blockJoin_swap]
+    exact h00
+  have h01' : f8 (blockJoin y₀ x₁) = true := by
+    rw [f8_blockJoin_swap]
+    exact h10
+  have h10' : f8 (blockJoin y₁ x₀) = true := by
+    rw [f8_blockJoin_swap]
+    exact h01
+  have h11' : f8 (blockJoin y₁ x₁) = false := by
+    rw [f8_blockJoin_swap]
+    exact h11
+  have hvu : bilinear4 (mixedMatrix4 P)
+      (bitDiff4 y₀ y₁) (bitDiff4 x₀ x₁) < 0 := by
+    have hid := quadratic_checkerboard_difference P hdeg y₀ y₁ x₀ x₁
+    linarith [hnonpos y₀ x₀ h00', hpos y₀ x₁ h01',
+      hpos y₁ x₀ h10', hnonpos y₁ x₁ h11']
+  rw [bilinear4_symmetricPart]
+  linarith
+
+/-- The preceding rectangle inequality transports through every simultaneous
+signed coordinate permutation. -/
+private theorem checkerboard_symmetric_sign_neg_act
+    (P : MvPolynomial (Fin 8) ℝ) (hdeg : P.totalDegree ≤ 2)
+    (hrep : SignRepresents P f8)
+    (x₀ x₁ y₀ y₁ : Fin 4 → Bool)
+    (h00 : f8 (blockJoin x₀ y₀) = false)
+    (h01 : f8 (blockJoin x₀ y₁) = true)
+    (h10 : f8 (blockJoin x₁ y₀) = true)
+    (h11 : f8 (blockJoin x₁ y₁) = false)
+    (T : SignedPerm4) :
+    bilinear4 (symmetricPart4 (mixedMatrix4 P))
+      (T.act (bitDiff4 x₀ x₁)) (T.act (bitDiff4 y₀ y₁)) < 0 := by
+  rw [← bitDiff4_actBool T x₀ x₁, ← bitDiff4_actBool T y₀ y₁]
+  apply checkerboard_symmetric_sign_neg P hdeg hrep
+  · rw [f8_blockJoin_actBool]
+    exact h00
+  · rw [f8_blockJoin_actBool]
+    exact h01
+  · rw [f8_blockJoin_actBool]
+    exact h10
+  · rw [f8_blockJoin_actBool]
+    exact h11
+
 private def prefix1 : Fin 4 → ℝ := ![1, 0, 0, 0]
 private def prefix2 : Fin 4 → ℝ := ![1, 1, 0, 0]
 private def prefix3 : Fin 4 → ℝ := ![1, 1, 1, 0]
