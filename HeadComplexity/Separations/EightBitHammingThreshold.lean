@@ -1897,6 +1897,721 @@ private def choiceFunctional (q : Fin 4 → ℝ) (B : Matrix (Fin 4) (Fin 4) ℝ
     (pick : Fin 4 → Fin 4) : ℝ :=
   (∑ i, q i * B i i) + 2 * ∑ j, q (pick j) * B (pick j) j
 
+private theorem exists_three_interval_sum
+    (l₁ u₁ l₂ u₂ l₃ u₃ s : ℝ)
+    (h₁ : l₁ ≤ u₁) (h₂ : l₂ ≤ u₂) (h₃ : l₃ ≤ u₃)
+    (hl : l₁ + l₂ + l₃ ≤ s) (hu : s ≤ u₁ + u₂ + u₃) :
+    ∃ x₁ x₂ x₃ : ℝ,
+      l₁ ≤ x₁ ∧ x₁ ≤ u₁ ∧ l₂ ≤ x₂ ∧ x₂ ≤ u₂ ∧
+        l₃ ≤ x₃ ∧ x₃ ≤ u₃ ∧ x₁ + x₂ + x₃ = s := by
+  let x₁ := max l₁ (s - u₂ - u₃)
+  let x₂ := max l₂ (s - x₁ - u₃)
+  let x₃ := s - x₁ - x₂
+  have hx₁l : l₁ ≤ x₁ := le_max_left _ _
+  have hx₁a : s - u₂ - u₃ ≤ x₁ := le_max_right _ _
+  have hx₁u : x₁ ≤ u₁ := by
+    apply max_le h₁
+    linarith
+  have hx₁r : x₁ ≤ s - l₂ - l₃ := by
+    apply max_le
+    · linarith
+    · linarith
+  have hx₂l : l₂ ≤ x₂ := le_max_left _ _
+  have hx₂a : s - x₁ - u₃ ≤ x₂ := le_max_right _ _
+  have hx₂u : x₂ ≤ u₂ := by
+    apply max_le h₂
+    linarith
+  have hx₂r : x₂ ≤ s - x₁ - l₃ := by
+    apply max_le
+    · linarith
+    · linarith
+  refine ⟨x₁, x₂, x₃, hx₁l, hx₁u, hx₂l, hx₂u, ?_, ?_, ?_⟩
+  · dsimp [x₃]
+    linarith
+  · dsimp [x₃]
+    linarith
+  · dsimp [x₃]
+    ring
+
+private theorem triangle_edge_allocation
+    (c₁₂ c₁₃ c₂₃ r₁ r₂ r₃ : ℝ)
+    (hc₁₂ : 0 ≤ c₁₂) (hc₁₃ : 0 ≤ c₁₃) (hc₂₃ : 0 ≤ c₂₃)
+    (hr₁ : 0 ≤ r₁) (hr₂ : 0 ≤ r₂) (hr₃ : 0 ≤ r₃)
+    (htotal : r₁ + r₂ + r₃ = c₁₂ + c₁₃ + c₂₃)
+    (hinc₁ : r₁ ≤ c₁₂ + c₁₃)
+    (hinc₂ : r₂ ≤ c₁₂ + c₂₃)
+    (hinc₃ : r₃ ≤ c₁₃ + c₂₃) :
+    ∃ a b c : ℝ,
+      0 ≤ a ∧ a ≤ c₁₂ ∧ 0 ≤ b ∧ b ≤ c₁₃ ∧ 0 ≤ c ∧ c ≤ c₂₃ ∧
+        a + b = r₁ ∧ (c₁₂ - a) + c = r₂ ∧
+          (c₁₃ - b) + (c₂₃ - c) = r₃ := by
+  let a := max (max 0 (r₁ - c₁₃)) (c₁₂ - r₂)
+  have ha0 : 0 ≤ a :=
+    le_trans (le_max_left 0 (r₁ - c₁₃))
+      (le_max_left (max 0 (r₁ - c₁₃)) (c₁₂ - r₂))
+  have haR : r₁ - c₁₃ ≤ a :=
+    le_trans (le_max_right 0 (r₁ - c₁₃))
+      (le_max_left (max 0 (r₁ - c₁₃)) (c₁₂ - r₂))
+  have haC : c₁₂ - r₂ ≤ a := le_max_right _ _
+  have ha12 : a ≤ c₁₂ := by
+    apply max_le
+    · apply max_le hc₁₂
+      linarith
+    · linarith
+  have ha1 : a ≤ r₁ := by
+    apply max_le
+    · apply max_le hr₁
+      linarith
+    · linarith
+  have ha23 : a ≤ c₁₂ - r₂ + c₂₃ := by
+    apply max_le
+    · apply max_le
+      · linarith
+      · linarith
+    · linarith
+  refine ⟨a, r₁ - a, r₂ - c₁₂ + a, ha0, ha12, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · linarith
+  · linarith
+  · linarith
+  · linarith
+  · ring
+  · ring
+  · linarith
+
+private theorem k4_edge_allocation
+    (c₀₁ c₀₂ c₀₃ c₁₂ c₁₃ c₂₃ v₀ v₁ v₂ v₃ : ℝ)
+    (hc₀₁ : 0 ≤ c₀₁) (hc₀₂ : 0 ≤ c₀₂) (hc₀₃ : 0 ≤ c₀₃)
+    (hc₁₂ : 0 ≤ c₁₂) (hc₁₃ : 0 ≤ c₁₃) (hc₂₃ : 0 ≤ c₂₃)
+    (hv₀ : 0 ≤ v₀) (hv₁ : 0 ≤ v₁) (hv₂ : 0 ≤ v₂) (hv₃ : 0 ≤ v₃)
+    (htotal : v₀ + v₁ + v₂ + v₃ = c₀₁ + c₀₂ + c₀₃ + c₁₂ + c₁₃ + c₂₃)
+    (hp₀₁ : c₀₁ ≤ v₀ + v₁) (hp₀₂ : c₀₂ ≤ v₀ + v₂)
+    (hp₀₃ : c₀₃ ≤ v₀ + v₃) (hp₁₂ : c₁₂ ≤ v₁ + v₂)
+    (hp₁₃ : c₁₃ ≤ v₁ + v₃) (hp₂₃ : c₂₃ ≤ v₂ + v₃)
+    (ht₀₁₂ : c₀₁ + c₀₂ + c₁₂ ≤ v₀ + v₁ + v₂)
+    (ht₀₁₃ : c₀₁ + c₀₃ + c₁₃ ≤ v₀ + v₁ + v₃)
+    (ht₀₂₃ : c₀₂ + c₀₃ + c₂₃ ≤ v₀ + v₂ + v₃)
+    (ht₁₂₃ : c₁₂ + c₁₃ + c₂₃ ≤ v₁ + v₂ + v₃) :
+    ∃ A : Matrix (Fin 4) (Fin 4) ℝ,
+      (∀ i j, 0 ≤ A i j) ∧
+      (∀ i, A i i = 0) ∧
+      (∀ i, ∑ j, A i j = ![v₀, v₁, v₂, v₃] i) ∧
+      A 0 1 + A 1 0 = c₀₁ ∧ A 0 2 + A 2 0 = c₀₂ ∧
+      A 0 3 + A 3 0 = c₀₃ ∧ A 1 2 + A 2 1 = c₁₂ ∧
+      A 1 3 + A 3 1 = c₁₃ ∧ A 2 3 + A 3 2 = c₂₃ := by
+  let l₁ := max 0 (c₀₁ - v₁)
+  let l₂ := max 0 (c₀₂ - v₂)
+  let l₃ := max 0 (c₀₃ - v₃)
+  let u₁ := min c₀₁ (c₀₁ - v₁ + c₁₂ + c₁₃)
+  let u₂ := min c₀₂ (c₀₂ - v₂ + c₁₂ + c₂₃)
+  let u₃ := min c₀₃ (c₀₃ - v₃ + c₁₃ + c₂₃)
+  have hl₁u₁ : l₁ ≤ u₁ := by
+    apply max_le
+    · apply le_min hc₀₁
+      linarith
+    · apply le_min
+      · linarith
+      · linarith
+  have hl₂u₂ : l₂ ≤ u₂ := by
+    apply max_le
+    · apply le_min hc₀₂
+      linarith
+    · apply le_min
+      · linarith
+      · linarith
+  have hl₃u₃ : l₃ ≤ u₃ := by
+    apply max_le
+    · apply le_min hc₀₃
+      linarith
+    · apply le_min
+      · linarith
+      · linarith
+  have hl₁ : l₁ = 0 ∨ l₁ = c₀₁ - v₁ := by
+    dsimp [l₁]
+    exact max_choice _ _
+  have hl₂ : l₂ = 0 ∨ l₂ = c₀₂ - v₂ := by
+    dsimp [l₂]
+    exact max_choice _ _
+  have hl₃ : l₃ = 0 ∨ l₃ = c₀₃ - v₃ := by
+    dsimp [l₃]
+    exact max_choice _ _
+  have hlsum : l₁ + l₂ + l₃ ≤ v₀ := by
+    rcases hl₁ with hl₁ | hl₁ <;> rcases hl₂ with hl₂ | hl₂ <;>
+      rcases hl₃ with hl₃ | hl₃ <;> rw [hl₁, hl₂, hl₃]
+    all_goals linarith
+  have hu₁ : u₁ = c₀₁ ∨ u₁ = c₀₁ - v₁ + c₁₂ + c₁₃ := by
+    dsimp [u₁]
+    exact min_choice _ _
+  have hu₂ : u₂ = c₀₂ ∨ u₂ = c₀₂ - v₂ + c₁₂ + c₂₃ := by
+    dsimp [u₂]
+    exact min_choice _ _
+  have hu₃ : u₃ = c₀₃ ∨ u₃ = c₀₃ - v₃ + c₁₃ + c₂₃ := by
+    dsimp [u₃]
+    exact min_choice _ _
+  have husum : v₀ ≤ u₁ + u₂ + u₃ := by
+    rcases hu₁ with hu₁ | hu₁ <;> rcases hu₂ with hu₂ | hu₂ <;>
+      rcases hu₃ with hu₃ | hu₃ <;> rw [hu₁, hu₂, hu₃]
+    all_goals linarith
+  obtain ⟨x₀₁, x₀₂, x₀₃, hx₀₁l, hx₀₁u, hx₀₂l, hx₀₂u,
+      hx₀₃l, hx₀₃u, hxsum⟩ :=
+    exists_three_interval_sum l₁ u₁ l₂ u₂ l₃ u₃ v₀
+      hl₁u₁ hl₂u₂ hl₃u₃ hlsum husum
+  have hr₁0 : 0 ≤ v₁ - c₀₁ + x₀₁ := by
+    have := le_trans (le_max_right 0 (c₀₁ - v₁)) hx₀₁l
+    linarith
+  have hr₂0 : 0 ≤ v₂ - c₀₂ + x₀₂ := by
+    have := le_trans (le_max_right 0 (c₀₂ - v₂)) hx₀₂l
+    linarith
+  have hr₃0 : 0 ≤ v₃ - c₀₃ + x₀₃ := by
+    have := le_trans (le_max_right 0 (c₀₃ - v₃)) hx₀₃l
+    linarith
+  have hr₁u : v₁ - c₀₁ + x₀₁ ≤ c₁₂ + c₁₃ := by
+    have := le_trans hx₀₁u (min_le_right c₀₁ (c₀₁ - v₁ + c₁₂ + c₁₃))
+    linarith
+  have hr₂u : v₂ - c₀₂ + x₀₂ ≤ c₁₂ + c₂₃ := by
+    have := le_trans hx₀₂u (min_le_right c₀₂ (c₀₂ - v₂ + c₁₂ + c₂₃))
+    linarith
+  have hr₃u : v₃ - c₀₃ + x₀₃ ≤ c₁₃ + c₂₃ := by
+    have := le_trans hx₀₃u (min_le_right c₀₃ (c₀₃ - v₃ + c₁₃ + c₂₃))
+    linarith
+  have hrtotal :
+      (v₁ - c₀₁ + x₀₁) + (v₂ - c₀₂ + x₀₂) + (v₃ - c₀₃ + x₀₃) =
+        c₁₂ + c₁₃ + c₂₃ := by
+    linarith
+  obtain ⟨x₁₂, x₁₃, x₂₃, hx₁₂0, hx₁₂u, hx₁₃0, hx₁₃u,
+      hx₂₃0, hx₂₃u, hrow₁, hrow₂, hrow₃⟩ :=
+    triangle_edge_allocation c₁₂ c₁₃ c₂₃
+      (v₁ - c₀₁ + x₀₁) (v₂ - c₀₂ + x₀₂) (v₃ - c₀₃ + x₀₃)
+      hc₁₂ hc₁₃ hc₂₃ hr₁0 hr₂0 hr₃0 hrtotal hr₁u hr₂u hr₃u
+  have hx₀₁0 : 0 ≤ x₀₁ :=
+    le_trans (le_max_left 0 (c₀₁ - v₁)) hx₀₁l
+  have hx₀₂0 : 0 ≤ x₀₂ :=
+    le_trans (le_max_left 0 (c₀₂ - v₂)) hx₀₂l
+  have hx₀₃0 : 0 ≤ x₀₃ :=
+    le_trans (le_max_left 0 (c₀₃ - v₃)) hx₀₃l
+  have hx₀₁c : x₀₁ ≤ c₀₁ :=
+    le_trans hx₀₁u (min_le_left c₀₁ (c₀₁ - v₁ + c₁₂ + c₁₃))
+  have hx₀₂c : x₀₂ ≤ c₀₂ :=
+    le_trans hx₀₂u (min_le_left c₀₂ (c₀₂ - v₂ + c₁₂ + c₂₃))
+  have hx₀₃c : x₀₃ ≤ c₀₃ :=
+    le_trans hx₀₃u (min_le_left c₀₃ (c₀₃ - v₃ + c₁₃ + c₂₃))
+  let A : Matrix (Fin 4) (Fin 4) ℝ :=
+    ![![0, x₀₁, x₀₂, x₀₃],
+      ![c₀₁ - x₀₁, 0, x₁₂, x₁₃],
+      ![c₀₂ - x₀₂, c₁₂ - x₁₂, 0, x₂₃],
+      ![c₀₃ - x₀₃, c₁₃ - x₁₃, c₂₃ - x₂₃, 0]]
+  refine ⟨A, ?_, ?_, ?_, ?_⟩
+  · intro i j
+    fin_cases i <;> fin_cases j <;> simp [A] <;> linarith
+  · intro i
+    fin_cases i <;> simp [A]
+  · intro i
+    fin_cases i <;> simp [A, Fin.sum_univ_four] <;> linarith
+  · simp [A]
+
+private theorem productProbability_mass
+    (p : Fin 4 → Fin 4 → ℝ) (hrow : ∀ i, ∑ j, p i j = 1) :
+    ∑ pick : Fin 4 → Fin 4, ∏ i, p i (pick i) = 1 := by
+  classical
+  calc
+    (∑ pick : Fin 4 → Fin 4, ∏ i, p i (pick i)) =
+        ∏ i, ∑ j, p i j := by
+      rw [← Finset.sum_prod_piFinset (s := Finset.univ) p]
+      simp [Fintype.piFinset_univ]
+    _ = 1 := by simp [hrow]
+
+private theorem productProbability_expect_coordinate
+    (p : Fin 4 → Fin 4 → ℝ) (hrow : ∀ i, ∑ j, p i j = 1)
+    (j : Fin 4) (r : Fin 4 → ℝ) :
+    (∑ pick : Fin 4 → Fin 4, (∏ i, p i (pick i)) * r (pick j)) =
+      ∑ a, p j a * r a := by
+  classical
+  let g : Fin 4 → Fin 4 → ℝ :=
+    fun i a => if i = j then p i a * r a else p i a
+  have hg (pick : Fin 4 → Fin 4) :
+      (∏ i, g i (pick i)) = (∏ i, p i (pick i)) * r (pick j) := by
+    fin_cases j <;> simp [g, Fin.prod_univ_four] <;> ring
+  calc
+    (∑ pick : Fin 4 → Fin 4, (∏ i, p i (pick i)) * r (pick j)) =
+        ∑ pick : Fin 4 → Fin 4, ∏ i, g i (pick i) := by
+      apply Finset.sum_congr rfl
+      intro pick _
+      rw [hg]
+    _ = ∏ i, ∑ a, g i a := by
+      rw [← Finset.sum_prod_piFinset (s := Finset.univ) g]
+      simp [Fintype.piFinset_univ]
+    _ = ∑ a, p j a * r a := by
+      fin_cases j <;> simp [g, hrow]
+
+private theorem productProbability_choiceFunctional
+    (p : Fin 4 → Fin 4 → ℝ) (hrow : ∀ i, ∑ j, p i j = 1)
+    (q : Fin 4 → ℝ) (B : Matrix (Fin 4) (Fin 4) ℝ) :
+    (∑ pick : Fin 4 → Fin 4,
+      (∏ i, p i (pick i)) * choiceFunctional q B pick) =
+      (∑ i, q i * B i i) +
+        2 * ∑ j, ∑ i, p j i * (q i * B i j) := by
+  classical
+  let P : (Fin 4 → Fin 4) → ℝ := fun pick => ∏ i, p i (pick i)
+  let D : ℝ := ∑ i, q i * B i i
+  let R : (Fin 4 → Fin 4) → Fin 4 → ℝ :=
+    fun pick j => q (pick j) * B (pick j) j
+  have hmass : ∑ pick, P pick = 1 := productProbability_mass p hrow
+  have hexp (j : Fin 4) :
+      (∑ pick, P pick * R pick j) =
+        ∑ i, p j i * (q i * B i j) := by
+    exact productProbability_expect_coordinate p hrow j
+      (fun i => q i * B i j)
+  have hfirst : (∑ pick, P pick * D) = (∑ pick, P pick) * D :=
+    (Finset.sum_mul ..).symm
+  have hsecond :
+      (∑ pick, P pick * (2 * ∑ j, R pick j)) =
+        2 * ∑ j, ∑ pick, P pick * R pick j := by
+    calc
+      (∑ pick, P pick * (2 * ∑ j, R pick j)) =
+          2 * ∑ pick, ∑ j, P pick * R pick j := by
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro pick _
+        calc
+          P pick * (2 * ∑ j, R pick j) =
+              2 * (P pick * ∑ j, R pick j) := by ring
+          _ = 2 * ∑ j, P pick * R pick j := by rw [Finset.mul_sum]
+      _ = 2 * ∑ j, ∑ pick, P pick * R pick j := by
+        rw [Finset.sum_comm]
+  change (∑ pick, P pick * (D + 2 * ∑ j, R pick j)) =
+    D + 2 * ∑ j, ∑ i, p j i * (q i * B i j)
+  rw [show (∑ pick, P pick * (D + 2 * ∑ j, R pick j)) =
+      (∑ pick, P pick * D) + ∑ pick, P pick * (2 * ∑ j, R pick j) by
+        simp_rw [mul_add]
+        exact Finset.sum_add_distrib]
+  rw [hfirst, hsecond, hmass, one_mul]
+  congr 1
+  congr 1
+  apply Finset.sum_congr rfl
+  intro j _
+  exact hexp j
+
+private theorem choiceCone_of_probabilities
+    (q : Fin 4 → ℝ) (W d₀₁ d₀₂ d₀₃ d₁₂ d₁₃ d₂₃ : ℝ)
+    (p : Fin 4 → Fin 4 → ℝ)
+    (hW : 0 ≤ W) (hp : ∀ i j, 0 ≤ p i j)
+    (hpdiag : ∀ i, p i i = 0) (hrow : ∀ i, ∑ j, p i j = 1)
+    (h₀₁ : W * (q 0 + q 1) -
+      2 * W * (q 0 * p 1 0 + q 1 * p 0 1) = d₀₁)
+    (h₀₂ : W * (q 0 + q 2) -
+      2 * W * (q 0 * p 2 0 + q 2 * p 0 2) = d₀₂)
+    (h₀₃ : W * (q 0 + q 3) -
+      2 * W * (q 0 * p 3 0 + q 3 * p 0 3) = d₀₃)
+    (h₁₂ : W * (q 1 + q 2) -
+      2 * W * (q 1 * p 2 1 + q 2 * p 1 2) = d₁₂)
+    (h₁₃ : W * (q 1 + q 3) -
+      2 * W * (q 1 * p 3 1 + q 3 * p 1 3) = d₁₃)
+    (h₂₃ : W * (q 2 + q 3) -
+      2 * W * (q 2 * p 3 2 + q 3 * p 2 3) = d₂₃) :
+    ∃ w : (Fin 4 → Fin 4) → ℝ,
+      (∀ pick, 0 ≤ w pick) ∧
+      (∀ pick, w pick ≠ 0 → ∀ j, pick j ≠ j) ∧
+      ∀ (B : Matrix (Fin 4) (Fin 4) ℝ) (hsymm : B.IsSymm)
+        (hzero : B.mulVec (fun _ => 1) = 0),
+        (∑ pick, w pick * choiceFunctional q B pick) =
+          -B 0 1 * d₀₁ - B 0 2 * d₀₂ - B 0 3 * d₀₃ -
+          B 1 2 * d₁₂ - B 1 3 * d₁₃ - B 2 3 * d₂₃ := by
+  classical
+  let w : (Fin 4 → Fin 4) → ℝ := fun pick => W * ∏ i, p i (pick i)
+  refine ⟨w, ?_, ?_, ?_⟩
+  · intro pick
+    apply mul_nonneg hW
+    exact Finset.prod_nonneg fun i _ => hp i (pick i)
+  · intro pick hwp j hj
+    apply hwp
+    have hprod : (∏ i, p i (pick i)) = 0 := by
+      apply Finset.prod_eq_zero (Finset.mem_univ j)
+      rw [hj, hpdiag]
+    simp [w, hprod]
+  · intro B hsymm hzero
+    have hb0 : B 0 0 + B 0 1 + B 0 2 + B 0 3 = 0 := by
+      have h := congr_fun hzero 0
+      simpa only [Matrix.mulVec, dotProduct, Fin.sum_univ_four,
+        Pi.one_apply, mul_one, Pi.zero_apply] using h
+    have hb1 : B 1 0 + B 1 1 + B 1 2 + B 1 3 = 0 := by
+      have h := congr_fun hzero 1
+      simpa only [Matrix.mulVec, dotProduct, Fin.sum_univ_four,
+        Pi.one_apply, mul_one, Pi.zero_apply] using h
+    have hb2 : B 2 0 + B 2 1 + B 2 2 + B 2 3 = 0 := by
+      have h := congr_fun hzero 2
+      simpa only [Matrix.mulVec, dotProduct, Fin.sum_univ_four,
+        Pi.one_apply, mul_one, Pi.zero_apply] using h
+    have hb3 : B 3 0 + B 3 1 + B 3 2 + B 3 3 = 0 := by
+      have h := congr_fun hzero 3
+      simpa only [Matrix.mulVec, dotProduct, Fin.sum_univ_four,
+        Pi.one_apply, mul_one, Pi.zero_apply] using h
+    have h10 : B 1 0 = B 0 1 := congr_fun (congr_fun hsymm 0) 1
+    have h20 : B 2 0 = B 0 2 := congr_fun (congr_fun hsymm 0) 2
+    have h30 : B 3 0 = B 0 3 := congr_fun (congr_fun hsymm 0) 3
+    have h21 : B 2 1 = B 1 2 := congr_fun (congr_fun hsymm 1) 2
+    have h31 : B 3 1 = B 1 3 := congr_fun (congr_fun hsymm 1) 3
+    have h32 : B 3 2 = B 2 3 := congr_fun (congr_fun hsymm 2) 3
+    simp_rw [w, mul_assoc]
+    rw [← Finset.mul_sum]
+    rw [productProbability_choiceFunctional p hrow q B]
+    simp only [Fin.sum_univ_four]
+    simp only [hpdiag, zero_mul, add_zero]
+    simp_rw [h10, h20, h30, h21, h31, h32] at hb1 hb2 hb3 ⊢
+    linear_combination
+      W * q 0 * hb0 + W * q 1 * hb1 + W * q 2 * hb2 + W * q 3 * hb3 -
+      B 0 1 * h₀₁ - B 0 2 * h₀₂ - B 0 3 * h₀₃ -
+      B 1 2 * h₁₂ - B 1 3 * h₁₃ - B 2 3 * h₂₃
+
+private theorem weighted_two_distance_le
+    (v₁ v₂ y₁ y₂ : ℝ) (hv₁ : 0 ≤ v₁) (hv₂ : 0 ≤ v₂)
+    (henergy : v₁ * y₁ ^ 2 + v₂ * y₂ ^ 2 ≤ 1) :
+    v₁ * v₂ * (y₁ - y₂) ^ 2 ≤ v₁ + v₂ := by
+  have hscale := mul_le_mul_of_nonneg_left henergy (add_nonneg hv₁ hv₂)
+  nlinarith [sq_nonneg (v₁ * y₁ + v₂ * y₂)]
+
+
+private theorem canonical_capacity_nonneg
+    (vi vj d : ℝ) (h : vi * vj * d ≤ vi + vj) :
+    0 ≤ (vi + vj - vi * vj * d) / 2 := by
+  exact div_nonneg (sub_nonneg.mpr h) (by norm_num)
+
+private theorem canonical_capacity_le
+    (vi vj d : ℝ)
+    (hvi : 0 ≤ vi) (hvj : 0 ≤ vj) (hd : 0 ≤ d) :
+    (vi + vj - vi * vj * d) / 2 ≤ vi + vj := by
+  have hterm : 0 ≤ vi * vj * d :=
+    mul_nonneg (mul_nonneg hvi hvj) hd
+  linarith only [hvi, hvj, hterm]
+
+private theorem weighted_three_cauchy
+    (a b c x y z : ℝ)
+    (ha : 0 ≤ a) (hb : 0 ≤ b) (hc : 0 ≤ c) :
+    (a * x + b * y + c * z) ^ 2 ≤
+      (a + b + c) * (a * x ^ 2 + b * y ^ 2 + c * z ^ 2) := by
+  have hab : 0 ≤ a * b * (x - y) ^ 2 :=
+    mul_nonneg (mul_nonneg ha hb) (sq_nonneg _)
+  have hac : 0 ≤ a * c * (x - z) ^ 2 :=
+    mul_nonneg (mul_nonneg ha hc) (sq_nonneg _)
+  have hbc : 0 ≤ b * c * (y - z) ^ 2 :=
+    mul_nonneg (mul_nonneg hb hc) (sq_nonneg _)
+  calc
+    (a * x + b * y + c * z) ^ 2 ≤
+        (a * x + b * y + c * z) ^ 2 +
+          (a * b * (x - y) ^ 2 + a * c * (x - z) ^ 2 +
+            b * c * (y - z) ^ 2) := by
+      exact le_add_of_nonneg_right (add_nonneg (add_nonneg hab hac) hbc)
+    _ = (a + b + c) * (a * x ^ 2 + b * y ^ 2 + c * z ^ 2) := by ring
+
+private theorem normalized_vertex_bound
+    (a b c d x y z t : ℝ)
+    (hb : 0 ≤ b) (hc : 0 ≤ c) (hd : 0 ≤ d)
+    (hm : a * x + b * y + c * z + d * t = 0)
+    (he : a * x ^ 2 + b * y ^ 2 + c * z ^ 2 + d * t ^ 2 = 1) :
+    a ≤ ((a + b) - a * b * (x - y) ^ 2) / 2 +
+      ((a + c) - a * c * (x - z) ^ 2) / 2 +
+      ((a + d) - a * d * (x - t) ^ 2) / 2 := by
+  have hcs_le := weighted_three_cauchy b c d y z t hb hc hd
+  have hcs :
+      0 ≤ (b + c + d) * (b * y ^ 2 + c * z ^ 2 + d * t ^ 2) -
+        (b * y + c * z + d * t) ^ 2 :=
+    sub_nonneg.mpr hcs_le
+  have hid :
+      (((a + b) - a * b * (x - y) ^ 2) / 2 +
+        ((a + c) - a * c * (x - z) ^ 2) / 2 +
+        ((a + d) - a * d * (x - t) ^ 2) / 2) - a =
+        ((b + c + d) * (b * y ^ 2 + c * z ^ 2 + d * t ^ 2) -
+          (b * y + c * z + d * t) ^ 2) / 2 := by
+    linear_combination
+      -((a + b + c + d) / 2) * he +
+      ((a * x + b * y + c * z + d * t) / 2) * hm
+  have hdiff :
+      0 ≤ (((a + b) - a * b * (x - y) ^ 2) / 2 +
+        ((a + c) - a * c * (x - z) ^ 2) / 2 +
+        ((a + d) - a * d * (x - t) ^ 2) / 2) - a := by
+    rw [hid]
+    exact div_nonneg hcs (by norm_num)
+  linarith only [hdiff]
+
+private theorem canonical_k4_capacity_total
+    (v₀ v₁ v₂ v₃ : ℝ) (y : Fin 4 → ℝ)
+    (hvariance :
+      v₀ * v₁ * (y 0 - y 1) ^ 2 + v₀ * v₂ * (y 0 - y 2) ^ 2 +
+        v₀ * v₃ * (y 0 - y 3) ^ 2 + v₁ * v₂ * (y 1 - y 2) ^ 2 +
+        v₁ * v₃ * (y 1 - y 3) ^ 2 + v₂ * v₃ * (y 2 - y 3) ^ 2 =
+          v₀ + v₁ + v₂ + v₃) :
+    v₀ + v₁ + v₂ + v₃ =
+      (v₀ + v₁ - v₀ * v₁ * (y 0 - y 1) ^ 2) / 2 +
+      (v₀ + v₂ - v₀ * v₂ * (y 0 - y 2) ^ 2) / 2 +
+      (v₀ + v₃ - v₀ * v₃ * (y 0 - y 3) ^ 2) / 2 +
+      (v₁ + v₂ - v₁ * v₂ * (y 1 - y 2) ^ 2) / 2 +
+      (v₁ + v₃ - v₁ * v₃ * (y 1 - y 3) ^ 2) / 2 +
+      (v₂ + v₃ - v₂ * v₃ * (y 2 - y 3) ^ 2) / 2 := by
+  linear_combination (1 / 2) * hvariance
+
+private theorem probability_pair_of_edge
+    (qi qj vi vj aij aji d : ℝ)
+    (hqi : qi * vi = 1) (hqj : qj * vj = 1)
+    (hedge : aij + aji = (vi + vj - vi * vj * d) / 2) :
+    qi + qj - 2 * (qi * (qj * aji) + qj * (qi * aij)) = d := by
+  have hprod : qi * qj * vi * vj = 1 := by
+    calc
+      qi * qj * vi * vj = (qi * vi) * (qj * vj) := by ring
+      _ = 1 := by rw [hqi, hqj]; ring
+  have hsum : qi * qj * (vi + vj) = qi + qj := by
+    calc
+      qi * qj * (vi + vj) = (qi * vi) * qj + (qj * vj) * qi := by ring
+      _ = qi + qj := by rw [hqi, hqj]; ring
+  have hscaled :
+      2 * (qi * qj) * (aij + aji) = qi + qj - d := by
+    calc
+      2 * (qi * qj) * (aij + aji) =
+          qi * qj * (vi + vj - vi * vj * d) := by rw [hedge]; ring
+      _ = qi * qj * (vi + vj) - (qi * qj * vi * vj) * d := by ring
+      _ = qi + qj - d := by rw [hsum, hprod]; ring
+  calc
+    qi + qj - 2 * (qi * (qj * aji) + qj * (qi * aij)) =
+        qi + qj - 2 * (qi * qj) * (aij + aji) := by ring
+    _ = d := by rw [hscaled]; ring
+
+private theorem centered_four_mean_of_scale
+    (v₀ v₁ v₂ v₃ z₀ z₁ z₂ z₃ m : ℝ)
+    (hm :
+      (v₀ + v₁ + v₂ + v₃) * m =
+        v₀ * z₀ + v₁ * z₁ + v₂ * z₂ + v₃ * z₃) :
+    v₀ * (z₀ - m) + v₁ * (z₁ - m) +
+      v₂ * (z₂ - m) + v₃ * (z₃ - m) = 0 := by
+  linear_combination -hm
+
+private theorem four_weighted_sq_zero
+    (v₀ v₁ v₂ v₃ x₀ x₁ x₂ x₃ : ℝ)
+    (hv₀ : 0 < v₀) (hv₁ : 0 < v₁) (hv₂ : 0 < v₂) (hv₃ : 0 < v₃)
+    (hzero :
+      v₀ * x₀ ^ 2 + v₁ * x₁ ^ 2 + v₂ * x₂ ^ 2 + v₃ * x₃ ^ 2 = 0) :
+    x₀ = 0 ∧ x₁ = 0 ∧ x₂ = 0 ∧ x₃ = 0 := by
+  have ht₀ : 0 ≤ v₀ * x₀ ^ 2 := mul_nonneg hv₀.le (sq_nonneg _)
+  have ht₁ : 0 ≤ v₁ * x₁ ^ 2 := mul_nonneg hv₁.le (sq_nonneg _)
+  have ht₂ : 0 ≤ v₂ * x₂ ^ 2 := mul_nonneg hv₂.le (sq_nonneg _)
+  have ht₃ : 0 ≤ v₃ * x₃ ^ 2 := mul_nonneg hv₃.le (sq_nonneg _)
+  have hz₀ : v₀ * x₀ ^ 2 = 0 := by
+    linarith only [hzero, ht₀, ht₁, ht₂, ht₃]
+  have hz₁ : v₁ * x₁ ^ 2 = 0 := by
+    linarith only [hzero, ht₀, ht₁, ht₂, ht₃]
+  have hz₂ : v₂ * x₂ ^ 2 = 0 := by
+    linarith only [hzero, ht₀, ht₁, ht₂, ht₃]
+  have hz₃ : v₃ * x₃ ^ 2 = 0 := by
+    linarith only [hzero, ht₀, ht₁, ht₂, ht₃]
+  have hx₀sq : x₀ ^ 2 = 0 := (mul_eq_zero.mp hz₀).resolve_left hv₀.ne'
+  have hx₁sq : x₁ ^ 2 = 0 := (mul_eq_zero.mp hz₁).resolve_left hv₁.ne'
+  have hx₂sq : x₂ ^ 2 = 0 := (mul_eq_zero.mp hz₂).resolve_left hv₂.ne'
+  have hx₃sq : x₃ ^ 2 = 0 := (mul_eq_zero.mp hz₃).resolve_left hv₃.ne'
+  exact ⟨sq_eq_zero_iff.mp hx₀sq, sq_eq_zero_iff.mp hx₁sq,
+    sq_eq_zero_iff.mp hx₂sq, sq_eq_zero_iff.mp hx₃sq⟩
+
+private theorem div_mean_four
+    (a b c d x y z t r : ℝ) (_hr : r ≠ 0)
+    (hmean : a * x + b * y + c * z + d * t = 0) :
+    a * (x / r) + b * (y / r) + c * (z / r) + d * (t / r) = 0 := by
+  calc
+    a * (x / r) + b * (y / r) + c * (z / r) + d * (t / r) =
+        (a * x + b * y + c * z + d * t) / r := by ring
+    _ = 0 := by rw [hmean, zero_div]
+
+private theorem div_sq_sum_four
+    (a b c d x y z t r : ℝ) (hr : r ≠ 0) :
+    a * (x / r) ^ 2 + b * (y / r) ^ 2 +
+      c * (z / r) ^ 2 + d * (t / r) ^ 2 =
+        (a * x ^ 2 + b * y ^ 2 + c * z ^ 2 + d * t ^ 2) / r ^ 2 := by
+  field_simp [hr]
+
+private theorem sqrt_scaled_sub
+    (V r m zi zj : ℝ) (hr2 : r ^ 2 = V) (hr : r ≠ 0) :
+    V * (((zi - m) / r) - ((zj - m) / r)) ^ 2 = (zi - zj) ^ 2 := by
+  rw [← hr2]
+  field_simp [hr]
+  ring
+
+
+private theorem normalized_k4_edge_matrix
+    (v y : Fin 4 → ℝ) (hv : ∀ i, 0 < v i)
+    (hmean : ∑ i, v i * y i = 0)
+    (henergy : ∑ i, v i * (y i) ^ 2 = 1) :
+    ∃ A : Matrix (Fin 4) (Fin 4) ℝ,
+      (∀ i j, 0 ≤ A i j) ∧
+      (∀ i, A i i = 0) ∧
+      (∀ i, ∑ j, A i j = v i) ∧
+      A 0 1 + A 1 0 =
+        (v 0 + v 1 - v 0 * v 1 * (y 0 - y 1) ^ 2) / 2 ∧
+      A 0 2 + A 2 0 =
+        (v 0 + v 2 - v 0 * v 2 * (y 0 - y 2) ^ 2) / 2 ∧
+      A 0 3 + A 3 0 =
+        (v 0 + v 3 - v 0 * v 3 * (y 0 - y 3) ^ 2) / 2 ∧
+      A 1 2 + A 2 1 =
+        (v 1 + v 2 - v 1 * v 2 * (y 1 - y 2) ^ 2) / 2 ∧
+      A 1 3 + A 3 1 =
+        (v 1 + v 3 - v 1 * v 3 * (y 1 - y 3) ^ 2) / 2 ∧
+      A 2 3 + A 3 2 =
+        (v 2 + v 3 - v 2 * v 3 * (y 2 - y 3) ^ 2) / 2 := by
+  sorry
+
+private theorem probabilities_of_canonical_edge_matrix
+    (q v y : Fin 4 → ℝ) (hq : ∀ i, 0 < q i)
+    (hqv : ∀ i, q i * v i = 1)
+    (A : Matrix (Fin 4) (Fin 4) ℝ)
+    (hA0 : ∀ i j, 0 ≤ A i j)
+    (hAdiag : ∀ i, A i i = 0)
+    (hArow : ∀ i, ∑ j, A i j = v i)
+    (hA01 : A 0 1 + A 1 0 =
+      (v 0 + v 1 - v 0 * v 1 * (y 0 - y 1) ^ 2) / 2)
+    (hA02 : A 0 2 + A 2 0 =
+      (v 0 + v 2 - v 0 * v 2 * (y 0 - y 2) ^ 2) / 2)
+    (hA03 : A 0 3 + A 3 0 =
+      (v 0 + v 3 - v 0 * v 3 * (y 0 - y 3) ^ 2) / 2)
+    (hA12 : A 1 2 + A 2 1 =
+      (v 1 + v 2 - v 1 * v 2 * (y 1 - y 2) ^ 2) / 2)
+    (hA13 : A 1 3 + A 3 1 =
+      (v 1 + v 3 - v 1 * v 3 * (y 1 - y 3) ^ 2) / 2)
+    (hA23 : A 2 3 + A 3 2 =
+      (v 2 + v 3 - v 2 * v 3 * (y 2 - y 3) ^ 2) / 2) :
+    ∃ p : Fin 4 → Fin 4 → ℝ,
+      (∀ i j, 0 ≤ p i j) ∧
+      (∀ i, p i i = 0) ∧
+      (∀ i, ∑ j, p i j = 1) ∧
+      (q 0 + q 1) - 2 * (q 0 * p 1 0 + q 1 * p 0 1) = (y 0 - y 1) ^ 2 ∧
+      (q 0 + q 2) - 2 * (q 0 * p 2 0 + q 2 * p 0 2) = (y 0 - y 2) ^ 2 ∧
+      (q 0 + q 3) - 2 * (q 0 * p 3 0 + q 3 * p 0 3) = (y 0 - y 3) ^ 2 ∧
+      (q 1 + q 2) - 2 * (q 1 * p 2 1 + q 2 * p 1 2) = (y 1 - y 2) ^ 2 ∧
+      (q 1 + q 3) - 2 * (q 1 * p 3 1 + q 3 * p 1 3) = (y 1 - y 3) ^ 2 ∧
+      (q 2 + q 3) - 2 * (q 2 * p 3 2 + q 3 * p 2 3) = (y 2 - y 3) ^ 2 := by
+  sorry
+
+private theorem normalized_k4_probabilities
+    (q : Fin 4 → ℝ) (hq : ∀ i, 0 < q i) (y : Fin 4 → ℝ)
+    (hmean : ∑ i, (1 / q i) * y i = 0)
+    (henergy : ∑ i, (1 / q i) * (y i) ^ 2 = 1) :
+    ∃ p : Fin 4 → Fin 4 → ℝ,
+      (∀ i j, 0 ≤ p i j) ∧
+      (∀ i, p i i = 0) ∧
+      (∀ i, ∑ j, p i j = 1) ∧
+      (q 0 + q 1) - 2 * (q 0 * p 1 0 + q 1 * p 0 1) = (y 0 - y 1) ^ 2 ∧
+      (q 0 + q 2) - 2 * (q 0 * p 2 0 + q 2 * p 0 2) = (y 0 - y 2) ^ 2 ∧
+      (q 0 + q 3) - 2 * (q 0 * p 3 0 + q 3 * p 0 3) = (y 0 - y 3) ^ 2 ∧
+      (q 1 + q 2) - 2 * (q 1 * p 2 1 + q 2 * p 1 2) = (y 1 - y 2) ^ 2 ∧
+      (q 1 + q 3) - 2 * (q 1 * p 3 1 + q 3 * p 1 3) = (y 1 - y 3) ^ 2 ∧
+      (q 2 + q 3) - 2 * (q 2 * p 3 2 + q 3 * p 2 3) = (y 2 - y 3) ^ 2 := by
+  let v : Fin 4 → ℝ := fun i => 1 / q i
+  have hv : ∀ i, 0 < v i := by
+    intro i
+    exact one_div_pos.mpr (hq i)
+  have hqv : ∀ i, q i * v i = 1 := by
+    intro i
+    dsimp [v]
+    field_simp [ne_of_gt (hq i)]
+  have hmeanv : ∑ i, v i * y i = 0 := by
+    simpa [v] using hmean
+  have henergyv : ∑ i, v i * (y i) ^ 2 = 1 := by
+    simpa [v] using henergy
+  obtain ⟨A, hA0, hAdiag, hArow, hA01, hA02, hA03, hA12, hA13, hA23⟩ :=
+    normalized_k4_edge_matrix v y hv hmeanv henergyv
+  exact probabilities_of_canonical_edge_matrix
+    q v y hq hqv A hA0 hAdiag hArow hA01 hA02 hA03 hA12 hA13 hA23
+
+
+private theorem four_point_center_or_normalize
+    (q : Fin 4 → ℝ) (hq : ∀ i, 0 < q i) (z : Fin 4 → ℝ) :
+    (∀ i j, z i = z j) ∨
+      ∃ V : ℝ, ∃ y : Fin 4 → ℝ,
+        0 < V ∧
+        (∑ i, (1 / q i) * y i = 0) ∧
+        (∑ i, (1 / q i) * (y i) ^ 2 = 1) ∧
+        ∀ i j, V * (y i - y j) ^ 2 = (z i - z j) ^ 2 := by
+  let v₀ : ℝ := 1 / q 0
+  let v₁ : ℝ := 1 / q 1
+  let v₂ : ℝ := 1 / q 2
+  let v₃ : ℝ := 1 / q 3
+  have hv₀ : 0 < v₀ := one_div_pos.mpr (hq 0)
+  have hv₁ : 0 < v₁ := one_div_pos.mpr (hq 1)
+  have hv₂ : 0 < v₂ := one_div_pos.mpr (hq 2)
+  have hv₃ : 0 < v₃ := one_div_pos.mpr (hq 3)
+  let S : ℝ := v₀ + v₁ + v₂ + v₃
+  have hS : 0 < S := by
+    dsimp [S]
+    positivity
+  have hSne : S ≠ 0 := ne_of_gt hS
+  let m : ℝ :=
+    (v₀ * z 0 + v₁ * z 1 + v₂ * z 2 + v₃ * z 3) / S
+  have hm : S * m = v₀ * z 0 + v₁ * z 1 + v₂ * z 2 + v₃ * z 3 := by
+    dsimp [m]
+    field_simp [hSne]
+  have hcenter :
+      v₀ * (z 0 - m) + v₁ * (z 1 - m) +
+        v₂ * (z 2 - m) + v₃ * (z 3 - m) = 0 := by
+    apply centered_four_mean_of_scale
+    simpa [S] using hm
+  let V : ℝ :=
+    v₀ * (z 0 - m) ^ 2 + v₁ * (z 1 - m) ^ 2 +
+      v₂ * (z 2 - m) ^ 2 + v₃ * (z 3 - m) ^ 2
+  have ht₀ : 0 ≤ v₀ * (z 0 - m) ^ 2 := mul_nonneg hv₀.le (sq_nonneg _)
+  have ht₁ : 0 ≤ v₁ * (z 1 - m) ^ 2 := mul_nonneg hv₁.le (sq_nonneg _)
+  have ht₂ : 0 ≤ v₂ * (z 2 - m) ^ 2 := mul_nonneg hv₂.le (sq_nonneg _)
+  have ht₃ : 0 ≤ v₃ * (z 3 - m) ^ 2 := mul_nonneg hv₃.le (sq_nonneg _)
+  have hVnonneg : 0 ≤ V := by
+    dsimp [V]
+    positivity
+  by_cases hVzero : V = 0
+  · left
+    have hsumzero :
+        v₀ * (z 0 - m) ^ 2 + v₁ * (z 1 - m) ^ 2 +
+          v₂ * (z 2 - m) ^ 2 + v₃ * (z 3 - m) ^ 2 = 0 := by
+      simpa [V] using hVzero
+    obtain ⟨hx₀, hx₁, hx₂, hx₃⟩ :=
+      four_weighted_sq_zero v₀ v₁ v₂ v₃
+        (z 0 - m) (z 1 - m) (z 2 - m) (z 3 - m)
+        hv₀ hv₁ hv₂ hv₃ hsumzero
+    have hz : ∀ i, z i = m := by
+      intro i
+      fin_cases i
+      · simpa using (sub_eq_zero.mp hx₀)
+      · simpa using (sub_eq_zero.mp hx₁)
+      · simpa using (sub_eq_zero.mp hx₂)
+      · simpa using (sub_eq_zero.mp hx₃)
+    intro i j
+    exact (hz i).trans (hz j).symm
+  · right
+    have hVpos : 0 < V := lt_of_le_of_ne hVnonneg (Ne.symm hVzero)
+    let r : ℝ := Real.sqrt V
+    have hrpos : 0 < r := Real.sqrt_pos.2 hVpos
+    have hrne : r ≠ 0 := ne_of_gt hrpos
+    have hr2 : r ^ 2 = V := by
+      dsimp [r]
+      exact Real.sq_sqrt hVnonneg
+    let y : Fin 4 → ℝ := fun i => (z i - m) / r
+    have hymean4 :
+        v₀ * y 0 + v₁ * y 1 + v₂ * y 2 + v₃ * y 3 = 0 := by
+      dsimp [y]
+      exact div_mean_four v₀ v₁ v₂ v₃
+        (z 0 - m) (z 1 - m) (z 2 - m) (z 3 - m) r hrne hcenter
+    have hymean : ∑ i, (1 / q i) * y i = 0 := by
+      simp only [Fin.sum_univ_four]
+      simpa [v₀, v₁, v₂, v₃] using hymean4
+    have hyenergy4 :
+        v₀ * y 0 ^ 2 + v₁ * y 1 ^ 2 +
+          v₂ * y 2 ^ 2 + v₃ * y 3 ^ 2 = 1 := by
+      calc
+        _ = (v₀ * (z 0 - m) ^ 2 + v₁ * (z 1 - m) ^ 2 +
+              v₂ * (z 2 - m) ^ 2 + v₃ * (z 3 - m) ^ 2) / r ^ 2 := by
+          dsimp [y]
+          exact div_sq_sum_four v₀ v₁ v₂ v₃
+            (z 0 - m) (z 1 - m) (z 2 - m) (z 3 - m) r hrne
+        _ = V / r ^ 2 := by rfl
+        _ = 1 := by rw [hr2, div_self hVzero]
+    have hyenergy : ∑ i, (1 / q i) * (y i) ^ 2 = 1 := by
+      simp only [Fin.sum_univ_four]
+      simpa [v₀, v₁, v₂, v₃] using hyenergy4
+    have hscale : ∀ i j, V * (y i - y j) ^ 2 = (z i - z j) ^ 2 := by
+      intro i j
+      dsimp [y]
+      exact sqrt_scaled_sub V r m (z i) (z j) hr2 hrne
+    exact ⟨V, y, hVpos, hymean, hyenergy, hscale⟩
+
 /-- The K4 allocation / choice-cone representation lemma: for any positive vertex weights `q`
 and point `z`, the squared-distance edge sum is represented by a nonnegative linear combination
 of choice functionals over valid column-pick maps. -/
@@ -1913,7 +2628,37 @@ private theorem k4_choiceCone_allocation
           B 1 2 * (z 1 - z 2) ^ 2 -
           B 1 3 * (z 1 - z 3) ^ 2 -
           B 2 3 * (z 2 - z 3) ^ 2 := by
-  sorry
+  rcases four_point_center_or_normalize q hq z with hconst |
+      ⟨V, y, hV, hmean, henergy, hscale⟩
+  · refine ⟨fun _ => 0, ?_, ?_, ?_⟩
+    · intro pick
+      exact le_rfl
+    · intro pick hpick
+      simp at hpick
+    · intro B hsymm hzero
+      have hdist : ∀ i j, (z i - z j) ^ 2 = 0 := by
+        intro i j
+        rw [hconst i j, sub_self]
+        norm_num
+      simp [hdist]
+  · obtain ⟨p, hp, hpdiag, hrow, h01, h02, h03, h12, h13, h23⟩ :=
+      normalized_k4_probabilities q hq y hmean henergy
+    have hscaled (i j : Fin 4)
+        (hij : (q i + q j) -
+          2 * (q i * p j i + q j * p i j) = (y i - y j) ^ 2) :
+        V * (q i + q j) -
+          2 * V * (q i * p j i + q j * p i j) = (z i - z j) ^ 2 := by
+      calc
+        V * (q i + q j) - 2 * V * (q i * p j i + q j * p i j) =
+            V * ((q i + q j) - 2 * (q i * p j i + q j * p i j)) := by ring
+        _ = V * (y i - y j) ^ 2 := by rw [hij]
+        _ = (z i - z j) ^ 2 := hscale i j
+    exact choiceCone_of_probabilities q V
+      ((z 0 - z 1) ^ 2) ((z 0 - z 2) ^ 2) ((z 0 - z 3) ^ 2)
+      ((z 1 - z 2) ^ 2) ((z 1 - z 3) ^ 2) ((z 2 - z 3) ^ 2)
+      p hV.le hp hpdiag hrow
+      (hscaled 0 1 h01) (hscaled 0 2 h02) (hscaled 0 3 h03)
+      (hscaled 1 2 h12) (hscaled 1 3 h13) (hscaled 2 3 h23)
 
 /-- The four-vertex squared-distance cone used in paper Lemma 5. For a
 symmetric zero-row-sum matrix, nonpositivity of all 81 column-choice
