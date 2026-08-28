@@ -39,6 +39,26 @@ private theorem f8_complement (x : Fin 8 → Bool) :
   simp only [Finset.mem_filter, Finset.mem_univ, true_and]
   cases x (Fin.castAdd 4 i) <;> cases x (Fin.natAdd 4 i) <;> decide
 
+/-- Nonzero native denominator slopes have one strict common orientation. -/
+private theorem fracDenominator_strictlyOriented_of_slopes_ne_zero
+    (φ : FracAtom 8)
+    (h : ∀ i, (fracDenominator φ).linear i ≠ 0) :
+    (fracDenominator φ).StrictlyOriented := by
+  have hα : φ.α ≠ 1 := by
+    intro hα
+    apply h 0
+    change φ.ρ 0 * (φ.α - 1) = 0
+    rw [hα, sub_self, mul_zero]
+  rcases lt_or_gt_of_ne hα with hlt | hgt
+  · right
+    intro i
+    change φ.ρ i * (φ.α - 1) < 0
+    exact mul_neg_of_pos_of_neg (φ.hρ i) (sub_neg.mpr hlt)
+  · left
+    intro i
+    change 0 < φ.ρ i * (φ.α - 1)
+    exact mul_pos (φ.hρ i) (sub_pos.mpr hgt)
+
 /-- The quadratic distance polynomial gives the upper threshold-degree bound. -/
 theorem f8_thresholdDegLE_two : ThresholdDegLE f8 2 := by
   classical
