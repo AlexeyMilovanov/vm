@@ -2481,7 +2481,39 @@ private theorem probabilities_of_canonical_edge_matrix
       (q 1 + q 2) - 2 * (q 1 * p 2 1 + q 2 * p 1 2) = (y 1 - y 2) ^ 2 ∧
       (q 1 + q 3) - 2 * (q 1 * p 3 1 + q 3 * p 1 3) = (y 1 - y 3) ^ 2 ∧
       (q 2 + q 3) - 2 * (q 2 * p 3 2 + q 3 * p 2 3) = (y 2 - y 3) ^ 2 := by
-  sorry
+  let p : Fin 4 → Fin 4 → ℝ := fun i j => q i * A i j
+  refine ⟨p, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro i j
+    exact mul_nonneg (hq i).le (hA0 i j)
+  · intro i
+    simp only [p, hAdiag i, mul_zero]
+  · intro i
+    simp only [p]
+    rw [← Finset.mul_sum, hArow i, hqv i]
+  · simpa only [p] using
+      probability_pair_of_edge
+        (q 0) (q 1) (v 0) (v 1) (A 0 1) (A 1 0) ((y 0 - y 1) ^ 2)
+        (hqv 0) (hqv 1) hA01
+  · simpa only [p] using
+      probability_pair_of_edge
+        (q 0) (q 2) (v 0) (v 2) (A 0 2) (A 2 0) ((y 0 - y 2) ^ 2)
+        (hqv 0) (hqv 2) hA02
+  · simpa only [p] using
+      probability_pair_of_edge
+        (q 0) (q 3) (v 0) (v 3) (A 0 3) (A 3 0) ((y 0 - y 3) ^ 2)
+        (hqv 0) (hqv 3) hA03
+  · simpa only [p] using
+      probability_pair_of_edge
+        (q 1) (q 2) (v 1) (v 2) (A 1 2) (A 2 1) ((y 1 - y 2) ^ 2)
+        (hqv 1) (hqv 2) hA12
+  · simpa only [p] using
+      probability_pair_of_edge
+        (q 1) (q 3) (v 1) (v 3) (A 1 3) (A 3 1) ((y 1 - y 3) ^ 2)
+        (hqv 1) (hqv 3) hA13
+  · simpa only [p] using
+      probability_pair_of_edge
+        (q 2) (q 3) (v 2) (v 3) (A 2 3) (A 3 2) ((y 2 - y 3) ^ 2)
+        (hqv 2) (hqv 3) hA23
 
 private theorem normalized_k4_probabilities
     (q : Fin 4 → ℝ) (hq : ∀ i, 0 < q i) (y : Fin 4 → ℝ)
