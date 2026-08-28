@@ -1313,6 +1313,75 @@ private lemma diag_mul_apply (d : Fin 4 → ℝ) (M : Matrix (Fin 4) (Fin 4) ℝ
   rw [Matrix.mul_apply, sum_fin4]
   fin_cases i <;> fin_cases j <;> simp
 
+private theorem quadraticForm4_zeroRow_eq_edge_sum
+    (B : Matrix (Fin 4) (Fin 4) ℝ)
+    (hsymm : B.IsSymm) (hzero : B.mulVec (fun _ => 1) = 0) (z : Fin 4 → ℝ) :
+    quadraticForm4 B z =
+      - B 0 1 * (z 0 - z 1) ^ 2 -
+      B 0 2 * (z 0 - z 2) ^ 2 -
+      B 0 3 * (z 0 - z 3) ^ 2 -
+      B 1 2 * (z 1 - z 2) ^ 2 -
+      B 1 3 * (z 1 - z 3) ^ 2 -
+      B 2 3 * (z 2 - z 3) ^ 2 := by
+  have hz0 : B 0 0 + B 0 1 + B 0 2 + B 0 3 = 0 := by
+    have h := congr_fun hzero 0
+    dsimp [Matrix.mulVec, dotProduct] at h
+    rw [sum_fin4] at h
+    linarith
+  have hz1 : B 1 0 + B 1 1 + B 1 2 + B 1 3 = 0 := by
+    have h := congr_fun hzero 1
+    dsimp [Matrix.mulVec, dotProduct] at h
+    rw [sum_fin4] at h
+    linarith
+  have hz2 : B 2 0 + B 2 1 + B 2 2 + B 2 3 = 0 := by
+    have h := congr_fun hzero 2
+    dsimp [Matrix.mulVec, dotProduct] at h
+    rw [sum_fin4] at h
+    linarith
+  have hz3 : B 3 0 + B 3 1 + B 3 2 + B 3 3 = 0 := by
+    have h := congr_fun hzero 3
+    dsimp [Matrix.mulVec, dotProduct] at h
+    rw [sum_fin4] at h
+    linarith
+  have h10 : B 1 0 = B 0 1 := congr_fun (congr_fun hsymm 0) 1
+  have h20 : B 2 0 = B 0 2 := congr_fun (congr_fun hsymm 0) 2
+  have h30 : B 3 0 = B 0 3 := congr_fun (congr_fun hsymm 0) 3
+  have h21 : B 2 1 = B 1 2 := congr_fun (congr_fun hsymm 1) 2
+  have h31 : B 3 1 = B 1 3 := congr_fun (congr_fun hsymm 1) 3
+  have h32 : B 3 2 = B 2 3 := congr_fun (congr_fun hsymm 2) 3
+  unfold quadraticForm4 dotProduct
+  rw [sum_fin4]
+  have hd (i : Fin 4) : B.mulVec z i = B i 0 * z 0 + B i 1 * z 1 + B i 2 * z 2 + B i 3 * z 3 := by
+    dsimp [Matrix.mulVec, dotProduct]
+    rw [sum_fin4]
+  rw [hd 0, hd 1, hd 2, hd 3]
+  linear_combination
+    z 0 ^ 2 * hz0 + z 1 ^ 2 * hz1 + z 2 ^ 2 * hz2 + z 3 ^ 2 * hz3 +
+    (z 0 * z 1 - z 1 ^ 2) * h10 + (z 0 * z 2 - z 2 ^ 2) * h20 + (z 0 * z 3 - z 3 ^ 2) * h30 +
+    (z 1 * z 2 - z 2 ^ 2) * h21 + (z 1 * z 3 - z 3 ^ 2) * h31 + (z 2 * z 3 - z 3 ^ 2) * h32
+
+private def choiceFunctional (q : Fin 4 → ℝ) (B : Matrix (Fin 4) (Fin 4) ℝ)
+    (pick : Fin 4 → Fin 4) : ℝ :=
+  (∑ i, q i * B i i) + 2 * ∑ j, q (pick j) * B (pick j) j
+
+/-- The K4 allocation / choice-cone representation lemma: for any positive vertex weights `q`
+and point `z`, the squared-distance edge sum is represented by a nonnegative linear combination
+of choice functionals over valid column-pick maps. -/
+private theorem k4_choiceCone_allocation
+    (q : Fin 4 → ℝ) (hq : ∀ i, 0 < q i) (z : Fin 4 → ℝ) :
+    ∃ w : (Fin 4 → Fin 4) → ℝ,
+      (∀ pick, 0 ≤ w pick) ∧
+      (∀ pick, w pick ≠ 0 → ∀ j, pick j ≠ j) ∧
+      ∀ (B : Matrix (Fin 4) (Fin 4) ℝ) (hsymm : B.IsSymm) (hzero : B.mulVec (fun _ => 1) = 0),
+        (∑ pick, w pick * choiceFunctional q B pick) =
+          - B 0 1 * (z 0 - z 1) ^ 2 -
+          B 0 2 * (z 0 - z 2) ^ 2 -
+          B 0 3 * (z 0 - z 3) ^ 2 -
+          B 1 2 * (z 1 - z 2) ^ 2 -
+          B 1 3 * (z 1 - z 3) ^ 2 -
+          B 2 3 * (z 2 - z 3) ^ 2 := by
+  sorry
+
 /-- The four-vertex squared-distance cone used in paper Lemma 5. For a
 symmetric zero-row-sum matrix, nonpositivity of all 81 column-choice
 functionals forces negative semidefiniteness. -/
@@ -1324,7 +1393,17 @@ private theorem zeroRow_choiceCone_nonpositive
       (∑ i, q i * B i i) +
         2 * ∑ j, q (pick j) * B (pick j) j ≤ 0) :
     ∀ z, quadraticForm4 B z ≤ 0 := by
-  sorry
+  intro z
+  rw [quadraticForm4_zeroRow_eq_edge_sum B hsymm hzero z]
+  obtain ⟨w, hw_nonneg, hw_valid, hw_eq⟩ := k4_choiceCone_allocation q hq z
+  rw [← hw_eq B hsymm hzero]
+  refine Finset.sum_nonpos (fun pick _ => ?_)
+  by_cases hw0 : w pick = 0
+  · rw [hw0, zero_mul]
+  · have hvalid := hw_valid pick hw0
+    have hch := hchoice pick hvalid
+    change choiceFunctional q B pick ≤ 0 at hch
+    exact mul_nonpos_of_nonneg_of_nonpos (hw_nonneg pick) hch
 
 private lemma quadraticForm4_sub_rankOne (C : Matrix (Fin 4) (Fin 4) ℝ) (g z : Fin 4 → ℝ) (sigma : ℝ) :
     quadraticForm4 (fun i j => C i j - g i * g j / sigma) z =
