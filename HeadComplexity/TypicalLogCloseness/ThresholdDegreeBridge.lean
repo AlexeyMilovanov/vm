@@ -65,12 +65,46 @@ times the product of the complete positive denominator pool. -/
 theorem Certificate.eval_clearedCubePolynomial (Crt : Certificate n T) (x : Cube n) :
     MvPolynomial.eval (HeadComplexity.cubePoint x) Crt.clearedCubePolynomial =
       Crt.eval x * ∏ j, (Crt.denominators j).eval x := by
-  sorry
+  unfold Certificate.clearedCubePolynomial Certificate.eval
+  rw [map_sum]
+  simp_rw [Certificate.eval_clearedTermCubePolynomial]
+  rw [Finset.sum_mul]
+  apply Finset.sum_congr rfl
+  intro t _
+  have hsplit : (∏ j : Fin T.denominatorCount, (Crt.denominators j).eval x) =
+      Crt.termDenominator t x *
+        ∏ j ∈ (Finset.univ : Finset (Fin T.denominatorCount)) \ (T.incidence t).denoms,
+          (Crt.denominators j).eval x := by
+    unfold Certificate.termDenominator
+    rw [← Finset.prod_sdiff (Finset.subset_univ _)]
+    ring
+  rw [hsplit, ← mul_assoc]
+  have hne : Crt.termDenominator t x ≠ 0 := (Crt.termDenominator_pos t x).ne'
+  rw [div_mul_cancel₀ _ hne]
 
 private theorem Certificate.totalDegree_clearedTermCubePolynomial_le
     (Crt : Certificate n T) (t : Fin T.termCount) :
     (Crt.clearedTermCubePolynomial t).totalDegree ≤ T.denominatorCount := by
-  sorry
+  unfold Certificate.clearedTermCubePolynomial
+  refine (totalDegree_mul _ _).trans ?_
+  have hnum : (Crt.numerators t).toCubeMvPolynomial.totalDegree ≤ 1 :=
+    AffineForm.totalDegree_toCubeMvPolynomial_le _
+  have hprod :
+      (∏ j ∈ Finset.univ \ (T.incidence t).denoms,
+        (Crt.denominators j).toCubeMvPolynomial).totalDegree ≤
+      (Finset.univ \ (T.incidence t).denoms).card :=
+    HeadComplexity.totalDegree_prod_le_card _ _
+      (fun j => AffineForm.totalDegree_toCubeMvPolynomial_le _)
+  have hsum := Nat.add_le_add hnum hprod
+  refine hsum.trans ?_
+  have hcard_pos : 1 ≤ (T.incidence t).denoms.card := (T.incidence t).nonempty.card_pos
+  have hcard_le : (T.incidence t).denoms.card ≤ T.denominatorCount := by
+    simpa using Finset.card_le_card (Finset.subset_univ (T.incidence t).denoms)
+  have hsdiff : (Finset.univ \ (T.incidence t).denoms).card =
+      T.denominatorCount - (T.incidence t).denoms.card := by
+    rw [Finset.card_sdiff, Finset.inter_univ, Finset.card_univ, Fintype.card_fin]
+  rw [hsdiff]
+  omega
 
 /-- Nonempty incidences make the cleared polynomial degree at most the size
 of the shared denominator pool. -/
@@ -105,13 +139,13 @@ private theorem thresholdDegLE_of_isConstant {Q : ℕ} {f : BoolFn n}
   rcases hf with ⟨b, hb⟩
   cases b
   · refine ⟨C (-1), ?_, ?_⟩
-    · simpa using (Nat.zero_le Q)
+    · simp
     · intro x
-      simp [HeadComplexity.SignRepresents, hb x]
+      simp [hb x]
   · refine ⟨C 1, ?_, ?_⟩
-    · simpa using (Nat.zero_le Q)
+    · simp
     · intro x
-      simp [HeadComplexity.SignRepresents, hb x]
+      simp [hb x]
 
 /-- Every relaxed POIC₂ certificate of cost `Q` gives threshold degree at
 most `Q`. -/

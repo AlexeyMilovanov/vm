@@ -36,18 +36,23 @@ private theorem HStar_ge_two_of_not_computable_zero_one {n : ℕ}
 /-- **Theorem 3.** A checkerboard restriction forces `H* ≥ 2`. -/
 theorem checkerboard_restriction_HStar_ge_two
     {n : ℕ} (f : (Fin n → Bool) → Bool) (base : Fin n → Bool)
-    (i j : Fin n) (hij : i ≠ j)
-    (h00 : f (Head.restrictBits base i j (false, false)) = false)
-    (h11 : f (Head.restrictBits base i j (true, true)) = false)
-    (h01 : f (Head.restrictBits base i j (false, true)) = true)
-    (h10 : f (Head.restrictBits base i j (true, false)) = true) :
+    (i j : Fin n) (hij : i ≠ j) {c : Bool}
+    (h00 : f (Head.restrictBits base i j (false, false)) = c)
+    (h11 : f (Head.restrictBits base i j (true, true)) = c)
+    (h01 : f (Head.restrictBits base i j (false, true)) = !c)
+    (h10 : f (Head.restrictBits base i j (true, false)) = !c) :
     2 ≤ HStar n f := by
-  have h0 : ¬ computableWithHeadsN n 0 f :=
-    not_computableWithHeadsN_zero_of_false_true f
-      (Head.restrictBits base i j (false, false))
-      (Head.restrictBits base i j (false, true)) h00 h01
+  have h0 : ¬ computableWithHeadsN n 0 f := by
+    cases c
+    · exact not_computableWithHeadsN_zero_of_false_true f
+        (Head.restrictBits base i j (false, false))
+        (Head.restrictBits base i j (false, true)) h00 h01
+    · exact not_computableWithHeadsN_zero_of_false_true f
+        (Head.restrictBits base i j (false, true))
+        (Head.restrictBits base i j (false, false)) h01 h00
   have h1 : ¬ computableWithHeadsN n 1 f :=
-    parity_restriction_not_computable_with_one_head f base i j hij h00 h11 h01 h10
+    checkerboard_restriction_not_computable_with_one_head
+      f base i j hij c h00 h11 h01 h10
   exact HStar_ge_two_of_not_computable_zero_one
     ⟨2 ^ n - 1, universal_computable f⟩ h0 h1
 

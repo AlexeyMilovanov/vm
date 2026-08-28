@@ -1,0 +1,136 @@
+[
+  {
+    "key": "01_additive_split",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "02_antipode",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "03_checkerboard",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "04_threshold",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "05_exact_count",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "06_degree_le",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "07_parity_degree",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "08_parity_hstar",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "09_weighted_upper",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "10_fractional_normal",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "11_low_levels",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "12_symmetric",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "13_f10_separation",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "14_signrank_bridge",
+    "status": "done",
+    "returncode": 0,
+    "seconds": 137.4,
+    "verdict": "VERDICT: MATCH_WITH_CAVEAT"
+  },
+  {
+    "key": "15_theorem_c",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "16_warren",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "17_forster",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "18_theorem_a",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "19_theorem_b",
+    "status": "done",
+    "returncode": 0,
+    "seconds": 117.2,
+    "verdict": "VERDICT: MATCH"
+  },
+  {
+    "key": "20_ndisj",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "21_theorem189",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "22_canonical_poic",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "23_poic_counting",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "24_theorem026",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "25_bank",
+    "status": "cached",
+    "returncode": 0
+  },
+  {
+    "key": "26_typical_log",
+    "status": "cached",
+    "returncode": 0
+  }
+]

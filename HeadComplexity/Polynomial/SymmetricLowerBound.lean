@@ -79,6 +79,27 @@ theorem exists_strictSignRep_of_ThresholdDegLE {f : (Fin n → Bool) → Bool} {
     · rw [hev]; linarith [hεlt x hx]
     · rw [hev]; linarith [eval_nonpos_of_false hPsign hx]
 
+/-- On the finite Boolean cube, the core one-sided convention for
+`ThresholdDegLE` is equivalent to standard strict sign representation at the
+same degree. -/
+theorem thresholdDegLE_iff_exists_strictSignRep
+    {f : (Fin n → Bool) → Bool} {H : ℕ} :
+    ThresholdDegLE f H ↔
+      ∃ P : MvPolynomial (Fin n) ℝ, P.totalDegree ≤ H ∧ StrictSignRep P f := by
+  constructor
+  · exact exists_strictSignRep_of_ThresholdDegLE
+  · rintro ⟨P, hdeg, hstrict⟩
+    refine ⟨P, hdeg, ?_⟩
+    intro x
+    constructor
+    · intro hpos
+      cases hfx : f x
+      · have hneg := (hstrict x).2 hfx
+        linarith
+      · rfl
+    · intro htrue
+      exact (hstrict x).1 htrue
+
 /-! ## Symmetrization (Phase 3a) -/
 
 open scoped BigOperators

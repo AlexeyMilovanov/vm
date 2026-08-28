@@ -49,7 +49,24 @@ theorem forsterRatio_odd_eq (t : ℕ) :
 /-- The odd-parameter Forster ratio strictly increases at every step. -/
 theorem forsterRatio_odd_lt_succ (t : ℕ) :
     forsterRatio (2 * t + 1) < forsterRatio (2 * (t + 1) + 1) := by
-  sorry
+  rw [forsterRatio_odd_eq t, forsterRatio_odd_eq (t + 1)]
+  have hcb_pos : 0 < (Nat.centralBinom t : ℝ) := Nat.cast_pos.mpr (Nat.centralBinom_pos t)
+  have hcb_succ_pos : 0 < (Nat.centralBinom (t + 1) : ℝ) :=
+    Nat.cast_pos.mpr (Nat.centralBinom_pos (t + 1))
+  have h_rel : ((t : ℝ) + 1) * (Nat.centralBinom (t + 1) : ℝ) =
+      2 * (2 * (t : ℝ) + 1) * (Nat.centralBinom t : ℝ) := by
+    exact_mod_cast Nat.succ_mul_centralBinom_succ t
+  have ht1_pos : 0 < (t : ℝ) + 1 := by positivity
+  have h4_pos : 0 < (4 : ℝ) ^ t := by positivity
+  rw [div_lt_div_iff₀ hcb_pos hcb_succ_pos]
+  have h_lhs : ((t : ℝ) + 1) * ((4 : ℝ) ^ t * (Nat.centralBinom (t + 1) : ℝ)) =
+      (4 : ℝ) ^ t * (((t : ℝ) + 1) * (Nat.centralBinom (t + 1) : ℝ)) := by ring
+  have h_rhs : ((t : ℝ) + 1) * ((4 : ℝ) ^ (t + 1) * (Nat.centralBinom t : ℝ)) =
+      (4 : ℝ) ^ t * (4 * ((t : ℝ) + 1) * (Nat.centralBinom t : ℝ)) := by
+    calc ((t : ℝ) + 1) * ((4 : ℝ) ^ (t + 1) * (Nat.centralBinom t : ℝ))
+      _ = ((t : ℝ) + 1) * ((4 : ℝ) ^ t * 4 * (Nat.centralBinom t : ℝ)) := by rw [pow_succ]
+      _ = (4 : ℝ) ^ t * (4 * ((t : ℝ) + 1) * (Nat.centralBinom t : ℝ)) := by ring
+  nlinarith
 
 theorem forsterRatio_odd_strictMono :
     StrictMono (fun t => forsterRatio (2 * t + 1)) :=

@@ -1,0 +1,418 @@
+[
+  {
+    "key": "01_additive_split",
+    "title": "Two-coordinate numerator additive split",
+    "declarations": [
+      "Head.numerator_additive_split",
+      "restricted_numerator_additive_split"
+    ],
+    "lean_files": [
+      "HeadComplexity/Model/AdditiveSplit.lean",
+      "HeadComplexity/Results/RestrictionLowerBounds.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/001_checkerboard_additive_decomposition.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "02_antipode",
+    "title": "Restricted numerator antipode identity",
+    "declarations": [
+      "Head.restricted_numerator_antipode",
+      "restricted_numerator_antipode"
+    ],
+    "lean_files": [
+      "HeadComplexity/Model/Head.lean",
+      "HeadComplexity/Results/RestrictionLowerBounds.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/002_antipode_identities.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "03_checkerboard",
+    "title": "Checkerboard obstruction HStar >= 2",
+    "declarations": [
+      "checkerboard_restriction_HStar_ge_two"
+    ],
+    "lean_files": [
+      "HeadComplexity/Results/RestrictionLowerBounds.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/003_checkerboard_obstruction.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "04_threshold",
+    "title": "Symmetric thresholds have HStar = 1",
+    "declarations": [
+      "HStar_threshold"
+    ],
+    "lean_files": [
+      "HeadComplexity/Results/ExactFamilies.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/004_symmetric_thresholds.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "05_exact_count",
+    "title": "Internal exact-count predicates have HStar = 2",
+    "declarations": [
+      "HStar_exact"
+    ],
+    "lean_files": [
+      "HeadComplexity/Results/ExactFamilies.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/005_family_consequences.md"
+    ],
+    "scope": "Audit the internal EXACT_k endpoint, not unrelated family consequences in the paper file."
+  },
+  {
+    "key": "06_degree_le",
+    "title": "Threshold degree is at most head complexity",
+    "declarations": [
+      "signReprDegLe_of_computableWithHeadsN",
+      "degree_le_of_computableWithHeadsN"
+    ],
+    "lean_files": [
+      "HeadComplexity/Polynomial/ModelToPolynomial.lean",
+      "HeadComplexity/Results/ThresholdDegree.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/006_threshold_degree_head_complexity_bound.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "07_parity_degree",
+    "title": "Parity threshold degree is n",
+    "declarations": [
+      "thresholdDeg_parity",
+      "parity_thresholdDeg"
+    ],
+    "lean_files": [
+      "HeadComplexity/Polynomial/ParityThresholdDegree.lean",
+      "HeadComplexity/Results/ThresholdDegree.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/007_parity_threshold_degree.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "08_parity_hstar",
+    "title": "Parity head complexity is n",
+    "declarations": [
+      "HStar_parity"
+    ],
+    "lean_files": [
+      "HeadComplexity/Results/ExactFamilies.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/008_exact_parity_complexity.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "09_weighted_upper",
+    "title": "Weighted-sum and universal HStar upper bounds",
+    "declarations": [
+      "HStar_le_weighted_sum",
+      "HStar_le_universal_boolean"
+    ],
+    "lean_files": [
+      "HeadComplexity/Results/WeightedUpperBound.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/009_weighted_sum_upper_bound.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "10_fractional_normal",
+    "title": "Exact linear-fractional normal form",
+    "declarations": [
+      "computableWithHeadsN_iff_fracComputable",
+      "HStar_eq_Lfrac"
+    ],
+    "lean_files": [
+      "HeadComplexity/Results/FractionalNormalForm.lean",
+      "HeadComplexity/Model/Fractional.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/010_linear_fractional_normal_form.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "11_low_levels",
+    "title": "Exact HStar levels zero and one",
+    "declarations": [
+      "HStar_eq_zero_iff",
+      "HStar_eq_one_iff"
+    ],
+    "lean_files": [
+      "HeadComplexity/Results/LowComplexity.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/011_one_head_characterization.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "12_symmetric",
+    "title": "Symmetric sign-change characterization",
+    "declarations": [
+      "HStar_symmetricFn"
+    ],
+    "lean_files": [
+      "HeadComplexity/Results/SymmetricComplexity.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/012_symmetric_sign_changes.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "13_f10_separation",
+    "title": "Explicit f10 threshold-degree/HStar separation",
+    "declarations": [
+      "thresholdDeg_f10",
+      "HStar_f10_ge_three",
+      "f10_strict_separation"
+    ],
+    "lean_files": [
+      "HeadComplexity/Results/StrictSeparation.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/02_separations_and_counterexamples/013_strict_threshold_degree_separation.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "14_signrank_bridge",
+    "title": "Theorem 028 sign-rank bridge",
+    "declarations": [
+      "signRank_le_of_computableWithHeadsN",
+      "signRank_le_pow_HStar"
+    ],
+    "lean_files": [
+      "HeadComplexity/Separations/SignRankBridge.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/02_complexity_measure_upper_bounds/028_restrictions_and_sign_rank.md",
+      "notes/EXPLICIT_GAP.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "15_theorem_c",
+    "title": "Theorem C sign-rank route ceilings",
+    "declarations": [
+      "signRank_le_of_thresholdDegLE",
+      "signRank_le_two_pow_min"
+    ],
+    "lean_files": [
+      "HeadComplexity/Separations/SignRankBridge.lean"
+    ],
+    "paper_files": [
+      "notes/EXPLICIT_GAP.md"
+    ],
+    "scope": "Audit the two exact sign-rank ceilings. The prose about limitations is interpretation."
+  },
+  {
+    "key": "16_warren",
+    "title": "Integrated weak Warren sign-pattern bound",
+    "declarations": [
+      "warren_sign_patterns_weak",
+      "warren_sign_patterns_diag"
+    ],
+    "lean_files": [
+      "HeadComplexity/Separations/Warren.lean",
+      "Warren/Statements.lean"
+    ],
+    "paper_files": [
+      "notes/LEAN_BLUEPRINT_TYPICAL_LOG_CLOSENESS_2026-08-26.md",
+      "formalization-separations/audit/sources/EXPLICIT_GAP.md"
+    ],
+    "scope": "The Lean theorem is deliberately the weak explicit constant form; do not demand the sharp classical constant."
+  },
+  {
+    "key": "17_forster",
+    "title": "Forster sign-rank lower bound and spectral interface",
+    "declarations": [
+      "forster",
+      "specNorm_kronecker",
+      "specNorm_reindex"
+    ],
+    "lean_files": [
+      "HeadComplexity/Separations/Forster.lean"
+    ],
+    "paper_files": [
+      "notes/EXPLICIT_GAP.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "18_theorem_a",
+    "title": "Distance-threshold Theorem A package",
+    "declarations": [
+      "thresholdDeg_distThreshold",
+      "theoremA",
+      "sqrt_le_forsterRatio",
+      "four_le_HStar_distThreshold_127"
+    ],
+    "lean_files": [
+      "HeadComplexity/Separations/DistanceThreshold.lean"
+    ],
+    "paper_files": [
+      "notes/EXPLICIT_GAP.md"
+    ],
+    "scope": "Audit every listed existing endpoint. A convenience wrapper composing theoremA with sqrt_le_forsterRatio is being added separately."
+  },
+  {
+    "key": "19_theorem_b",
+    "title": "Tensor Theorem B package",
+    "declarations": [
+      "thresholdDegLE_tensorDistThreshold",
+      "theoremB_HStar",
+      "theoremB_gap"
+    ],
+    "lean_files": [
+      "HeadComplexity/Separations/Tensor.lean"
+    ],
+    "paper_files": [
+      "notes/EXPLICIT_GAP.md"
+    ],
+    "scope": "Audit the exact formula. A positive-coefficient convenience corollary is being added separately."
+  },
+  {
+    "key": "20_ndisj",
+    "title": "NDISJ separation",
+    "declarations": [
+      "thresholdDeg_ndisj",
+      "HStar_ndisj_le",
+      "ndisj_separation"
+    ],
+    "lean_files": [
+      "HeadComplexity/Separations/NDISJ.lean"
+    ],
+    "paper_files": [
+      "notes/STRENGTHENING.md"
+    ],
+    "scope": "Audit the exact exponential inequality; a logarithmic convenience wrapper is being added separately."
+  },
+  {
+    "key": "21_theorem189",
+    "title": "Eight-bit Hamming-threshold Theorem 189",
+    "declarations": [
+      "f8",
+      "thresholdDeg_f8",
+      "HStar_f8",
+      "theorem189_eight_bit_hamming_threshold"
+    ],
+    "lean_files": [
+      "HeadComplexity/Separations/EightBitHammingThreshold.lean",
+      "HeadComplexity/Separations/EightBitHammingThreshold/Core.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/06_strict_separations/189_eight_bit_hamming_threshold_strict_separation.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "22_canonical_poic",
+    "title": "Canonical POIC2 definition and right-hand hierarchy",
+    "declarations": [
+      "CanonicalCertificate",
+      "HasCanonicalCertificate",
+      "POIC2",
+      "relaxedPOIC2_le_POIC2",
+      "POIC2_le_HStar"
+    ],
+    "lean_files": [
+      "HeadComplexity/TypicalLogCloseness/POIC.lean",
+      "HeadComplexity/TypicalLogCloseness/CanonicalPOIC.lean"
+    ],
+    "paper_files": [
+      "labs/poic2-megalab-vm/materials/active/05-push3-context.md",
+      "notes/POIC2_ORIENTATION_AUDIT.md"
+    ],
+    "scope": "The missing left bridge thresholdDeg <= POIC2 is intentionally outside this audit and is being formalized separately."
+  },
+  {
+    "key": "23_poic_counting",
+    "title": "Canonical and relaxed POIC2 Warren sublevel counting",
+    "declarations": [
+      "relaxed_poic2_sublevel_card_le",
+      "poic2_sublevel_card_le"
+    ],
+    "lean_files": [
+      "HeadComplexity/TypicalLogCloseness/POICWarren.lean",
+      "HeadComplexity/TypicalLogCloseness/CanonicalCounting.lean"
+    ],
+    "paper_files": [
+      "notes/LEAN_BLUEPRINT_TYPICAL_LOG_CLOSENESS_2026-08-26.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "24_theorem026",
+    "title": "Theorem 026 counting lower bound and hard-function witness",
+    "declarations": [
+      "theorem026_counting_lower_bound",
+      "theorem026_exists_hard_function"
+    ],
+    "lean_files": [
+      "HeadComplexity/TypicalLogCloseness/CountingLowerBound.lean"
+    ],
+    "paper_files": [
+      "source/rs-takehome/theorems/01_foundations_and_normal_form/026_counting_lower_bound.md",
+      "notes/LEAN_BLUEPRINT_TYPICAL_LOG_CLOSENESS_2026-08-26.md"
+    ],
+    "scope": ""
+  },
+  {
+    "key": "25_bank",
+    "title": "P19 fixed-pole Bank bounds and exact power-of-two values",
+    "declarations": [
+      "Bank",
+      "HStar_le_Bank",
+      "bank_dimension_bound",
+      "bank_lower_bound",
+      "bank_pow_two",
+      "bank_one"
+    ],
+    "lean_files": [
+      "HeadComplexity/TypicalLogCloseness/Bank.lean"
+    ],
+    "paper_files": [
+      "notes/POIC2_TYPICALITY_3H_SPRINT_2026-08-26_RESULTS.md",
+      "notes/agents/typicality-sprint-2026-08-26/branch-b-constant.md",
+      "notes/LEAN_BLUEPRINT_TYPICAL_LOG_CLOSENESS_2026-08-26.md"
+    ],
+    "scope": "Do not confuse n with an exponent parameter: bank_pow_two is Bank(2^m)=2^(2^m)/2^m."
+  },
+  {
+    "key": "26_typical_log",
+    "title": "Explicit finite typical logarithmic closeness",
+    "declarations": [
+      "universal_bank_bound",
+      "typical_log_closeness"
+    ],
+    "lean_files": [
+      "HeadComplexity/TypicalLogCloseness/Headline.lean",
+      "HeadComplexity/TypicalLogCloseness/AbstractCounting.lean"
+    ],
+    "paper_files": [
+      "notes/LEAN_BLUEPRINT_TYPICAL_LOG_CLOSENESS_2026-08-26.md"
+    ],
+    "scope": ""
+  }
+]
