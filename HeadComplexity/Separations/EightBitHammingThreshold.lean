@@ -1475,6 +1475,107 @@ private theorem f8FactorData_delta_pos (D : F8FactorData) (j : Fin 4) :
     positivity
   linarith
 
+private noncomputable def factorNormalizedU (D : F8FactorData) :
+    Matrix (Fin 4) (Fin 4) ℝ :=
+  fun j i => -4 * splitPair (column4 D.Q j) (column4 D.P i)
+
+private noncomputable def factorNormalizedV (D : F8FactorData) :
+    Matrix (Fin 4) (Fin 4) ℝ :=
+  fun j i => -4 * splitPair (column4 D.Q j) (column4 D.Q i)
+
+private noncomputable def factorNormalizedW (D : F8FactorData) : Fin 4 → ℝ :=
+  fun j => -4 * splitPair (column4 D.Q j) D.r
+
+private noncomputable def factorNullTarget : Fin 4 → ℝ :=
+  ![0, 0, -(1 / 2), 0]
+
+private theorem factorNormalizedU_add_transpose (D : F8FactorData) :
+    factorNormalizedU D + (factorNormalizedU D).transpose =
+      -factorCurvature D.P D.Q := by
+  ext i j
+  simp only [factorNormalizedU, Matrix.add_apply, Matrix.transpose_apply,
+    Matrix.neg_apply, factorCurvature]
+  rw [splitPair_symm (column4 D.Q i) (column4 D.P j),
+    splitPair_symm (column4 D.Q j) (column4 D.P i)]
+  ring
+
+private theorem factorNormalizedV_isSymm (D : F8FactorData) :
+    (factorNormalizedV D).IsSymm := by
+  ext i j
+  simp only [factorNormalizedV, Matrix.transpose_apply]
+  rw [splitPair_symm]
+
+private theorem factorNormalizedU_diag (D : F8FactorData) (j : Fin 4) :
+    factorNormalizedU D j j = factorDelta D.P D.Q j := by
+  simp only [factorNormalizedU, factorDelta]
+  rw [splitPair_symm]
+
+private theorem factorNullTarget_pair (x : Fin 4 → ℝ) :
+    splitPair factorNullTarget x = -(x 3) / 4 := by
+  rw [splitPair_formula]
+  simp [factorNullTarget]
+  ring
+
+private theorem factorNormalizedW_eq (D : F8FactorData) (j : Fin 4) :
+    2 * splitPair (factorD D.Q j) D.r = factorNormalizedW D j := by
+  rw [splitPair_formula]
+  simp [factorD, factorNormalizedW]
+  rw [splitPair_formula]
+  simp only [column4]
+  ring
+
+private theorem factorNormalized_sub_eq
+    (D : F8FactorData) (i j : Fin 4) :
+    2 * splitPair (factorD D.Q j) (factorB D.P D.Q i) =
+      factorNormalizedU D j i - factorNormalizedV D j i := by
+  rw [splitPair_formula]
+  simp [factorD, factorB, factorNormalizedU, factorNormalizedV]
+  rw [splitPair_formula, splitPair_formula]
+  simp only [column4]
+  ring
+
+private theorem factorNormalized_add_eq
+    (D : F8FactorData) (k j : Fin 4) :
+    2 * splitPair (factorD D.Q j) (factorA D.P D.Q k) =
+      factorNormalizedU D j k + factorNormalizedV D j k := by
+  rw [splitPair_formula]
+  simp [factorD, factorA, factorNormalizedU, factorNormalizedV]
+  rw [splitPair_formula, splitPair_formula]
+  simp only [column4]
+  ring
+
+private theorem factorNormalizedU_pos (D : F8FactorData) :
+    PositiveDefinite4
+      (factorNormalizedU D + (factorNormalizedU D).transpose) := by
+  rw [factorNormalizedU_add_transpose]
+  intro z hz
+  have h := D.curvature z hz
+  have hq :
+      quadraticForm4 (-factorCurvature D.P D.Q) z =
+        -quadraticForm4 (factorCurvature D.P D.Q) z := by
+    unfold quadraticForm4
+    simp only [Matrix.mulVec, dotProduct, Fin.sum_univ_four, Matrix.neg_apply]
+    ring
+  rw [hq]
+  linarith
+
+private theorem factorNormalizedU_diag_pos (D : F8FactorData) (j : Fin 4) :
+    0 < factorNormalizedU D j j := by
+  rw [factorNormalizedU_diag]
+  exact f8FactorData_delta_pos D j
+
+private theorem factorNormalized_contraction (D : F8FactorData) :
+    ∀ i j, i ≠ j →
+      |factorNormalizedW D j| +
+        |factorNormalizedU D j i - factorNormalizedV D j i| +
+        ∑ k ∈ Finset.univ.filter (fun k => k ≠ i ∧ k ≠ j),
+          |factorNormalizedU D j k + factorNormalizedV D j k| <
+        factorNormalizedU D j j := by
+  intro i j hij
+  simpa only [factorNormalizedW_eq, factorNormalized_sub_eq,
+    factorNormalized_add_eq, factorNormalizedU_diag] using
+    f8FactorData_shell_bound D i j hij
+
 private lemma exists_offDiag_maximizer (M : Matrix (Fin 4) (Fin 4) ℝ) (j : Fin 4) :
     ∃ p ∈ offDiagSet j, ∀ i ∈ offDiagSet j, M i j ≤ M p j :=
   Finset.exists_max_image (offDiagSet j) (fun i => M i j) (offDiagSet_nonempty j)
