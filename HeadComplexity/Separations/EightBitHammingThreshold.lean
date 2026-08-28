@@ -349,7 +349,35 @@ private theorem f8_blockJoin_actBool (T : SignedPerm4)
     (x y : Fin 4 → Bool) :
     f8 (blockJoin (T.actBool x) (T.actBool y)) =
       f8 (blockJoin x y) := by
-  sorry
+  let x' : Fin 4 → Bool := fun i => x (T.perm i)
+  let y' : Fin 4 → Bool := fun i => y (T.perm i)
+  let twist : ∀ _ : Fin 4, Bool → Bool :=
+    fun i b => if T.flip i then !b else b
+  have htwist : ∀ i, Function.Injective (twist i) := by
+    intro i a b hab
+    cases hflip : T.flip i <;>
+      cases a <;> cases b <;> simp_all [twist]
+  have hact (z : Fin 4 → Bool) :
+      T.actBool z = fun i => twist i (z (T.perm i)) := by
+    funext i
+    cases hflip : T.flip i <;>
+      simp [SignedPerm4.actBool, twist, hflip]
+  have hcomp :
+      hammingDist (T.actBool x) (T.actBool y) =
+        hammingDist x' y' := by
+    rw [hact x, hact y]
+    simpa [x', y'] using
+      (hammingDist_comp twist (x := x') (y := y') htwist)
+  have hreindex : hammingDist x' y' = hammingDist x y := by
+    unfold hammingDist
+    let S := Finset.univ.filter (fun i : Fin 4 => x i ≠ y i)
+    have hfilter :
+        Finset.univ.filter (fun i : Fin 4 => x' i ≠ y' i) =
+          S.map T.perm.symm.toEmbedding := by
+      ext i
+      simp [S, x', y']
+    rw [hfilter, Finset.card_map]
+  simp [f8, distThreshold, hcomp.trans hreindex]
 
 /-- Bilinear evaluation on the symmetric part is the average of both orders. -/
 private theorem bilinear4_symmetricPart
