@@ -78,6 +78,58 @@ private theorem strictLegal_sign_intercept
     rw [← Finset.sum_div]
     linarith
 
+/-- The ±1 coordinate attached to a Boolean bit. -/
+private def hammingSign (b : Bool) : ℝ :=
+  if b then 1 else -1
+
+@[simp] private theorem hammingSign_false : hammingSign false = -1 := rfl
+@[simp] private theorem hammingSign_true : hammingSign true = 1 := rfl
+
+private theorem hammingSign_cases (b : Bool) :
+    hammingSign b = 1 ∨ hammingSign b = -1 := by
+  cases b <;> simp
+
+private theorem bitReal_eq_hammingSign (b : Bool) :
+    bitReal b = (hammingSign b + 1) / 2 := by
+  cases b <;> norm_num [bitReal, hammingSign]
+
+/-- The split quadratic form q(z)=z₀z₁+z₂z₃ used by the two-factor map. -/
+private noncomputable def splitJ : Matrix (Fin 4) (Fin 4) ℝ :=
+  ![![0, 1 / 2, 0, 0], ![1 / 2, 0, 0, 0],
+    ![0, 0, 0, 1 / 2], ![0, 0, 1 / 2, 0]]
+
+private theorem splitJ_isSymm : splitJ.IsSymm := by
+  ext i j
+  fin_cases i <;> fin_cases j <;> simp [splitJ, Matrix.transpose_apply]
+
+private theorem splitJ_pair_formula (x y : Fin 4 → ℝ) :
+    dotProduct x (splitJ.mulVec y) =
+      (x 0 * y 1 + x 1 * y 0 + x 2 * y 3 + x 3 * y 2) / 2 := by
+  simp only [dotProduct, Matrix.mulVec, Fin.sum_univ_four]
+  simp [splitJ]
+  ring
+
+private theorem splitJ_quadratic_formula (z : Fin 4 → ℝ) :
+    dotProduct z (splitJ.mulVec z) = z 0 * z 1 + z 2 * z 3 := by
+  rw [splitJ_pair_formula]
+  ring
+
+private def column4 (M : Matrix (Fin 4) (Fin 4) ℝ) (j : Fin 4) : Fin 4 → ℝ :=
+  fun i => M i j
+
+private noncomputable def splitPair (x y : Fin 4 → ℝ) : ℝ :=
+  dotProduct x (splitJ.mulVec y)
+
+private theorem splitPair_formula (x y : Fin 4 → ℝ) :
+    splitPair x y =
+      (x 0 * y 1 + x 1 * y 0 + x 2 * y 3 + x 3 * y 2) / 2 :=
+  splitJ_pair_formula x y
+
+private theorem splitPair_symm (x y : Fin 4 → ℝ) :
+    splitPair x y = splitPair y x := by
+  rw [splitPair_formula, splitPair_formula]
+  ring
+
 /-- The quadratic distance polynomial gives the upper threshold-degree bound. -/
 theorem f8_thresholdDegLE_two : ThresholdDegLE f8 2 := by
   classical
