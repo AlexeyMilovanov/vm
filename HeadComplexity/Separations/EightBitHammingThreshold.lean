@@ -29,6 +29,16 @@ theorem f8_apply (z : Fin 8 → Bool) :
       (2 ≤ hammingDist (leftBits 4 4 z) (rightBits 4 4 z)) := by
   rfl
 
+/-- Complementing all eight bits preserves the Hamming threshold. -/
+private theorem f8_complement (x : Fin 8 → Bool) :
+    f8 (fun i => !x i) = f8 x := by
+  dsimp [f8, distThreshold, hammingDist, leftBits, rightBits]
+  congr 2
+  congr 1
+  ext i
+  simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+  cases x (Fin.castAdd 4 i) <;> cases x (Fin.natAdd 4 i) <;> decide
+
 /-- The quadratic distance polynomial gives the upper threshold-degree bound. -/
 theorem f8_thresholdDegLE_two : ThresholdDegLE f8 2 := by
   classical
