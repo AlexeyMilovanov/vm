@@ -178,6 +178,15 @@ private noncomputable def bilinear4 (K : Matrix (Fin 4) (Fin 4) ℝ)
 private def bitDiff4 (x₀ x₁ : Fin 4 → Bool) : Fin 4 → ℝ :=
   fun i => boolToReal (x₀ i) - boolToReal (x₁ i)
 
+private theorem fin_castAdd_ne_natAdd (i j : Fin 4) : Fin.castAdd 4 i ≠ Fin.natAdd 4 j := by
+  intro h
+  have hval := congr_arg Fin.val h
+  simp only [Fin.val_castAdd, Fin.val_natAdd] at hval
+  omega
+
+private theorem fin_natAdd_ne_castAdd (j i : Fin 4) : Fin.natAdd 4 j ≠ Fin.castAdd 4 i :=
+  (fin_castAdd_ne_natAdd i j).symm
+
 /-- A degree-at-most-two exponent vector either lives in one four-variable
 block or is exactly one linear variable from each block. -/
 private theorem fin8_degree_le_two_block_classification
@@ -187,7 +196,73 @@ private theorem fin8_degree_le_two_block_classification
       ∃ i j : Fin 4,
         s = Finsupp.single (Fin.castAdd 4 i) 1 +
           Finsupp.single (Fin.natAdd 4 j) 1 := by
-  sorry
+  by_cases hR : ∀ j : Fin 4, s (Fin.natAdd 4 j) = 0
+  · left; exact hR
+  · right
+    by_cases hL : ∀ i : Fin 4, s (Fin.castAdd 4 i) = 0
+    · left; exact hL
+    · right
+      push Not at hR hL
+      rcases hR with ⟨j, hj⟩
+      rcases hL with ⟨i, hi⟩
+      use i, j
+      have hj_pos : 1 ≤ s (Fin.natAdd 4 j) := Nat.succ_le_of_lt (Nat.pos_of_ne_zero hj)
+      have hi_pos : 1 ≤ s (Fin.castAdd 4 i) := Nat.succ_le_of_lt (Nat.pos_of_ne_zero hi)
+      have hsum : (∑ k : Fin 8, s k) ≤ 2 := by
+        rw [← Finsupp.sum_fintype s (fun _ e => e) (fun _ => rfl)]
+        exact hs
+      have hsum_split : (∑ k : Fin 4, s (Fin.castAdd 4 k)) + (∑ k : Fin 4, s (Fin.natAdd 4 k)) ≤ 2 := by
+        have h := Fin.sum_univ_add (fun (k : Fin (4 + 4)) => s k)
+        rw [← h]
+        exact hsum
+      have hL_sum : s (Fin.castAdd 4 i) ≤ ∑ k : Fin 4, s (Fin.castAdd 4 k) :=
+        Finset.single_le_sum (f := fun k => s (Fin.castAdd 4 k)) (fun _ _ => Nat.zero_le _) (Finset.mem_univ i)
+      have hR_sum : s (Fin.natAdd 4 j) ≤ ∑ k : Fin 4, s (Fin.natAdd 4 k) :=
+        Finset.single_le_sum (f := fun k => s (Fin.natAdd 4 k)) (fun _ _ => Nat.zero_le _) (Finset.mem_univ j)
+      have h_eq_i : s (Fin.castAdd 4 i) = 1 := by omega
+      have h_eq_j : s (Fin.natAdd 4 j) = 1 := by omega
+      have hL_other (i' : Fin 4) (hne : i' ≠ i) : s (Fin.castAdd 4 i') = 0 := by
+        have : s (Fin.castAdd 4 i) + s (Fin.castAdd 4 i') ≤ ∑ k : Fin 4, s (Fin.castAdd 4 k) := by
+          have hpair : {i, i'} ⊆ (Finset.univ : Finset (Fin 4)) := Finset.subset_univ _
+          have hsum_pair := Finset.sum_le_sum_of_subset (f := fun k => s (Fin.castAdd 4 k)) hpair
+          rw [Finset.sum_insert (by simp [hne.symm]), Finset.sum_singleton] at hsum_pair
+          exact hsum_pair
+        omega
+      have hR_other (j' : Fin 4) (hne : j' ≠ j) : s (Fin.natAdd 4 j') = 0 := by
+        have : s (Fin.natAdd 4 j) + s (Fin.natAdd 4 j') ≤ ∑ k : Fin 4, s (Fin.natAdd 4 k) := by
+          have hpair : {j, j'} ⊆ (Finset.univ : Finset (Fin 4)) := Finset.subset_univ _
+          have hsum_pair := Finset.sum_le_sum_of_subset (f := fun k => s (Fin.natAdd 4 k)) hpair
+          rw [Finset.sum_insert (by simp [hne.symm]), Finset.sum_singleton] at hsum_pair
+          exact hsum_pair
+        omega
+      ext (k : Fin (4 + 4))
+      refine Fin.addCases (fun k' => ?_) (fun k' => ?_) k
+      · simp only [Finsupp.add_apply, Finsupp.single_apply]
+        have h_neq : Fin.natAdd 4 j ≠ Fin.castAdd 4 k' := fin_natAdd_ne_castAdd j k'
+        simp only [h_neq, if_false, add_zero]
+        by_cases hk : Fin.castAdd 4 i = Fin.castAdd 4 k'
+        · have hk' : i = k' := Fin.castAdd_inj.mp hk
+          subst hk'
+          rw [if_pos rfl, h_eq_i]
+        · rw [if_neg hk]
+          have hk' : k' ≠ i := by
+            intro h_eq
+            subst h_eq
+            exact hk rfl
+          exact hL_other k' hk'
+      · simp only [Finsupp.add_apply, Finsupp.single_apply]
+        have h_neq : Fin.castAdd 4 i ≠ Fin.natAdd 4 k' := fin_castAdd_ne_natAdd i k'
+        simp only [h_neq, if_false, zero_add]
+        by_cases hk : Fin.natAdd 4 j = Fin.natAdd 4 k'
+        · have hk' : j = k' := (Fin.natAdd_inj 4).mp hk
+          subst hk'
+          rw [if_pos rfl, h_eq_j]
+        · rw [if_neg hk]
+          have hk' : k' ≠ j := by
+            intro h_eq
+            subst h_eq
+            exact hk rfl
+          exact hR_other k' hk'
 
 /-- The checkerboard identity for one bounded-degree monomial.  This is the
 only place where the eight-coordinate exponent vector is classified. -/
