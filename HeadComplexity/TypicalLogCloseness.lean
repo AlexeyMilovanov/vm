@@ -1,6 +1,7 @@
 import HeadComplexity.TypicalLogCloseness.AffineForm
 import HeadComplexity.TypicalLogCloseness.POIC
 import HeadComplexity.TypicalLogCloseness.CanonicalPOIC
+import HeadComplexity.TypicalLogCloseness.ThresholdDegreeBridge
 import HeadComplexity.TypicalLogCloseness.FracAtomBridge
 import HeadComplexity.TypicalLogCloseness.AbstractCounting
 import HeadComplexity.TypicalLogCloseness.HammingCode
