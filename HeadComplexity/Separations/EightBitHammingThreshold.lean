@@ -276,7 +276,150 @@ private theorem bounded_monomial_checkerboard_difference
         eval (cubePoint (blockJoin x₁ y₁)) (monomial s a) =
       bilinear4 (mixedMatrix4 (monomial s a))
         (bitDiff4 x₀ x₁) (bitDiff4 y₀ y₁) := by
-  sorry
+  rcases fin8_degree_le_two_block_classification s hs with hL | hR | ⟨i, j, hs_eq⟩
+  · have h1 : eval (cubePoint (blockJoin x₀ y₀)) (monomial s a) = eval (cubePoint (blockJoin x₀ y₁)) (monomial s a) := by
+      simp only [eval_monomial, cubePoint]
+      congr 1
+      refine Finset.prod_congr rfl (fun k _ => ?_)
+      refine Fin.addCases (fun k' => ?_) (fun k' => ?_) k
+      · simp only [blockJoin_castAdd]
+      · simp only [blockJoin_natAdd, hL k', pow_zero]
+    have h2 : eval (cubePoint (blockJoin x₁ y₀)) (monomial s a) = eval (cubePoint (blockJoin x₁ y₁)) (monomial s a) := by
+      simp only [eval_monomial, cubePoint]
+      congr 1
+      refine Finset.prod_congr rfl (fun k _ => ?_)
+      refine Fin.addCases (fun k' => ?_) (fun k' => ?_) k
+      · simp only [blockJoin_castAdd]
+      · simp only [blockJoin_natAdd, hL k', pow_zero]
+    rw [h1, h2]
+    have h3 : mixedMatrix4 (monomial s a) = 0 := by
+      ext i' j'
+      unfold mixedMatrix4
+      rw [coeff_monomial]
+      split_ifs with h_eq
+      · exfalso
+        have hj := Finsupp.ext_iff.mp h_eq (Fin.natAdd 4 j')
+        rw [Finsupp.add_apply, Finsupp.single_eq_same, Finsupp.single_eq_of_ne] at hj
+        · have hj0 := hL j'
+          rw [hj] at hj0
+          contradiction
+        · intro h_ne
+          have hval := congr_arg Fin.val h_ne
+          dsimp at hval
+          omega
+      · rfl
+    rw [h3]
+    unfold bilinear4
+    simp
+  · have h1 : eval (cubePoint (blockJoin x₀ y₀)) (monomial s a) = eval (cubePoint (blockJoin x₁ y₀)) (monomial s a) := by
+      simp only [eval_monomial, cubePoint]
+      congr 1
+      refine Finset.prod_congr rfl (fun k _ => ?_)
+      refine Fin.addCases (fun k' => ?_) (fun k' => ?_) k
+      · simp only [blockJoin_castAdd, hR k', pow_zero]
+      · simp only [blockJoin_natAdd]
+    have h2 : eval (cubePoint (blockJoin x₀ y₁)) (monomial s a) = eval (cubePoint (blockJoin x₁ y₁)) (monomial s a) := by
+      simp only [eval_monomial, cubePoint]
+      congr 1
+      refine Finset.prod_congr rfl (fun k _ => ?_)
+      refine Fin.addCases (fun k' => ?_) (fun k' => ?_) k
+      · simp only [blockJoin_castAdd, hR k', pow_zero]
+      · simp only [blockJoin_natAdd]
+    rw [h1, h2]
+    have h3 : mixedMatrix4 (monomial s a) = 0 := by
+      ext i' j'
+      unfold mixedMatrix4
+      rw [coeff_monomial]
+      split_ifs with h_eq
+      · exfalso
+        have hi := Finsupp.ext_iff.mp h_eq (Fin.castAdd 4 i')
+        rw [Finsupp.add_apply, Finsupp.single_eq_same, Finsupp.single_eq_of_ne] at hi
+        · have hi0 := hR i'
+          rw [hi] at hi0
+          contradiction
+        · intro h_ne
+          have hval := congr_arg Fin.val h_ne
+          dsimp at hval
+          omega
+      · rfl
+    rw [h3]
+    unfold bilinear4
+    simp
+  · rw [hs_eq]
+    have h_eval (u : Fin 4 → Bool) (v : Fin 4 → Bool) :
+        eval (cubePoint (blockJoin u v)) (monomial (Finsupp.single (Fin.castAdd 4 i) 1 + Finsupp.single (Fin.natAdd 4 j) 1) a) =
+          a * boolToReal (u i) * boolToReal (v j) := by
+      rw [eval_monomial]
+      dsimp [cubePoint]
+      have h_prod := Finsupp.prod_add_index'
+        (f := Finsupp.single (Fin.castAdd 4 i) 1)
+        (g := Finsupp.single (Fin.natAdd 4 j) 1)
+        (h := fun (x : Fin 8) (e : ℕ) => boolToReal (blockJoin u v x) ^ e)
+        (fun _ => pow_zero _) (fun _ _ _ => pow_add _ _ _)
+      rw [h_prod]
+      rw [Finsupp.prod_single_index (by simp), Finsupp.prod_single_index (by simp)]
+      simp only [pow_one, blockJoin_castAdd, blockJoin_natAdd]
+      ring
+    rw [h_eval x₀ y₀, h_eval x₀ y₁, h_eval x₁ y₀, h_eval x₁ y₁]
+    have h_mix : mixedMatrix4 (monomial (Finsupp.single (Fin.castAdd 4 i) 1 + Finsupp.single (Fin.natAdd 4 j) 1) a) =
+        fun i' j' => if i' = i ∧ j' = j then a else 0 := by
+      ext i' j'
+      unfold mixedMatrix4
+      rw [coeff_monomial]
+      by_cases h_ij : i' = i ∧ j' = j
+      · rw [if_pos h_ij, if_pos]
+        rw [h_ij.1, h_ij.2]
+      · rw [if_neg h_ij, if_neg]
+        intro h_eq
+        apply h_ij
+        have h1_ext := Finsupp.ext_iff.mp h_eq
+        have hi' := h1_ext (Fin.castAdd 4 i')
+        have hj' := h1_ext (Fin.natAdd 4 j')
+        rw [Finsupp.add_apply, Finsupp.add_apply, Finsupp.single_apply, Finsupp.single_apply, Finsupp.single_apply, Finsupp.single_apply] at hi' hj'
+        have h_ca2 : ¬Fin.natAdd 4 j = Fin.castAdd 4 i' := by
+          intro h_ne; have hval := congr_arg Fin.val h_ne; dsimp at hval; omega
+        have h_ca3 : ¬Fin.natAdd 4 j' = Fin.castAdd 4 i' := by
+          intro h_ne; have hval := congr_arg Fin.val h_ne; dsimp at hval; omega
+        have h_na1 : ¬Fin.castAdd 4 i = Fin.natAdd 4 j' := by
+          intro h_ne; have hval := congr_arg Fin.val h_ne; dsimp at hval; omega
+        have h_na3 : ¬Fin.castAdd 4 i' = Fin.natAdd 4 j' := by
+          intro h_ne; have hval := congr_arg Fin.val h_ne; dsimp at hval; omega
+        have h_i : i' = i := by
+          by_contra h_ne
+          have h_ca1 : ¬Fin.castAdd 4 i = Fin.castAdd 4 i' := by
+            intro h; exact h_ne (Fin.ext (by have hval := congr_arg Fin.val h; dsimp at hval; exact hval)).symm
+          rw [if_neg h_ca1, if_neg h_ca2, if_pos rfl, if_neg h_ca3] at hi'
+          contradiction
+        have h_j : j' = j := by
+          by_contra h_ne
+          have h_na2 : ¬Fin.natAdd 4 j = Fin.natAdd 4 j' := by
+            intro h; exact h_ne (Fin.ext (by have hval := congr_arg Fin.val h; dsimp at hval; omega)).symm
+          rw [if_neg h_na1, if_neg h_na2, if_neg h_na3, if_pos rfl] at hj'
+          contradiction
+        exact ⟨h_i, h_j⟩
+    rw [h_mix]
+    unfold bilinear4 bitDiff4
+    rw [Finset.sum_eq_single i]
+    · rw [Finset.sum_eq_single j]
+      · simp only [and_self, if_true]
+        have h_diff := checkerboard_second_diff_term x₁ x₀ y₁ y₀ i j
+        linear_combination a * h_diff
+      · intro k _ hk
+        have h_and : ¬(i = i ∧ k = j) := by rintro ⟨_, rfl⟩; exact hk rfl
+        dsimp
+        rw [if_neg h_and]
+        ring
+      · intro h
+        exact False.elim (h (Finset.mem_univ j))
+    · intro k _ hk
+      have h_sum_zero : (∑ j_1 : Fin 4, (boolToReal (x₀ k) - boolToReal (x₁ k)) * (if k = i ∧ j_1 = j then a else 0) * (boolToReal (y₀ j_1) - boolToReal (y₁ j_1))) = 0 := by
+        refine Finset.sum_eq_zero (fun k' _ => ?_)
+        have h_and : ¬(k = i ∧ k' = j) := by rintro ⟨rfl, _⟩; exact hk rfl
+        rw [if_neg h_and]
+        ring
+      exact h_sum_zero
+    · intro h
+      exact False.elim (h (Finset.mem_univ i))
 
 /-- Degree-two checkerboard differences retain exactly the mixed block. -/
 private theorem quadratic_checkerboard_difference
