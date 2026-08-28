@@ -1576,6 +1576,73 @@ private theorem factorNormalized_contraction (D : F8FactorData) :
     factorNormalized_add_eq, factorNormalizedU_diag] using
     f8FactorData_shell_bound D i j hij
 
+private theorem factorNormalizedU_transpose_mulVec
+    (D : F8FactorData) (μ : Fin 4 → ℝ) (i : Fin 4) :
+    ((factorNormalizedU D).transpose.mulVec μ) i =
+      -4 * splitPair (D.Q.mulVec μ) (column4 D.P i) := by
+  simp only [Matrix.mulVec, dotProduct, Fin.sum_univ_four,
+    Matrix.transpose_apply, factorNormalizedU, splitPair_formula, column4]
+  ring
+
+private theorem factorNormalizedV_mulVec
+    (D : F8FactorData) (μ : Fin 4 → ℝ) (i : Fin 4) :
+    (factorNormalizedV D).mulVec μ i =
+      -4 * splitPair (column4 D.Q i) (D.Q.mulVec μ) := by
+  simp only [Matrix.mulVec, dotProduct, Fin.sum_univ_four,
+    factorNormalizedV, splitPair_formula, column4]
+  ring
+
+private theorem factorNormalizedW_dot
+    (D : F8FactorData) (μ : Fin 4 → ℝ) :
+    dotProduct μ (factorNormalizedW D) =
+      -4 * splitPair (D.Q.mulVec μ) D.r := by
+  simp only [dotProduct, Fin.sum_univ_four, factorNormalizedW,
+    Matrix.mulVec, splitPair_formula, column4]
+  ring
+
+private theorem factorNormalizedV_quadratic
+    (D : F8FactorData) (μ : Fin 4 → ℝ) :
+    quadraticForm4 (factorNormalizedV D) μ =
+      -4 * splitPair (D.Q.mulVec μ) (D.Q.mulVec μ) := by
+  rw [quadraticForm4]
+  simp only [dotProduct, Fin.sum_univ_four, factorNormalizedV,
+    Matrix.mulVec, splitPair_formula, column4]
+  ring
+
+private theorem f8FactorData_exists_normalizing_mu (D : F8FactorData) :
+    ∃ μ : Fin 4 → ℝ, D.Q.mulVec μ = factorNullTarget :=
+  f8FactorData_Q_mulVec_surjective D factorNullTarget
+
+private theorem factorNormalizingMu_leftSlope
+    (D : F8FactorData) (μ : Fin 4 → ℝ)
+    (hμ : D.Q.mulVec μ = factorNullTarget) (i : Fin 4) :
+    ((factorNormalizedU D).transpose.mulVec μ) i = D.P 3 i := by
+  rw [factorNormalizedU_transpose_mulVec, hμ, factorNullTarget_pair]
+  simp only [column4]
+  ring
+
+private theorem factorNormalizingMu_rightSlope
+    (D : F8FactorData) (μ : Fin 4 → ℝ)
+    (hμ : D.Q.mulVec μ = factorNullTarget) (i : Fin 4) :
+    (factorNormalizedV D).mulVec μ i = D.Q 3 i := by
+  rw [factorNormalizedV_mulVec, hμ, splitPair_symm, factorNullTarget_pair]
+  simp only [column4]
+  ring
+
+private theorem factorNormalizingMu_null
+    (D : F8FactorData) (μ : Fin 4 → ℝ)
+    (hμ : D.Q.mulVec μ = factorNullTarget) :
+    quadraticForm4 (factorNormalizedV D) μ = 0 := by
+  rw [factorNormalizedV_quadratic, hμ, factorNullTarget_pair]
+  simp [factorNullTarget]
+
+private theorem factorNormalizingMu_intercept
+    (D : F8FactorData) (μ : Fin 4 → ℝ)
+    (hμ : D.Q.mulVec μ = factorNullTarget) :
+    dotProduct μ (factorNormalizedW D) = D.r 3 := by
+  rw [factorNormalizedW_dot, hμ, factorNullTarget_pair]
+  ring
+
 private lemma exists_offDiag_maximizer (M : Matrix (Fin 4) (Fin 4) ℝ) (j : Fin 4) :
     ∃ p ∈ offDiagSet j, ∀ i ∈ offDiagSet j, M i j ≤ M p j :=
   Finset.exists_max_image (offDiagSet j) (fun i => M i j) (offDiagSet_nonempty j)
