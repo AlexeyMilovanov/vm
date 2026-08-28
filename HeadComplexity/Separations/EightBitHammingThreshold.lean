@@ -178,6 +178,31 @@ private noncomputable def bilinear4 (K : Matrix (Fin 4) (Fin 4) ℝ)
 private def bitDiff4 (x₀ x₁ : Fin 4 → Bool) : Fin 4 → ℝ :=
   fun i => boolToReal (x₀ i) - boolToReal (x₁ i)
 
+/-- A degree-at-most-two exponent vector either lives in one four-variable
+block or is exactly one linear variable from each block. -/
+private theorem fin8_degree_le_two_block_classification
+    (s : Fin 8 →₀ ℕ) (hs : s.sum (fun _ e => e) ≤ 2) :
+    (∀ j : Fin 4, s (Fin.natAdd 4 j) = 0) ∨
+      (∀ i : Fin 4, s (Fin.castAdd 4 i) = 0) ∨
+      ∃ i j : Fin 4,
+        s = Finsupp.single (Fin.castAdd 4 i) 1 +
+          Finsupp.single (Fin.natAdd 4 j) 1 := by
+  sorry
+
+/-- The checkerboard identity for one bounded-degree monomial.  This is the
+only place where the eight-coordinate exponent vector is classified. -/
+private theorem bounded_monomial_checkerboard_difference
+    (s : Fin 8 →₀ ℕ) (a : ℝ)
+    (hs : s.sum (fun _ e => e) ≤ 2)
+    (x₀ x₁ y₀ y₁ : Fin 4 → Bool) :
+    eval (cubePoint (blockJoin x₀ y₀)) (monomial s a) -
+        eval (cubePoint (blockJoin x₀ y₁)) (monomial s a) -
+        eval (cubePoint (blockJoin x₁ y₀)) (monomial s a) +
+        eval (cubePoint (blockJoin x₁ y₁)) (monomial s a) =
+      bilinear4 (mixedMatrix4 (monomial s a))
+        (bitDiff4 x₀ x₁) (bitDiff4 y₀ y₁) := by
+  sorry
+
 /-- Degree-two checkerboard differences retain exactly the mixed block. -/
 private theorem quadratic_checkerboard_difference
     (P : MvPolynomial (Fin 8) ℝ) (hdeg : P.totalDegree ≤ 2)
