@@ -649,13 +649,347 @@ private theorem symmetricPart4_isSymm (K : Matrix (Fin 4) (Fin 4) ℝ) :
   simp [symmetricPart4, Matrix.transpose_apply]
   ring
 
+private lemma exists_perm_sort4 (x : Fin 4 → ℝ) :
+    ∃ p : Equiv.Perm (Fin 4),
+      x (p 0) ≥ x (p 1) ∧ x (p 1) ≥ x (p 2) ∧ x (p 2) ≥ x (p 3) := by
+  let p := Tuple.sort (fun i => -x i)
+  have hmono := Tuple.monotone_sort (fun i => -x i)
+  use p
+  have h01 := hmono (by decide : (0 : Fin 4) ≤ 1)
+  have h12 := hmono (by decide : (1 : Fin 4) ≤ 2)
+  have h23 := hmono (by decide : (2 : Fin 4) ≤ 3)
+  dsimp [Function.comp] at h01 h12 h23
+  exact ⟨by linarith, by linarith, by linarith⟩
+
+private def SignedPerm4.inv (T : SignedPerm4) : SignedPerm4 where
+  perm := T.perm.symm
+  flip := fun i => T.flip (T.perm.symm i)
+
+private theorem SignedPerm4.act_inv (T : SignedPerm4) (z : Fin 4 → ℝ) :
+    (T.inv).act (T.act z) = z := by
+  ext i
+  dsimp [SignedPerm4.act, SignedPerm4.inv]
+  rw [Equiv.apply_symm_apply]
+  split_ifs <;> ring
+
+private theorem exists_signedPerm_sorted (z : Fin 4 → ℝ) :
+    ∃ T : SignedPerm4,
+      (T.act z) 0 ≥ (T.act z) 1 ∧
+      (T.act z) 1 ≥ (T.act z) 2 ∧
+      (T.act z) 2 ≥ (T.act z) 3 ∧
+      (T.act z) 3 ≥ 0 := by
+  obtain ⟨p, hp01, hp12, hp23⟩ := exists_perm_sort4 (fun i => |z i|)
+  let T : SignedPerm4 := ⟨p, fun i => decide (z (p i) < 0)⟩
+  use T
+  have hT (i : Fin 4) : T.act z i = |z (p i)| := by
+    dsimp [T, SignedPerm4.act]
+    split_ifs with h
+    · rw [decide_eq_true_iff] at h
+      linarith [abs_of_neg h]
+    · have h' : 0 ≤ z (p i) := by
+        by_contra h_neg; push Not at h_neg
+        have : decide (z (p i) < 0) = true := decide_eq_true h_neg
+        contradiction
+      linarith [abs_of_nonneg h']
+  rw [hT 0, hT 1, hT 2, hT 3]
+  refine ⟨hp01, hp12, hp23, abs_nonneg _⟩
+
+private lemma SignedPerm4.act_add (T : SignedPerm4) (u v : Fin 4 → ℝ) :
+    T.act (u + v) = T.act u + T.act v := by
+  ext i; dsimp [SignedPerm4.act]; split_ifs <;> ring
+
+private lemma SignedPerm4.act_smul (T : SignedPerm4) (c : ℝ) (u : Fin 4 → ℝ) :
+    T.act (c • u) = c • T.act u := by
+  ext i; dsimp [SignedPerm4.act]; split_ifs <;> ring
+
+private lemma prefix_expansion (w : Fin 4 → ℝ) :
+    w = (w 0 - w 1) • prefix1 + (w 1 - w 2) • prefix2 + (w 2 - w 3) • prefix3 + w 3 • prefix4 := by
+  ext i
+  fin_cases i <;> (dsimp [prefix1, prefix2, prefix3, prefix4]; ring)
+
+private lemma act_prefix_expansion (T' : SignedPerm4) (w : Fin 4 → ℝ) :
+    T'.act w = (w 0 - w 1) • T'.act prefix1 + (w 1 - w 2) • T'.act prefix2 +
+      (w 2 - w 3) • T'.act prefix3 + w 3 • T'.act prefix4 := by
+  have h := prefix_expansion w
+  have h' := congr_arg T'.act h
+  rw [h']
+  rw [SignedPerm4.act_add, SignedPerm4.act_add, SignedPerm4.act_add]
+  rw [SignedPerm4.act_smul, SignedPerm4.act_smul, SignedPerm4.act_smul, SignedPerm4.act_smul]
+
+private lemma quadraticForm4_eq_bilinear4 (S : Matrix (Fin 4) (Fin 4) ℝ) (z : Fin 4 → ℝ) :
+    quadraticForm4 S z = bilinear4 S z z := by
+  unfold quadraticForm4 bilinear4
+  simp only [Matrix.mulVec, dotProduct, Fin.sum_univ_four]
+  ring
+
+private lemma q_relation : q2 + q3 + prefix3 = prefix1 + (2 : ℝ) • prefix4 := by
+  ext i; fin_cases i <;> (dsimp [q2, q3, prefix1, prefix3, prefix4]; ring)
+
+private lemma r_relation : r2 + r3 + r4 = (2 : ℝ) • prefix1 + prefix4 := by
+  ext i; fin_cases i <;> (dsimp [r2, r3, r4, prefix1, prefix4]; ring)
+
+private lemma bilinear4_add_right (S : Matrix (Fin 4) (Fin 4) ℝ) (u v w : Fin 4 → ℝ) :
+    bilinear4 S u (v + w) = bilinear4 S u v + bilinear4 S u w := by
+  unfold bilinear4; simp_rw [Pi.add_apply, mul_add, Finset.sum_add_distrib]
+
+private lemma bilinear4_smul_right (S : Matrix (Fin 4) (Fin 4) ℝ) (c : ℝ) (u v : Fin 4 → ℝ) :
+    bilinear4 S u (c • v) = c * bilinear4 S u v := by
+  unfold bilinear4
+  simp only [Pi.smul_apply, smul_eq_mul, Fin.sum_univ_four]
+  ring
+
+private lemma bilinear4_expand4 (S : Matrix (Fin 4) (Fin 4) ℝ) (hsymm : S.IsSymm)
+    (v1 v2 v3 v4 : Fin 4 → ℝ) (a1 a2 a3 a4 : ℝ) :
+    bilinear4 S (a1 • v1 + a2 • v2 + a3 • v3 + a4 • v4) (a1 • v1 + a2 • v2 + a3 • v3 + a4 • v4) =
+      a1 ^ 2 * bilinear4 S v1 v1 +
+      a2 ^ 2 * bilinear4 S v2 v2 +
+      a3 ^ 2 * bilinear4 S v3 v3 +
+      a4 ^ 2 * bilinear4 S v4 v4 +
+      2 * a1 * a2 * bilinear4 S v1 v2 +
+      2 * a1 * a3 * bilinear4 S v1 v3 +
+      2 * a2 * a3 * bilinear4 S v2 v3 +
+      2 * a2 * a4 * bilinear4 S v2 v4 +
+      2 * a3 * a4 * bilinear4 S v3 v4 +
+      2 * a1 * a4 * bilinear4 S v1 v4 := by
+  unfold bilinear4
+  rw [Fin.sum_univ_four]
+  simp_rw [Fin.sum_univ_four]
+  have hS (i j : Fin 4) : S j i = S i j := (congr_fun (congr_fun hsymm j) i).symm
+  simp only [hS 1 0, hS 2 0, hS 3 0, hS 2 1, hS 3 1, hS 3 2, Pi.add_apply, Pi.smul_apply, smul_eq_mul]
+  ring
+
+private lemma bilinear4_q_rel (S : Matrix (Fin 4) (Fin 4) ℝ) (T' : SignedPerm4) :
+    2 * bilinear4 S (T'.act prefix1) (T'.act prefix4) =
+      bilinear4 S (T'.act prefix1) (T'.act q2) +
+      bilinear4 S (T'.act prefix1) (T'.act q3) +
+      bilinear4 S (T'.act prefix1) (T'.act prefix3) -
+      bilinear4 S (T'.act prefix1) (T'.act prefix1) := by
+  have hq : bilinear4 S (T'.act prefix1) (T'.act (q2 + q3 + prefix3)) =
+      bilinear4 S (T'.act prefix1) (T'.act (prefix1 + (2 : ℝ) • prefix4)) := by
+    rw [q_relation]
+  rw [SignedPerm4.act_add, SignedPerm4.act_add, SignedPerm4.act_add, SignedPerm4.act_smul] at hq
+  rw [bilinear4_add_right, bilinear4_add_right, bilinear4_add_right, bilinear4_smul_right] at hq
+  linarith
+
+private lemma bilinear4_r_rel (S : Matrix (Fin 4) (Fin 4) ℝ) (hsymm : S.IsSymm) (T' : SignedPerm4) :
+    2 * bilinear4 S (T'.act prefix1) (T'.act prefix4) =
+      bilinear4 S (T'.act prefix4) (T'.act r2) +
+      bilinear4 S (T'.act prefix4) (T'.act r3) +
+      bilinear4 S (T'.act prefix4) (T'.act r4) -
+      bilinear4 S (T'.act prefix4) (T'.act prefix4) := by
+  have hr : bilinear4 S (T'.act prefix4) (T'.act (r2 + r3 + r4)) =
+      bilinear4 S (T'.act prefix4) (T'.act ((2 : ℝ) • prefix1 + prefix4)) := by
+    rw [r_relation]
+  rw [SignedPerm4.act_add, SignedPerm4.act_add, SignedPerm4.act_add, SignedPerm4.act_smul] at hr
+  rw [bilinear4_add_right, bilinear4_add_right, bilinear4_add_right, bilinear4_smul_right] at hr
+  have h_symm : bilinear4 S (T'.act prefix4) (T'.act prefix1) =
+      bilinear4 S (T'.act prefix1) (T'.act prefix4) := by
+    unfold bilinear4; rw [Fin.sum_univ_four]; simp_rw [Fin.sum_univ_four]
+    have hS (i j : Fin 4) : S j i = S i j := (congr_fun (congr_fun hsymm j) i).symm
+    simp_rw [hS]; ring
+  rw [h_symm] at hr
+  linarith
+
 /-- The real-algebraic half of paper Lemma 2: the finite certificate covers
 every cone of vectors after sorting absolute coordinates. -/
 private theorem curvatureCertificate_negative
     (S : Matrix (Fin 4) (Fin 4) ℝ) (hsymm : S.IsSymm)
     (hcert : F8CurvatureCertificate S) :
     NegativeDefinite4 S := by
-  sorry
+  intro z hz
+  rw [quadraticForm4_eq_bilinear4]
+  obtain ⟨T, hz0, hz1, hz2, hz3⟩ := exists_signedPerm_sorted z
+  set w := T.act z
+  set T' := T.inv
+  have hz_eq : z = T'.act w := (SignedPerm4.act_inv T z).symm
+  rw [hz_eq]
+  set a1 := w 0 - w 1
+  set a2 := w 1 - w 2
+  set a3 := w 2 - w 3
+  set a4 := w 3
+  have ha1 : 0 ≤ a1 := by linarith
+  have ha2 : 0 ≤ a2 := by linarith
+  have ha3 : 0 ≤ a3 := by linarith
+  have ha4 : 0 ≤ a4 := by linarith
+  have hw_act : T'.act w = a1 • T'.act prefix1 + a2 • T'.act prefix2 +
+      a3 • T'.act prefix3 + a4 • T'.act prefix4 := act_prefix_expansion T' w
+  rw [hw_act]
+  set B11 := bilinear4 S (T'.act prefix1) (T'.act prefix1)
+  set B22 := bilinear4 S (T'.act prefix2) (T'.act prefix2)
+  set B33 := bilinear4 S (T'.act prefix3) (T'.act prefix3)
+  set B44 := bilinear4 S (T'.act prefix4) (T'.act prefix4)
+  set B12 := bilinear4 S (T'.act prefix1) (T'.act prefix2)
+  set B13 := bilinear4 S (T'.act prefix1) (T'.act prefix3)
+  set B23 := bilinear4 S (T'.act prefix2) (T'.act prefix3)
+  set B24 := bilinear4 S (T'.act prefix2) (T'.act prefix4)
+  set B34 := bilinear4 S (T'.act prefix3) (T'.act prefix4)
+  set B14 := bilinear4 S (T'.act prefix1) (T'.act prefix4)
+  set B1q2 := bilinear4 S (T'.act prefix1) (T'.act q2)
+  set B1q3 := bilinear4 S (T'.act prefix1) (T'.act q3)
+  set B4r2 := bilinear4 S (T'.act prefix4) (T'.act r2)
+  set B4r3 := bilinear4 S (T'.act prefix4) (T'.act r3)
+  set B4r4 := bilinear4 S (T'.act prefix4) (T'.act r4)
+  have hexp : bilinear4 S (a1 • T'.act prefix1 + a2 • T'.act prefix2 +
+      a3 • T'.act prefix3 + a4 • T'.act prefix4) (a1 • T'.act prefix1 + a2 • T'.act prefix2 +
+      a3 • T'.act prefix3 + a4 • T'.act prefix4) =
+      a1 ^ 2 * B11 + a2 ^ 2 * B22 + a3 ^ 2 * B33 + a4 ^ 2 * B44 +
+      2 * a1 * a2 * B12 + 2 * a1 * a3 * B13 + 2 * a2 * a3 * B23 +
+      2 * a2 * a4 * B24 + 2 * a3 * a4 * B34 + 2 * a1 * a4 * B14 :=
+    bilinear4_expand4 S hsymm (T'.act prefix1) (T'.act prefix2) (T'.act prefix3) (T'.act prefix4) a1 a2 a3 a4
+  have hp1p1 : B11 < 0 := hcert.p1p1 T'
+  have hp2p2 : B22 < 0 := hcert.p2p2 T'
+  have hp3p3 : B33 < 0 := hcert.p3p3 T'
+  have hp4p4 : B44 < 0 := hcert.p4p4 T'
+  have hp1p2 : B12 < 0 := hcert.p1p2 T'
+  have hp1p3 : B13 < 0 := hcert.p1p3 T'
+  have hp2p3 : B23 < 0 := hcert.p2p3 T'
+  have hp2p4 : B24 < 0 := hcert.p2p4 T'
+  have hp3p4 : B34 < 0 := hcert.p3p4 T'
+  have hp1q2 : B1q2 < 0 := hcert.p1q2 T'
+  have hp1q3 : B1q3 < 0 := hcert.p1q3 T'
+  have hp4r2 : B4r2 < 0 := hcert.p4r2 T'
+  have hp4r3 : B4r3 < 0 := hcert.p4r3 T'
+  have hp4r4 : B4r4 < 0 := hcert.p4r4 T'
+  have hw_ne : w ≠ 0 := by
+    intro hw0
+    have : z = 0 := by
+      rw [hz_eq, hw0]
+      ext i
+      dsimp [SignedPerm4.act]
+      split_ifs <;> ring
+    exact hz this
+  have hw0_pos : 0 < w 0 := by
+    by_contra h; push Not at h
+    have : w = 0 := by
+      ext i
+      fin_cases i
+      · change w 0 = 0; linarith
+      · change w 1 = 0; linarith
+      · change w 2 = 0; linarith
+      · change w 3 = 0; linarith
+    exact hw_ne this
+  have h14_prod : 0 ≤ a1 * a4 := mul_nonneg ha1 ha4
+  have hprod_nonpos (x y : ℝ) (hx : 0 ≤ x) (hy : y < 0) :
+      x * y ≤ 0 :=
+    mul_nonpos_of_nonneg_of_nonpos hx hy.le
+  have hprod_neg (x y : ℝ) (hx : 0 < x) (hy : y < 0) :
+      x * y < 0 :=
+    mul_neg_of_pos_of_neg hx hy
+  rcases le_total a4 a1 with h14 | h41
+  · have hq_rel : 2 * B14 = B1q2 + B1q3 + B13 - B11 := bilinear4_q_rel S T'
+    have h_step2 : a1 ^ 2 * B11 + a2 ^ 2 * B22 + a3 ^ 2 * B33 + a4 ^ 2 * B44 +
+        2 * a1 * a2 * B12 + 2 * a1 * a3 * B13 + 2 * a2 * a3 * B23 +
+        2 * a2 * a4 * B24 + 2 * a3 * a4 * B34 + 2 * a1 * a4 * B14 =
+        a1 * (a1 - a4) * B11 + a2 ^ 2 * B22 + a3 ^ 2 * B33 + a4 ^ 2 * B44 +
+        2 * a1 * a2 * B12 + (2 * a1 * a3 + a1 * a4) * B13 + 2 * a2 * a3 * B23 +
+        2 * a2 * a4 * B24 + 2 * a3 * a4 * B34 + a1 * a4 * B1q2 + a1 * a4 * B1q3 := by
+      linear_combination a1 * a4 * hq_rel
+    rw [hexp, h_step2]
+    have t1 : a1 * (a1 - a4) * B11 ≤ 0 :=
+      hprod_nonpos _ _ (mul_nonneg ha1 (sub_nonneg.mpr h14)) hp1p1
+    have t3 : a3 ^ 2 * B33 ≤ 0 :=
+      hprod_nonpos _ _ (sq_nonneg a3) hp3p3
+    have t4 : a4 ^ 2 * B44 ≤ 0 :=
+      hprod_nonpos _ _ (sq_nonneg a4) hp4p4
+    have t6 : (2 * a1 * a3 + a1 * a4) * B13 ≤ 0 := by
+      apply hprod_nonpos _ _ ?_ hp1p3
+      exact add_nonneg (mul_nonneg (mul_nonneg (by norm_num) ha1) ha3) h14_prod
+    have t7 : 2 * a2 * a3 * B23 ≤ 0 :=
+      hprod_nonpos _ _ (mul_nonneg (mul_nonneg (by norm_num) ha2) ha3) hp2p3
+    have t8 : 2 * a2 * a4 * B24 ≤ 0 :=
+      hprod_nonpos _ _ (mul_nonneg (mul_nonneg (by norm_num) ha2) ha4) hp2p4
+    have t9 : 2 * a3 * a4 * B34 ≤ 0 :=
+      hprod_nonpos _ _ (mul_nonneg (mul_nonneg (by norm_num) ha3) ha4) hp3p4
+    have t10 : a1 * a4 * B1q2 ≤ 0 :=
+      hprod_nonpos _ _ h14_prod hp1q2
+    have t11 : a1 * a4 * B1q3 ≤ 0 :=
+      hprod_nonpos _ _ h14_prod hp1q3
+    rcases lt_or_eq_of_le ha2 with ha2_lt | ha2_eq
+    · have t2 : a2 ^ 2 * B22 < 0 :=
+        hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha2_lt)) hp2p2
+      have t5 : 2 * a1 * a2 * B12 ≤ 0 :=
+        hprod_nonpos _ _ (mul_nonneg (mul_nonneg (by norm_num) ha1) ha2) hp1p2
+      linarith
+    · have h20 : a2 = 0 := ha2_eq.symm
+      rw [h20]
+      simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add]
+      rcases lt_or_eq_of_le ha3 with ha3_lt | ha3_eq
+      · have t3_strict : a3 ^ 2 * B33 < 0 :=
+          hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha3_lt)) hp3p3
+        linarith
+      · have h30 : a3 = 0 := ha3_eq.symm
+        rw [h30]
+        simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add]
+        rcases lt_or_eq_of_le ha4 with ha4_lt | ha4_eq
+        · have t4_strict : a4 ^ 2 * B44 < 0 :=
+            hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha4_lt)) hp4p4
+          have t6' : a1 * a4 * B13 ≤ 0 :=
+            hprod_nonpos _ _ h14_prod hp1p3
+          linarith
+        · have h40 : a4 = 0 := ha4_eq.symm
+          rw [h40]
+          simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add, sub_zero]
+          have ha1_pos : 0 < a1 := by linarith [hw0_pos]
+          have t1_strict : a1 ^ 2 * B11 < 0 :=
+            hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha1_pos)) hp1p1
+          linarith
+  · have hr_rel : 2 * B14 = B4r2 + B4r3 + B4r4 - B44 := bilinear4_r_rel S hsymm T'
+    have h_step2 : a1 ^ 2 * B11 + a2 ^ 2 * B22 + a3 ^ 2 * B33 + a4 ^ 2 * B44 +
+        2 * a1 * a2 * B12 + 2 * a1 * a3 * B13 + 2 * a2 * a3 * B23 +
+        2 * a2 * a4 * B24 + 2 * a3 * a4 * B34 + 2 * a1 * a4 * B14 =
+        a1 ^ 2 * B11 + a2 ^ 2 * B22 + a3 ^ 2 * B33 + a4 * (a4 - a1) * B44 +
+        2 * a1 * a2 * B12 + 2 * a1 * a3 * B13 + 2 * a2 * a3 * B23 +
+        2 * a2 * a4 * B24 + 2 * a3 * a4 * B34 + a1 * a4 * B4r2 +
+        a1 * a4 * B4r3 + a1 * a4 * B4r4 := by
+      linear_combination a1 * a4 * hr_rel
+    rw [hexp, h_step2]
+    have t1 : a1 ^ 2 * B11 ≤ 0 :=
+      hprod_nonpos _ _ (sq_nonneg a1) hp1p1
+    have t3 : a3 ^ 2 * B33 ≤ 0 :=
+      hprod_nonpos _ _ (sq_nonneg a3) hp3p3
+    have t4 : a4 * (a4 - a1) * B44 ≤ 0 :=
+      hprod_nonpos _ _ (mul_nonneg ha4 (sub_nonneg.mpr h41)) hp4p4
+    have t5 : 2 * a1 * a2 * B12 ≤ 0 :=
+      hprod_nonpos _ _ (mul_nonneg (mul_nonneg (by norm_num) ha1) ha2) hp1p2
+    have t6 : 2 * a1 * a3 * B13 ≤ 0 :=
+      hprod_nonpos _ _ (mul_nonneg (mul_nonneg (by norm_num) ha1) ha3) hp1p3
+    have t7 : 2 * a2 * a3 * B23 ≤ 0 :=
+      hprod_nonpos _ _ (mul_nonneg (mul_nonneg (by norm_num) ha2) ha3) hp2p3
+    have t8 : 2 * a2 * a4 * B24 ≤ 0 :=
+      hprod_nonpos _ _ (mul_nonneg (mul_nonneg (by norm_num) ha2) ha4) hp2p4
+    have t9 : 2 * a3 * a4 * B34 ≤ 0 :=
+      hprod_nonpos _ _ (mul_nonneg (mul_nonneg (by norm_num) ha3) ha4) hp3p4
+    have t10 : a1 * a4 * B4r2 ≤ 0 :=
+      hprod_nonpos _ _ h14_prod hp4r2
+    have t11 : a1 * a4 * B4r3 ≤ 0 :=
+      hprod_nonpos _ _ h14_prod hp4r3
+    have t12 : a1 * a4 * B4r4 ≤ 0 :=
+      hprod_nonpos _ _ h14_prod hp4r4
+    rcases lt_or_eq_of_le ha2 with ha2_lt | ha2_eq
+    · have t2_strict : a2 ^ 2 * B22 < 0 :=
+        hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha2_lt)) hp2p2
+      linarith
+    · have h20 : a2 = 0 := ha2_eq.symm
+      rw [h20]
+      simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add]
+      rcases lt_or_eq_of_le ha3 with ha3_lt | ha3_eq
+      · have t3_strict : a3 ^ 2 * B33 < 0 :=
+          hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha3_lt)) hp3p3
+        linarith
+      · have h30 : a3 = 0 := ha3_eq.symm
+        rw [h30]
+        simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add]
+        rcases lt_or_eq_of_le ha1 with ha1_lt | ha1_eq
+        · have t1_strict : a1 ^ 2 * B11 < 0 :=
+            hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha1_lt)) hp1p1
+          linarith
+        · have h10 : a1 = 0 := ha1_eq.symm
+          rw [h10]
+          simp only [zero_pow (by decide : 2 ≠ 0), mul_zero, zero_mul, add_zero, zero_add, sub_zero]
+          have ha4_pos : 0 < a4 := by linarith [hw0_pos]
+          have t4_strict : a4 ^ 2 * B44 < 0 :=
+            hprod_neg _ _ (sq_pos_of_ne_zero (ne_of_gt ha4_pos)) hp4p4
+          linarith
 
 /-- Paper Lemma 2: every quadratic sign representation of `f8` has strictly
 negative symmetric mixed curvature. -/
