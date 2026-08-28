@@ -634,6 +634,30 @@ private structure F8CurvatureCertificate
   p4r3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix4) (T.act r3) < 0
   p4r4 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix4) (T.act r4) < 0
 
+private theorem SignedPerm4.act_add (T : SignedPerm4) (u v : Fin 4 → ℝ) :
+    T.act (fun i => u i + v i) = fun i => T.act u i + T.act v i := by
+  ext i
+  dsimp [SignedPerm4.act]
+  split_ifs <;> ring
+
+private theorem SignedPerm4.act_smul (T : SignedPerm4) (c : ℝ) (u : Fin 4 → ℝ) :
+    T.act (fun i => c * u i) = fun i => c * T.act u i := by
+  ext i
+  dsimp [SignedPerm4.act]
+  split_ifs <;> ring
+
+private theorem bilinear4_add_right (S : Matrix (Fin 4) (Fin 4) ℝ) (u v1 v2 : Fin 4 → ℝ) :
+    bilinear4 S u (fun i => v1 i + v2 i) = bilinear4 S u v1 + bilinear4 S u v2 := by
+  dsimp [bilinear4]
+  simp only [Fin.sum_univ_four]
+  ring
+
+private theorem bilinear4_smul_right (S : Matrix (Fin 4) (Fin 4) ℝ) (c : ℝ) (u v : Fin 4 → ℝ) :
+    bilinear4 S u (fun i => c * v i) = c * bilinear4 S u v := by
+  dsimp [bilinear4]
+  simp only [Fin.sum_univ_four]
+  ring
+
 /-- The fourteen exact checkerboards, transported by simultaneous signed
 coordinate permutations, yield the abstract curvature certificate. -/
 private theorem f8_has_curvatureCertificate
@@ -641,7 +665,220 @@ private theorem f8_has_curvatureCertificate
     (hdeg : P.totalDegree ≤ 2)
     (hrep : SignRepresents P f8) :
     F8CurvatureCertificate (symmetricPart4 (mixedMatrix4 P)) := by
-  sorry
+  set S := symmetricPart4 (mixedMatrix4 P)
+  have h_p1p1 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix1) (T.act prefix1) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, false, false, false] ![false, false, false, false]
+      ![true, false, false, true] ![false, false, false, true]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, false, false, false] ![false, false, false, false]))
+      (T.act (bitDiff4 ![true, false, false, true] ![false, false, false, true])) < 0 at h
+    have hx : bitDiff4 ![true, false, false, false] ![false, false, false, false] = prefix1 := by
+      ext i; fin_cases i <;> (dsimp [prefix1, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, false, false, true] ![false, false, false, true] = prefix1 := by
+      ext i; fin_cases i <;> (dsimp [prefix1, bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h
+    exact h
+  have h_p2p2 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix2) (T.act prefix2) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, true, false, false] ![false, false, false, false]
+      ![true, true, false, false] ![false, false, false, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, true, false, false] ![false, false, false, false]))
+      (T.act (bitDiff4 ![true, true, false, false] ![false, false, false, false])) < 0 at h
+    have hx : bitDiff4 ![true, true, false, false] ![false, false, false, false] = prefix2 := by
+      ext i; fin_cases i <;> (dsimp [prefix2, bitDiff4, boolToReal]; ring)
+    rw [hx] at h
+    exact h
+  have h_p3p3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix3) (T.act prefix3) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, true, true, false] ![false, false, false, false]
+      ![true, true, true, false] ![false, false, false, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, true, true, false] ![false, false, false, false]))
+      (T.act (bitDiff4 ![true, true, true, false] ![false, false, false, false])) < 0 at h
+    have hx : bitDiff4 ![true, true, true, false] ![false, false, false, false] = prefix3 := by
+      ext i; fin_cases i <;> (dsimp [prefix3, bitDiff4, boolToReal]; ring)
+    rw [hx] at h
+    exact h
+  have h_p4p4 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix4) (T.act prefix4) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, true, true, true] ![false, false, false, false]
+      ![true, true, true, true] ![false, false, false, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, true, true, true] ![false, false, false, false]))
+      (T.act (bitDiff4 ![true, true, true, true] ![false, false, false, false])) < 0 at h
+    have hx : bitDiff4 ![true, true, true, true] ![false, false, false, false] = prefix4 := by
+      ext i; fin_cases i <;> (dsimp [prefix4, bitDiff4, boolToReal]; ring)
+    rw [hx] at h
+    exact h
+  have h_p1p3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix1) (T.act prefix3) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, false, true, false] ![false, false, true, false]
+      ![true, true, true, false] ![false, false, false, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, false, true, false] ![false, false, true, false]))
+      (T.act (bitDiff4 ![true, true, true, false] ![false, false, false, false])) < 0 at h
+    have hx : bitDiff4 ![true, false, true, false] ![false, false, true, false] = prefix1 := by
+      ext i; fin_cases i <;> (dsimp [prefix1, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, true, true, false] ![false, false, false, false] = prefix3 := by
+      ext i; fin_cases i <;> (dsimp [prefix3, bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h
+    exact h
+  have h_p2p3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix2) (T.act prefix3) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, true, false, false] ![false, false, false, false]
+      ![true, true, true, false] ![false, false, false, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, true, false, false] ![false, false, false, false]))
+      (T.act (bitDiff4 ![true, true, true, false] ![false, false, false, false])) < 0 at h
+    have hx : bitDiff4 ![true, true, false, false] ![false, false, false, false] = prefix2 := by
+      ext i; fin_cases i <;> (dsimp [prefix2, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, true, true, false] ![false, false, false, false] = prefix3 := by
+      ext i; fin_cases i <;> (dsimp [prefix3, bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h
+    exact h
+  have h_p2p4 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix2) (T.act prefix4) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, true, false, true] ![false, false, false, true]
+      ![true, true, true, true] ![false, false, false, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, true, false, true] ![false, false, false, true]))
+      (T.act (bitDiff4 ![true, true, true, true] ![false, false, false, false])) < 0 at h
+    have hx : bitDiff4 ![true, true, false, true] ![false, false, false, true] = prefix2 := by
+      ext i; fin_cases i <;> (dsimp [prefix2, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, true, true, true] ![false, false, false, false] = prefix4 := by
+      ext i; fin_cases i <;> (dsimp [prefix4, bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h
+    exact h
+  have h_p3p4 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix3) (T.act prefix4) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, true, true, false] ![false, false, false, false]
+      ![true, true, true, true] ![false, false, false, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, true, true, false] ![false, false, false, false]))
+      (T.act (bitDiff4 ![true, true, true, true] ![false, false, false, false])) < 0 at h
+    have hx : bitDiff4 ![true, true, true, false] ![false, false, false, false] = prefix3 := by
+      ext i; fin_cases i <;> (dsimp [prefix3, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, true, true, true] ![false, false, false, false] = prefix4 := by
+      ext i; fin_cases i <;> (dsimp [prefix4, bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h
+    exact h
+  have h_p1p2 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix1) (T.act prefix2) < 0 := by
+    intro T
+    have h_aux := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, false, false, false] ![false, false, false, false]
+      ![true, true, false, false] ![false, false, true, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, false, false, false] ![false, false, false, false]))
+      (T.act (bitDiff4 ![true, true, false, false] ![false, false, true, false])) < 0 at h_aux
+    have hx : bitDiff4 ![true, false, false, false] ![false, false, false, false] = prefix1 := by
+      ext i; fin_cases i <;> (dsimp [prefix1, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, true, false, false] ![false, false, true, false] = (![1, 1, -1, 0] : Fin 4 → ℝ) := by
+      ext i; fin_cases i <;> (dsimp [bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h_aux
+    have h13 := h_p1p3 T
+    have h_sum :
+        bilinear4 S (T.act prefix1) (T.act (![1, 1, -1, 0] : Fin 4 → ℝ)) +
+          bilinear4 S (T.act prefix1) (T.act prefix3) < 0 := add_neg h_aux h13
+    have h_add_bilin :=
+      (bilinear4_add_right S (T.act prefix1) (T.act (![1, 1, -1, 0] : Fin 4 → ℝ))
+        (T.act prefix3)).symm
+    rw [h_add_bilin] at h_sum
+    have h_act_add :=
+      (SignedPerm4.act_add T (![1, 1, -1, 0] : Fin 4 → ℝ) prefix3).symm
+    rw [h_act_add] at h_sum
+    have h_id :
+        (fun i => (![1, 1, -1, 0] : Fin 4 → ℝ) i + prefix3 i) =
+          fun i => 2 * prefix2 i := by
+      ext i; fin_cases i <;> (dsimp [prefix3, prefix2]; ring)
+    rw [h_id] at h_sum
+    have h_act_smul := SignedPerm4.act_smul T 2 prefix2
+    rw [h_act_smul] at h_sum
+    have h_smul_bilin :=
+      bilinear4_smul_right S 2 (T.act prefix1) (T.act prefix2)
+    rw [h_smul_bilin] at h_sum
+    linarith
+  have h_p1q2 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix1) (T.act q2) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, false, false, true] ![false, false, false, true]
+      ![true, false, true, true] ![false, false, false, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, false, false, true] ![false, false, false, true]))
+      (T.act (bitDiff4 ![true, false, true, true] ![false, false, false, false])) < 0 at h
+    have hx : bitDiff4 ![true, false, false, true] ![false, false, false, true] = prefix1 := by
+      ext i; fin_cases i <;> (dsimp [prefix1, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, false, true, true] ![false, false, false, false] = q2 := by
+      ext i; fin_cases i <;> (dsimp [q2, bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h
+    exact h
+  have h_p1q3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix1) (T.act q3) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, false, false, true] ![false, false, false, true]
+      ![true, true, false, true] ![false, false, false, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, false, false, true] ![false, false, false, true]))
+      (T.act (bitDiff4 ![true, true, false, true] ![false, false, false, false])) < 0 at h
+    have hx : bitDiff4 ![true, false, false, true] ![false, false, false, true] = prefix1 := by
+      ext i; fin_cases i <;> (dsimp [prefix1, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, true, false, true] ![false, false, false, false] = q3 := by
+      ext i; fin_cases i <;> (dsimp [q3, bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h
+    exact h
+  have h_p4r2 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix4) (T.act r2) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, true, true, true] ![false, false, false, false]
+      ![true, true, false, true] ![false, false, false, true]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, true, true, true] ![false, false, false, false]))
+      (T.act (bitDiff4 ![true, true, false, true] ![false, false, false, true])) < 0 at h
+    have hx : bitDiff4 ![true, true, true, true] ![false, false, false, false] = prefix4 := by
+      ext i; fin_cases i <;> (dsimp [prefix4, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, true, false, true] ![false, false, false, true] = r2 := by
+      ext i; fin_cases i <;> (dsimp [r2, bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h
+    exact h
+  have h_p4r3 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix4) (T.act r3) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, true, true, true] ![false, false, false, false]
+      ![true, false, true, true] ![false, false, false, true]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, true, true, true] ![false, false, false, false]))
+      (T.act (bitDiff4 ![true, false, true, true] ![false, false, false, true])) < 0 at h
+    have hx : bitDiff4 ![true, true, true, true] ![false, false, false, false] = prefix4 := by
+      ext i; fin_cases i <;> (dsimp [prefix4, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, false, true, true] ![false, false, false, true] = r3 := by
+      ext i; fin_cases i <;> (dsimp [r3, bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h
+    exact h
+  have h_p4r4 : ∀ T : SignedPerm4, bilinear4 S (T.act prefix4) (T.act r4) < 0 := by
+    intro T
+    have h := checkerboard_symmetric_sign_neg_act P hdeg hrep
+      ![true, true, true, true] ![false, false, false, false]
+      ![true, false, true, true] ![false, false, true, false]
+      rfl rfl rfl rfl T
+    change bilinear4 S (T.act (bitDiff4 ![true, true, true, true] ![false, false, false, false]))
+      (T.act (bitDiff4 ![true, false, true, true] ![false, false, true, false])) < 0 at h
+    have hx : bitDiff4 ![true, true, true, true] ![false, false, false, false] = prefix4 := by
+      ext i; fin_cases i <;> (dsimp [prefix4, bitDiff4, boolToReal]; ring)
+    have hy : bitDiff4 ![true, false, true, true] ![false, false, true, false] = r4 := by
+      ext i; fin_cases i <;> (dsimp [r4, bitDiff4, boolToReal]; ring)
+    rw [hx, hy] at h
+    exact h
+  exact ⟨h_p1p1, h_p2p2, h_p3p3, h_p4p4, h_p1p2, h_p1p3, h_p2p3, h_p2p4,
+    h_p3p4, h_p1q2, h_p1q3, h_p4r2, h_p4r3, h_p4r4⟩
 
 private theorem symmetricPart4_isSymm (K : Matrix (Fin 4) (Fin 4) ℝ) :
     (symmetricPart4 K).IsSymm := by
@@ -694,11 +931,11 @@ private theorem exists_signedPerm_sorted (z : Fin 4 → ℝ) :
   rw [hT 0, hT 1, hT 2, hT 3]
   refine ⟨hp01, hp12, hp23, abs_nonneg _⟩
 
-private lemma SignedPerm4.act_add (T : SignedPerm4) (u v : Fin 4 → ℝ) :
+private lemma SignedPerm4.act_add_pi (T : SignedPerm4) (u v : Fin 4 → ℝ) :
     T.act (u + v) = T.act u + T.act v := by
   ext i; dsimp [SignedPerm4.act]; split_ifs <;> ring
 
-private lemma SignedPerm4.act_smul (T : SignedPerm4) (c : ℝ) (u : Fin 4 → ℝ) :
+private lemma SignedPerm4.act_smul_pi (T : SignedPerm4) (c : ℝ) (u : Fin 4 → ℝ) :
     T.act (c • u) = c • T.act u := by
   ext i; dsimp [SignedPerm4.act]; split_ifs <;> ring
 
@@ -713,8 +950,8 @@ private lemma act_prefix_expansion (T' : SignedPerm4) (w : Fin 4 → ℝ) :
   have h := prefix_expansion w
   have h' := congr_arg T'.act h
   rw [h']
-  rw [SignedPerm4.act_add, SignedPerm4.act_add, SignedPerm4.act_add]
-  rw [SignedPerm4.act_smul, SignedPerm4.act_smul, SignedPerm4.act_smul, SignedPerm4.act_smul]
+  rw [SignedPerm4.act_add_pi, SignedPerm4.act_add_pi, SignedPerm4.act_add_pi]
+  rw [SignedPerm4.act_smul_pi, SignedPerm4.act_smul_pi, SignedPerm4.act_smul_pi, SignedPerm4.act_smul_pi]
 
 private lemma quadraticForm4_eq_bilinear4 (S : Matrix (Fin 4) (Fin 4) ℝ) (z : Fin 4 → ℝ) :
     quadraticForm4 S z = bilinear4 S z z := by
@@ -728,11 +965,11 @@ private lemma q_relation : q2 + q3 + prefix3 = prefix1 + (2 : ℝ) • prefix4 :
 private lemma r_relation : r2 + r3 + r4 = (2 : ℝ) • prefix1 + prefix4 := by
   ext i; fin_cases i <;> (dsimp [r2, r3, r4, prefix1, prefix4]; ring)
 
-private lemma bilinear4_add_right (S : Matrix (Fin 4) (Fin 4) ℝ) (u v w : Fin 4 → ℝ) :
+private lemma bilinear4_add_right_pi (S : Matrix (Fin 4) (Fin 4) ℝ) (u v w : Fin 4 → ℝ) :
     bilinear4 S u (v + w) = bilinear4 S u v + bilinear4 S u w := by
   unfold bilinear4; simp_rw [Pi.add_apply, mul_add, Finset.sum_add_distrib]
 
-private lemma bilinear4_smul_right (S : Matrix (Fin 4) (Fin 4) ℝ) (c : ℝ) (u v : Fin 4 → ℝ) :
+private lemma bilinear4_smul_right_pi (S : Matrix (Fin 4) (Fin 4) ℝ) (c : ℝ) (u v : Fin 4 → ℝ) :
     bilinear4 S u (c • v) = c * bilinear4 S u v := by
   unfold bilinear4
   simp only [Pi.smul_apply, smul_eq_mul, Fin.sum_univ_four]
@@ -767,8 +1004,8 @@ private lemma bilinear4_q_rel (S : Matrix (Fin 4) (Fin 4) ℝ) (T' : SignedPerm4
   have hq : bilinear4 S (T'.act prefix1) (T'.act (q2 + q3 + prefix3)) =
       bilinear4 S (T'.act prefix1) (T'.act (prefix1 + (2 : ℝ) • prefix4)) := by
     rw [q_relation]
-  rw [SignedPerm4.act_add, SignedPerm4.act_add, SignedPerm4.act_add, SignedPerm4.act_smul] at hq
-  rw [bilinear4_add_right, bilinear4_add_right, bilinear4_add_right, bilinear4_smul_right] at hq
+  rw [SignedPerm4.act_add_pi, SignedPerm4.act_add_pi, SignedPerm4.act_add_pi, SignedPerm4.act_smul_pi] at hq
+  rw [bilinear4_add_right_pi, bilinear4_add_right_pi, bilinear4_add_right_pi, bilinear4_smul_right_pi] at hq
   linarith
 
 private lemma bilinear4_r_rel (S : Matrix (Fin 4) (Fin 4) ℝ) (hsymm : S.IsSymm) (T' : SignedPerm4) :
@@ -780,8 +1017,8 @@ private lemma bilinear4_r_rel (S : Matrix (Fin 4) (Fin 4) ℝ) (hsymm : S.IsSymm
   have hr : bilinear4 S (T'.act prefix4) (T'.act (r2 + r3 + r4)) =
       bilinear4 S (T'.act prefix4) (T'.act ((2 : ℝ) • prefix1 + prefix4)) := by
     rw [r_relation]
-  rw [SignedPerm4.act_add, SignedPerm4.act_add, SignedPerm4.act_add, SignedPerm4.act_smul] at hr
-  rw [bilinear4_add_right, bilinear4_add_right, bilinear4_add_right, bilinear4_smul_right] at hr
+  rw [SignedPerm4.act_add_pi, SignedPerm4.act_add_pi, SignedPerm4.act_add_pi, SignedPerm4.act_smul_pi] at hr
+  rw [bilinear4_add_right_pi, bilinear4_add_right_pi, bilinear4_add_right_pi, bilinear4_smul_right_pi] at hr
   have h_symm : bilinear4 S (T'.act prefix4) (T'.act prefix1) =
       bilinear4 S (T'.act prefix1) (T'.act prefix4) := by
     unfold bilinear4; rw [Fin.sum_univ_four]; simp_rw [Fin.sum_univ_four]
