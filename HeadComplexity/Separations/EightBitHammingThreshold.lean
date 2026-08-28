@@ -2250,18 +2250,66 @@ private theorem clearedTwoAtomPoly_mixed_negative
   exact f8_quadratic_mixed_negative
     (toMultilinear (clearedTwoAtomPoly φ c)) hdeg hrep
 
-/-- Paper Lemma 3, nondegeneracy part: negative mixed curvature rules out a
-constant denominator. Since every `FracAtom` denominator has one common slope
-factor and strictly positive coordinate weights, all eight slopes of each
-nonconstant denominator are nonzero. -/
-private theorem clearedTwoAtom_denominator_slopes_ne_zero
-    (φ : Fin 2 → FracAtom 8) (c : ℝ)
-    (hneg : NegativeDefinite4
-      (symmetricPart4
-        (mixedMatrix4 (toMultilinear (clearedTwoAtomPoly φ c))))) :
-    (∀ i, (fracDenominator (φ 0)).linear i ≠ 0) ∧
-      (∀ i, (fracDenominator (φ 1)).linear i ≠ 0) := by
-  sorry
+private theorem quadraticForm4_symmetricPart (K : Matrix (Fin 4) (Fin 4) ℝ) (z : Fin 4 → ℝ) :
+    quadraticForm4 (symmetricPart4 K) z = quadraticForm4 K z := by
+  simp only [quadraticForm4, symmetricPart4, Matrix.mulVec, dotProduct, Fin.sum_univ_four]
+  ring
+
+private theorem mulVec_eq_zero_of_neg_def (K : Matrix (Fin 4) (Fin 4) ℝ)
+    (hneg : NegativeDefinite4 (symmetricPart4 K)) (z : Fin 4 → ℝ) (hK : K.mulVec z = 0) :
+    z = 0 := by
+  by_contra hz
+  have hq_neg := hneg z hz
+  rw [quadraticForm4_symmetricPart K z] at hq_neg
+  have hq_zero : quadraticForm4 K z = 0 := by
+    simp only [quadraticForm4, hK, dotProduct, Pi.zero_apply, mul_zero, Finset.sum_const_zero]
+  linarith
+
+private theorem fracDenominator_linear_eq_zero_iff (φ : FracAtom 8) (i : Fin 8) :
+    (fracDenominator φ).linear i = 0 ↔ φ.α = 1 := by
+  change φ.ρ i * (φ.α - 1) = 0 ↔ φ.α = 1
+  have hρ : φ.ρ i ≠ 0 := (φ.hρ i).ne'
+  constructor
+  · intro h
+    cases mul_eq_zero.mp h with
+    | inl h1 => contradiction
+    | inr h2 => linarith
+  · intro h
+    rw [h]
+    ring
+
+private theorem slopes_ne_zero_iff (φ : FracAtom 8) :
+    (∀ i : Fin 8, (fracDenominator φ).linear i ≠ 0) ↔ φ.α ≠ 1 := by
+  constructor
+  · intro h hα
+    have h0 := (fracDenominator_linear_eq_zero_iff φ 0).mpr hα
+    exact h 0 h0
+  · intro h i h0
+    have hα := (fracDenominator_linear_eq_zero_iff φ i).mp h0
+    exact h hα
+
+private theorem exists_nonzero_common_orthogonal (u v : Fin 4 → ℝ) :
+    ∃ z : Fin 4 → ℝ, z ≠ 0 ∧ dotProduct u z = 0 ∧ dotProduct v z = 0 := by
+  classical
+  let F : (Fin 4 → ℝ) →ₗ[ℝ] (Fin 2 → ℝ) :=
+    LinearMap.pi (fun i =>
+      if i = 0 then dotProductBilin ℝ ℝ u else dotProductBilin ℝ ℝ v)
+  have hnot : ¬ Function.Injective F := by
+    intro hinj
+    have hdim :
+        Module.finrank ℝ (Fin 4 → ℝ) ≤ Module.finrank ℝ (Fin 2 → ℝ) :=
+      LinearMap.finrank_le_finrank_of_injective hinj
+    norm_num [Module.finrank_fin_fun] at hdim
+  obtain ⟨x, y, hxy, hne⟩ := Function.not_injective_iff.mp hnot
+  have h0 : dotProduct u x = dotProduct u y := by
+    have h := congr_fun hxy (0 : Fin 2)
+    simpa [F, dotProductBilin] using h
+  have h1 : dotProduct v x = dotProduct v y := by
+    have h := congr_fun hxy (1 : Fin 2)
+    simpa [F, dotProductBilin] using h
+  refine ⟨x - y, sub_ne_zero.mpr hne, ?_, ?_⟩
+  · rw [dotProduct_sub, h0, sub_self]
+  · rw [dotProduct_sub, h1, sub_self]
 
 private def factorFormA (φ : Fin 2 → FracAtom 8) (c : ℝ) : AffineForm 8 where
   constant := c * (fracDenominator (φ 0)).constant + (fracNumerator (φ 0)).constant
@@ -2510,6 +2558,63 @@ private theorem mixedMatrix4_clearedTwoAtomPoly (φ : Fin 2 → FracAtom 8) (c :
   rw [h_x1y0_A, h_x1y0_D, h_x1y0_C, h_x1y0_B]
   rw [h_x1y1_A, h_x1y1_D, h_x1y1_C, h_x1y1_B]
   ring
+
+/-- Paper Lemma 3, nondegeneracy part: negative mixed curvature rules out a
+constant denominator. Since every `FracAtom` denominator has one common slope
+factor and strictly positive coordinate weights, all eight slopes of each
+nonconstant denominator are nonzero. -/
+private theorem clearedTwoAtom_denominator_slopes_ne_zero
+    (φ : Fin 2 → FracAtom 8) (c : ℝ)
+    (hneg : NegativeDefinite4
+      (symmetricPart4
+        (mixedMatrix4 (toMultilinear (clearedTwoAtomPoly φ c))))) :
+    (∀ i, (fracDenominator (φ 0)).linear i ≠ 0) ∧
+      (∀ i, (fracDenominator (φ 1)).linear i ≠ 0) := by
+  refine ⟨(slopes_ne_zero_iff (φ 0)).2 ?_, (slopes_ne_zero_iff (φ 1)).2 ?_⟩
+  · intro hα0
+    have hden0 (k : Fin 8) : (fracDenominator (φ 0)).linear k = 0 :=
+      (fracDenominator_linear_eq_zero_iff (φ 0) k).2 hα0
+    let u : Fin 4 → ℝ :=
+      fun j => (fracDenominator (φ 1)).linear (Fin.natAdd 4 j)
+    let v : Fin 4 → ℝ :=
+      fun j => (factorFormA φ c).linear (Fin.natAdd 4 j)
+    obtain ⟨z, hz, hu, hv⟩ := exists_nonzero_common_orthogonal u v
+    dsimp [u, v] at hu hv
+    have hKz :
+        (mixedMatrix4 (toMultilinear (clearedTwoAtomPoly φ c))).mulVec z = 0 := by
+      ext i
+      simp only [Matrix.mulVec, dotProduct, Pi.zero_apply]
+      simp_rw [mixedMatrix4_clearedTwoAtomPoly φ c]
+      simp_rw [hden0]
+      simp only [mul_zero, zero_mul, add_zero]
+      simp only [dotProduct, Fin.sum_univ_four] at hu hv
+      simp only [Fin.sum_univ_four]
+      linear_combination
+        (factorFormA φ c).linear (Fin.castAdd 4 i) * hu +
+        (fracDenominator (φ 1)).linear (Fin.castAdd 4 i) * hv
+    exact hz (mulVec_eq_zero_of_neg_def _ hneg z hKz)
+  · intro hα1
+    have hden1 (k : Fin 8) : (fracDenominator (φ 1)).linear k = 0 :=
+      (fracDenominator_linear_eq_zero_iff (φ 1) k).2 hα1
+    let u : Fin 4 → ℝ :=
+      fun j => (fracDenominator (φ 0)).linear (Fin.natAdd 4 j)
+    let v : Fin 4 → ℝ :=
+      fun j => (fracNumerator (φ 1)).linear (Fin.natAdd 4 j)
+    obtain ⟨z, hz, hu, hv⟩ := exists_nonzero_common_orthogonal u v
+    dsimp [u, v] at hu hv
+    have hKz :
+        (mixedMatrix4 (toMultilinear (clearedTwoAtomPoly φ c))).mulVec z = 0 := by
+      ext i
+      simp only [Matrix.mulVec, dotProduct, Pi.zero_apply]
+      simp_rw [mixedMatrix4_clearedTwoAtomPoly φ c]
+      simp_rw [hden1]
+      simp only [mul_zero, zero_mul, add_zero]
+      simp only [dotProduct, Fin.sum_univ_four] at hu hv
+      simp only [Fin.sum_univ_four]
+      linear_combination
+        (fracNumerator (φ 1)).linear (Fin.castAdd 4 i) * hu +
+        (fracDenominator (φ 0)).linear (Fin.castAdd 4 i) * hv
+    exact hz (mulVec_eq_zero_of_neg_def _ hneg z hKz)
 
 private theorem factorCurvature_eq_clearedTwoAtomPoly_mixed
     (φ : Fin 2 → FracAtom 8) (c : ℝ) :
