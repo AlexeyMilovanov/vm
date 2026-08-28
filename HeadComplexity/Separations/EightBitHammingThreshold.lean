@@ -1430,6 +1430,18 @@ private theorem f8FactorData_Q_mulVec_surjective (D : F8FactorData) :
   Matrix.mulVec_surjective_iff_isUnit.mpr
     (Matrix.mulVec_injective_iff_isUnit.mp (f8FactorData_Q_mulVec_injective D))
 
+private noncomputable def minimizingBit (x : ℝ) : Bool := decide (x < 0)
+
+private theorem mul_hammingSign_minimizingBit (x : ℝ) :
+    x * hammingSign (minimizingBit x) = -|x| := by
+  by_cases hx : x < 0
+  · simp [minimizingBit, hx, abs_of_neg hx]
+  · simp [minimizingBit, hx, abs_of_nonneg (le_of_not_gt hx)]
+
+private theorem hammingSign_beq (a b : Bool) :
+    hammingSign (a == b) = hammingSign a * hammingSign b := by
+  cases a <;> cases b <;> simp [hammingSign]
+
 /-- The finite ±1 minimization step in paper Lemma 4. -/
 private theorem f8FactorData_shell_bound (D : F8FactorData) :
     ∀ i j, i ≠ j →
@@ -1438,7 +1450,54 @@ private theorem f8FactorData_shell_bound (D : F8FactorData) :
         ∑ k ∈ Finset.univ.filter (fun k => k ≠ i ∧ k ≠ j),
           |2 * splitPair (factorD D.Q j) (factorA D.P D.Q k)| <
         factorDelta D.P D.Q j := by
-  sorry
+  intro i j hij
+  set A0 := 2 * splitPair (factorD D.Q j) D.r
+  set A1 := 2 * splitPair (factorD D.Q j) (factorB D.P D.Q i)
+  set Ak := fun k => 2 * splitPair (factorD D.Q j) (factorA D.P D.Q k)
+  set sj := minimizingBit A0
+  set ε : Fin 4 → Bool := fun k =>
+    if k = j then sj
+    else if k = i then (minimizingBit A1 == sj)
+    else (minimizingBit (Ak k) == sj)
+  have hεj : ε j = sj := by
+    dsimp [ε]
+    rw [if_pos rfl]
+  have hεi : ε i = (minimizingBit A1 == sj) := by
+    dsimp [ε]
+    rw [if_neg hij, if_pos rfl]
+  have hεk (k : Fin 4) (hk : k ≠ i ∧ k ≠ j) : ε k = (minimizingBit (Ak k) == sj) := by
+    dsimp [ε]
+    rw [if_neg hk.2, if_neg hk.1]
+  have hA0 : A0 * hammingSign (ε j) = -|A0| := by
+    rw [hεj, mul_hammingSign_minimizingBit]
+  have hsj_sq : hammingSign sj * hammingSign sj = 1 := by
+    rcases hammingSign_cases sj with h | h <;> rw [h] <;> ring
+  have hA1 : A1 * hammingSign (ε i) * hammingSign (ε j) = -|A1| := by
+    rw [hεi, hεj, hammingSign_beq]
+    have h_assoc : A1 * (hammingSign (minimizingBit A1) * hammingSign sj) * hammingSign sj =
+        (A1 * hammingSign (minimizingBit A1)) * (hammingSign sj * hammingSign sj) := by ring
+    rw [h_assoc, mul_hammingSign_minimizingBit, hsj_sq, mul_one]
+  have hAk (k : Fin 4) (hk : k ≠ i ∧ k ≠ j) :
+      Ak k * hammingSign (ε j) * hammingSign (ε k) = -|Ak k| := by
+    rw [hεj, hεk k hk, hammingSign_beq]
+    have h_assoc : Ak k * hammingSign sj * (hammingSign (minimizingBit (Ak k)) * hammingSign sj) =
+        (Ak k * hammingSign (minimizingBit (Ak k))) * (hammingSign sj * hammingSign sj) := by ring
+    rw [h_assoc, mul_hammingSign_minimizingBit, hsj_sq, mul_one]
+  have htrans := D.transition i j hij ε
+  dsimp [A0, A1, Ak] at hA0 hA1 hAk htrans
+  rw [hA0, hA1] at htrans
+  have hsum :
+      (∑ k ∈ Finset.univ.filter (fun k => k ≠ i ∧ k ≠ j),
+        2 * splitPair (factorD D.Q j) (factorA D.P D.Q k) *
+          hammingSign (ε j) * hammingSign (ε k)) =
+      - ∑ k ∈ Finset.univ.filter (fun k => k ≠ i ∧ k ≠ j),
+        |2 * splitPair (factorD D.Q j) (factorA D.P D.Q k)| := by
+    rw [← Finset.sum_neg_distrib]
+    refine Finset.sum_congr rfl (fun k hk => ?_)
+    rw [Finset.mem_filter] at hk
+    exact hAk k hk.2
+  rw [hsum] at htrans
+  linarith
 
 /-- The spectral hypothesis used in the paper: a positive diagonal left
 multiplier symmetrizes `M`, and the resulting symmetric form has positive
