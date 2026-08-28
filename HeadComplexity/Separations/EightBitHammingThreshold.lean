@@ -1434,6 +1434,20 @@ private lemma offDiagSet_nonempty (j : Fin 4) : (offDiagSet j).Nonempty := by
   · use 0; simp
   · use 0; simp
 
+private theorem f8FactorData_delta_pos (D : F8FactorData) (j : Fin 4) :
+    0 < factorDelta D.P D.Q j := by
+  obtain ⟨i, hi⟩ := offDiagSet_nonempty j
+  have hij : i ≠ j := by
+    simpa [offDiagSet] using hi
+  have h := f8FactorData_shell_bound D i j hij
+  have hnonneg :
+      0 ≤ |2 * splitPair (factorD D.Q j) D.r| +
+        |2 * splitPair (factorD D.Q j) (factorB D.P D.Q i)| +
+        ∑ k ∈ Finset.univ.filter (fun k => k ≠ i ∧ k ≠ j),
+          |2 * splitPair (factorD D.Q j) (factorA D.P D.Q k)| := by
+    positivity
+  linarith
+
 private lemma exists_offDiag_maximizer (M : Matrix (Fin 4) (Fin 4) ℝ) (j : Fin 4) :
     ∃ p ∈ offDiagSet j, ∀ i ∈ offDiagSet j, M i j ≤ M p j :=
   Finset.exists_max_image (offDiagSet j) (fun i => M i j) (offDiagSet_nonempty j)
