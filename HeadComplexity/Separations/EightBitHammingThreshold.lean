@@ -337,21 +337,30 @@ private lemma diag_mul_apply (d : Fin 4 → ℝ) (M : Matrix (Fin 4) (Fin 4) ℝ
   rw [Matrix.mul_apply, sum_fin4]
   fin_cases i <;> fin_cases j <;> simp
 
-private lemma offDiag_sum_bound (d : Fin 4 → ℝ) (M : Matrix (Fin 4) (Fin 4) ℝ)
-    (c : Fin 4 → ℝ) (z : Fin 4 → ℝ) (hz : z 0 + z 1 + z 2 + z 3 = 0)
-    (hc0_1 : M 1 0 ≤ c 0) (hc0_2 : M 2 0 ≤ c 0) (hc0_3 : M 3 0 ≤ c 0)
-    (hc1_0 : M 0 1 ≤ c 1) (hc1_2 : M 2 1 ≤ c 1) (hc1_3 : M 3 1 ≤ c 1)
-    (hc2_0 : M 0 2 ≤ c 2) (hc2_1 : M 1 2 ≤ c 2) (hc2_3 : M 3 2 ≤ c 2)
-    (hc3_0 : M 0 3 ≤ c 3) (hc3_1 : M 1 3 ≤ c 3) (hc3_2 : M 2 3 ≤ c 3)
-    (hsymm : ∀ i j, d j * M j i = d i * M i j)
+/-- The four-vertex squared-distance cone used in paper Lemma 5. For a
+symmetric zero-row-sum matrix, nonpositivity of all 81 column-choice
+functionals forces negative semidefiniteness. -/
+private theorem zeroRow_choiceCone_nonpositive
+    (q : Fin 4 → ℝ) (B : Matrix (Fin 4) (Fin 4) ℝ)
+    (hq : ∀ i, 0 < q i) (hsymm : B.IsSymm)
+    (hzero : B.mulVec (fun _ => 1) = 0)
+    (hchoice : ∀ pick : Fin 4 → Fin 4, (∀ j, pick j ≠ j) →
+      (∑ i, q i * B i i) +
+        2 * ∑ j, q (pick j) * B (pick j) j ≤ 0) :
+    ∀ z, quadraticForm4 B z ≤ 0 := by
+  sorry
+
+/-- Correct rank-one reduction for paper Lemma 5. Positive row sums permit
+subtracting `g gᵀ / sum g` to reach the preceding zero-row-sum cone; adding
+one positive rank-one form back cannot create positive index two. -/
+private theorem columnFunctional_nonpos_forbids_positiveIndexTwo
+    (M : Matrix (Fin 4) (Fin 4) ℝ) (d : Fin 4 → ℝ)
     (hd : ∀ i, 0 < d i)
-    (h_le : M 0 0 + M 1 1 + M 2 2 + M 3 3 + 2 * (c 0 + c 1 + c 2 + c 3) ≤ 0) :
-    d 0 * (M 0 0 + M 0 1 + M 0 2 + M 0 3) * z 0 ^ 2 +
-    d 1 * (M 1 0 + M 1 1 + M 1 2 + M 1 3) * z 1 ^ 2 +
-    d 2 * (M 2 0 + M 2 1 + M 2 2 + M 2 3) * z 2 ^ 2 +
-    d 3 * (M 3 0 + M 3 1 + M 3 2 + M 3 3) * z 3 ^ 2 -
-    d 0 * M 0 1 * (z 0 - z 1) ^ 2 - d 0 * M 0 2 * (z 0 - z 2) ^ 2 - d 0 * M 0 3 * (z 0 - z 3) ^ 2 -
-    d 1 * M 1 2 * (z 1 - z 2) ^ 2 - d 1 * M 1 3 * (z 1 - z 3) ^ 2 - d 2 * M 2 3 * (z 2 - z 3) ^ 2 ≤ 0 := by
+    (hsymm : ((Matrix.diagonal d) * M).IsSymm)
+    (hrow : ∀ i, 0 < (M.mulVec (fun _ => 1)) i)
+    (h_le : Matrix.trace M +
+      2 * ∑ j, M (columnMaxPicker M j) j ≤ 0) :
+    ¬ PositiveIndexAtLeastTwo4 ((Matrix.diagonal d) * M) := by
   sorry
 
 private lemma quad_expand (M : Matrix (Fin 4) (Fin 4) ℝ) (d : Fin 4 → ℝ)
@@ -401,75 +410,12 @@ theorem columnMax_spectral_inequality
     ∃ pick : Fin 4 → Fin 4,
       (∀ j, pick j ≠ j) ∧
       0 < Matrix.trace M + 2 * ∑ j, M (pick j) j := by
-  use columnMaxPicker M
-  refine ⟨columnMaxPicker_ne M, ?_⟩
+  refine ⟨columnMaxPicker M, columnMaxPicker_ne M, ?_⟩
   by_contra h_le
   push_neg at h_le
   obtain ⟨d, hd, hsymm, hpos2⟩ := hspectral
-  set S := (Matrix.diagonal d) * M
-  obtain ⟨u, v, huv⟩ := hpos2
-  set Su := ∑ i, u i
-  set Sv := ∑ i, v i
-  have hab : (if (Su = 0 ∧ Sv = 0) then (1 : ℝ) else -Sv) ≠ 0 ∨
-      (if (Su = 0 ∧ Sv = 0) then (0 : ℝ) else Su) ≠ 0 := by
-    by_cases h : Su = 0 ∧ Sv = 0
-    · left
-      rw [if_pos h]
-      exact one_ne_zero
-    · rw [if_neg h, if_neg h]
-      have h_or : Su ≠ 0 ∨ Sv ≠ 0 := by
-        contrapose! h
-        exact h
-      rcases h_or with h1 | h2
-      · right; exact h1
-      · left; exact neg_ne_zero.mpr h2
-  set a := if (Su = 0 ∧ Sv = 0) then (1 : ℝ) else -Sv
-  set b := if (Su = 0 ∧ Sv = 0) then (0 : ℝ) else Su
-  have hpos := huv a b hab
-  dsimp [quadraticForm4] at hpos
-  set z : Fin 4 → ℝ := fun i => a * u i + b * v i
-  have hsum : ∑ i, z i = 0 := by
-    dsimp [z]
-    rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
-    by_cases h : Su = 0 ∧ Sv = 0
-    · have h_u : ∑ i, u i = 0 := h.1
-      have h_v : ∑ i, v i = 0 := h.2
-      dsimp [a, b]
-      rw [if_pos h, if_pos h]
-      linarith [h_u, h_v]
-    · change a * Su + b * Sv = 0
-      dsimp [a, b]
-      rw [if_neg h, if_neg h]
-      ring
-  have h_quad := quad_expand M d z hsymm
-  rw [h_quad] at hpos
-  set c : Fin 4 → ℝ := fun j => M (columnMaxPicker M j) j
-  have hc0_1 := columnMaxPicker_le M 0 1 (by decide)
-  have hc0_2 := columnMaxPicker_le M 0 2 (by decide)
-  have hc0_3 := columnMaxPicker_le M 0 3 (by decide)
-  have hc1_0 := columnMaxPicker_le M 1 0 (by decide)
-  have hc1_2 := columnMaxPicker_le M 1 2 (by decide)
-  have hc1_3 := columnMaxPicker_le M 1 3 (by decide)
-  have hc2_0 := columnMaxPicker_le M 2 0 (by decide)
-  have hc2_1 := columnMaxPicker_le M 2 1 (by decide)
-  have hc2_3 := columnMaxPicker_le M 2 3 (by decide)
-  have hc3_0 := columnMaxPicker_le M 3 0 (by decide)
-  have hc3_1 := columnMaxPicker_le M 3 1 (by decide)
-  have hc3_2 := columnMaxPicker_le M 3 2 (by decide)
-  have hsymm_apply (i j : Fin 4) : d j * M j i = d i * M i j := by
-    have h := congr_fun (congr_fun hsymm j) i
-    dsimp [Matrix.transpose, S] at h
-    rw [diag_mul_apply, diag_mul_apply] at h
-    exact h.symm
-  rw [sum_fin4] at h_le
-  unfold Matrix.trace at h_le
-  rw [sum_fin4] at h_le
-  unfold Matrix.diag at h_le
-  have hz_sum : z 0 + z 1 + z 2 + z 3 = 0 := by rw [sum_fin4] at hsum; exact hsum
-  have h_bound := offDiag_sum_bound d M c z hz_sum
-    hc0_1 hc0_2 hc0_3 hc1_0 hc1_2 hc1_3 hc2_0 hc2_1 hc2_3 hc3_0 hc3_1 hc3_2
-    hsymm_apply hd h_le
-  linarith [hpos, h_bound]
+  exact (columnFunctional_nonpos_forbids_positiveIndexTwo
+    M d hd hsymm hrow h_le) hpos2
 
 
 /-- Denominator clearing polynomial for two linear-fractional atoms. -/
