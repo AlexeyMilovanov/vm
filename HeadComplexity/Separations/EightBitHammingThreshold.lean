@@ -1643,6 +1643,117 @@ private theorem factorNormalizingMu_intercept
   rw [factorNormalizedW_dot, hμ, factorNullTarget_pair]
   ring
 
+private noncomputable def factorPositiveTarget0 : Fin 4 → ℝ :=
+  ![1, -1, 0, 0]
+
+private noncomputable def factorPositiveTarget1 : Fin 4 → ℝ :=
+  ![0, 0, 1, -1]
+
+private noncomputable def factorNegativeTarget0 : Fin 4 → ℝ :=
+  ![1, 1, 0, 0]
+
+private noncomputable def factorNegativeTarget1 : Fin 4 → ℝ :=
+  ![0, 0, 1, 1]
+
+private theorem factorPositiveTargets_pair (a b : ℝ) :
+    splitPair
+        (fun i => a * factorPositiveTarget0 i + b * factorPositiveTarget1 i)
+        (fun i => a * factorPositiveTarget0 i + b * factorPositiveTarget1 i) =
+      -(a ^ 2 + b ^ 2) := by
+  rw [splitPair_formula]
+  simp [factorPositiveTarget0, factorPositiveTarget1]
+  ring
+
+private theorem factorNegativeTargets_pair (a b : ℝ) :
+    splitPair
+        (fun i => a * factorNegativeTarget0 i + b * factorNegativeTarget1 i)
+        (fun i => a * factorNegativeTarget0 i + b * factorNegativeTarget1 i) =
+      a ^ 2 + b ^ 2 := by
+  rw [splitPair_formula]
+  simp [factorNegativeTarget0, factorNegativeTarget1]
+  ring
+
+private theorem factorNormalizedV_neg_quadratic
+    (D : F8FactorData) (z : Fin 4 → ℝ) :
+    quadraticForm4 (-(factorNormalizedV D)) z =
+      4 * splitPair (D.Q.mulVec z) (D.Q.mulVec z) := by
+  rw [quadraticForm4]
+  simp only [dotProduct, Fin.sum_univ_four, factorNormalizedV,
+    Matrix.mulVec, splitPair_formula, column4, Matrix.neg_apply]
+  ring
+
+private theorem f8FactorData_V_inertia (D : F8FactorData) :
+    InertiaTwoTwo4 (factorNormalizedV D) := by
+  obtain ⟨up, hup⟩ :=
+    f8FactorData_Q_mulVec_surjective D factorPositiveTarget0
+  obtain ⟨vp, hvp⟩ :=
+    f8FactorData_Q_mulVec_surjective D factorPositiveTarget1
+  obtain ⟨un, hun⟩ :=
+    f8FactorData_Q_mulVec_surjective D factorNegativeTarget0
+  obtain ⟨vn, hvn⟩ :=
+    f8FactorData_Q_mulVec_surjective D factorNegativeTarget1
+  refine ⟨factorNormalizedV_isSymm D, ?_, ?_⟩
+  · refine ⟨up, vp, ?_⟩
+    intro a b hab
+    rw [factorNormalizedV_quadratic]
+    have hcombo :
+        D.Q.mulVec (fun i => a * up i + b * vp i) =
+          fun i => a * factorPositiveTarget0 i +
+            b * factorPositiveTarget1 i := by
+      ext i
+      have hu := congr_fun hup i
+      have hv := congr_fun hvp i
+      simp only [Matrix.mulVec, dotProduct, Fin.sum_univ_four] at hu hv ⊢
+      linear_combination a * hu + b * hv
+    rw [hcombo, factorPositiveTargets_pair]
+    rcases hab with ha | hb
+    · nlinarith [sq_pos_of_ne_zero ha]
+    · nlinarith [sq_pos_of_ne_zero hb]
+  · refine ⟨un, vn, ?_⟩
+    intro a b hab
+    rw [factorNormalizedV_neg_quadratic]
+    have hcombo :
+        D.Q.mulVec (fun i => a * un i + b * vn i) =
+          fun i => a * factorNegativeTarget0 i +
+            b * factorNegativeTarget1 i := by
+      ext i
+      have hu := congr_fun hun i
+      have hv := congr_fun hvn i
+      simp only [Matrix.mulVec, dotProduct, Fin.sum_univ_four] at hu hv ⊢
+      linear_combination a * hu + b * hv
+    rw [hcombo, factorNegativeTargets_pair]
+    rcases hab with ha | hb
+    · nlinarith [sq_pos_of_ne_zero ha]
+    · nlinarith [sq_pos_of_ne_zero hb]
+
+private theorem f8FactorData_yield_f8NormalizedSystem
+    (D : F8FactorData) : Nonempty F8NormalizedSystem := by
+  obtain ⟨μ, hμ⟩ := f8FactorData_exists_normalizing_mu D
+  refine ⟨{
+    U := factorNormalizedU D
+    V := factorNormalizedV D
+    w := factorNormalizedW D
+    μ := μ
+    U_pos := factorNormalizedU_pos D
+    V_inertia := f8FactorData_V_inertia D
+    diagonal_pos := factorNormalizedU_diag_pos D
+    contraction := factorNormalized_contraction D
+    leftSlope_pos := ?_
+    rightSlope_pos := ?_
+    null := factorNormalizingMu_null D μ hμ
+    intercept := ?_
+  }⟩
+  · intro i
+    rw [factorNormalizingMu_leftSlope D μ hμ i]
+    exact D.denominator_left_pos i
+  · intro i
+    rw [factorNormalizingMu_rightSlope D μ hμ i]
+    exact D.denominator_right_pos i
+  · simp_rw [factorNormalizingMu_leftSlope D μ hμ,
+      factorNormalizingMu_rightSlope D μ hμ,
+      factorNormalizingMu_intercept D μ hμ]
+    exact D.denominator_intercept
+
 private lemma exists_offDiag_maximizer (M : Matrix (Fin 4) (Fin 4) ℝ) (j : Fin 4) :
     ∃ p ∈ offDiagSet j, ∀ i ∈ offDiagSet j, M i j ≤ M p j :=
   Finset.exists_max_image (offDiagSet j) (fun i => M i j) (offDiagSet_nonempty j)
@@ -2093,9 +2204,23 @@ private theorem clearedTwoAtom_denominator_slopes_ne_zero
       (∀ i, (fracDenominator (φ 1)).linear i ≠ 0) := by
   sorry
 
-/-- Paper Lemmas 3 and 4 after the rank obstruction has supplied two
-nonconstant, strictly oriented denominators. This is the factor-map and shell
-transition part of the normalization argument. -/
+/-- Paper Lemma 3 after the rank obstruction: two nonconstant, strictly
+oriented denominators supply the exact factor map and shell transitions. -/
+private theorem nondegenerate_twoAtoms_yield_f8FactorData
+    (φ : Fin 2 → FracAtom 8) (c : ℝ)
+    (hsign : ∀ x : Fin 8 → Bool,
+      0 < c + ∑ h : Fin 2, (φ h).eval x ↔ f8 x = true)
+    (hneg : NegativeDefinite4
+      (symmetricPart4
+        (mixedMatrix4 (toMultilinear (clearedTwoAtomPoly φ c)))))
+    (hslopes :
+      (∀ i, (fracDenominator (φ 0)).linear i ≠ 0) ∧
+        (∀ i, (fracDenominator (φ 1)).linear i ≠ 0)) :
+    Nonempty F8FactorData := by
+  sorry
+
+/-- Paper Lemma 4 is now a proved direct-algebra consequence of the factor
+data; this wrapper composes it with the remaining Lemma 3 extraction. -/
 private theorem nondegenerate_twoAtoms_yield_f8NormalizedSystem
     (φ : Fin 2 → FracAtom 8) (c : ℝ)
     (hsign : ∀ x : Fin 8 → Bool,
@@ -2107,7 +2232,9 @@ private theorem nondegenerate_twoAtoms_yield_f8NormalizedSystem
       (∀ i, (fracDenominator (φ 0)).linear i ≠ 0) ∧
         (∀ i, (fracDenominator (φ 1)).linear i ≠ 0)) :
     Nonempty F8NormalizedSystem := by
-  sorry
+  obtain ⟨D⟩ :=
+    nondegenerate_twoAtoms_yield_f8FactorData φ c hsign hneg hslopes
+  exact f8FactorData_yield_f8NormalizedSystem D
 /-- Paper Lemmas 3 and 4: a two-head realization supplies the normalized
 system. -/
 theorem two_heads_yield_f8NormalizedSystem
