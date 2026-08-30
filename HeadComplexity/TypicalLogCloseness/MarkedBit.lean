@@ -110,7 +110,30 @@ bound via `aeval_def`/`eval₂` as a sum over the support, using
 `totalDegree_C/X`. -/
 theorem sliceAt_totalDegree_le (t : ℝ) (P : MvPolynomial (Fin (m + 1)) ℝ) :
     (sliceAt t P).totalDegree ≤ P.totalDegree := by
-  sorry
+  dsimp [sliceAt]
+  conv_lhs => rw [as_sum P, map_sum]
+  refine (totalDegree_finsetSum_le (d := P.totalDegree) (fun d hd => ?_))
+  rw [aeval_monomial, algebraMap_eq]
+  refine (totalDegree_mul _ _).trans ?_
+  rw [totalDegree_C, zero_add]
+  refine (totalDegree_finsetProd _ _).trans ?_
+  have h_bound :
+      ∑ i ∈ d.support, (Fin.cases (C t) X i ^ d i : MvPolynomial (Fin m) ℝ).totalDegree ≤
+        ∑ i ∈ d.support, d i := by
+    refine sum_le_sum (fun i _ => ?_)
+    refine (totalDegree_pow _ _).trans ?_
+    have h_deg : (Fin.cases (C t) X i : MvPolynomial (Fin m) ℝ).totalDegree ≤ 1 := by
+      refine Fin.cases ?_ (fun _ => ?_) i
+      · rw [Fin.cases_zero, totalDegree_C]
+        exact zero_le_one
+      · rw [Fin.cases_succ, totalDegree_X]
+    calc d i * (Fin.cases (C t) X i : MvPolynomial (Fin m) ℝ).totalDegree
+      _ ≤ d i * 1 := Nat.mul_le_mul_left (d i) h_deg
+      _ = d i := mul_one (d i)
+  refine h_bound.trans ?_
+  have h_sum : ∑ i ∈ d.support, d i = d.sum (fun _ e => e) := rfl
+  rw [h_sum]
+  exact le_totalDegree hd
 
 /-- [MB03] The slice difference loses one degree: every monomial that
 survives `sliceAt 1 P - sliceAt 0 P` comes from a monomial of `P`
