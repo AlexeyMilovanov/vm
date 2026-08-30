@@ -1,0 +1,624 @@
+{
+  "format": "n5-simple-certificate-table-v1",
+  "n": 5,
+  "row_count": 9340584,
+  "shards": [
+    {
+      "bytes": 321,
+      "first_truth_table": 0,
+      "last_truth_table": 0,
+      "path": "shard-constant.jsonl",
+      "rows": 1,
+      "sha256": "c76888f412f0553bf563ebc48394f40a9438a7193c4941e929f960a6ef852fa6"
+    },
+    {
+      "bytes": 851387162,
+      "first_truth_table": 1,
+      "last_truth_table": 4194302,
+      "path": "shard-0000.jsonl",
+      "rows": 757411,
+      "sha256": "7c8c4b9d61e69d9a615b8a14f8e3d74b295fc585bab49bb4a43fcc8da39eba9c"
+    },
+    {
+      "bytes": 119127636,
+      "first_truth_table": 6842369,
+      "last_truth_table": 8388606,
+      "path": "shard-0001.jsonl",
+      "rows": 97067,
+      "sha256": "b4e679f11674a22ef3039d17a23a37fd6e9bd2f7106b37c7e6d73bbb15ad8425"
+    },
+    {
+      "bytes": 377049176,
+      "first_truth_table": 8421377,
+      "last_truth_table": 12582910,
+      "path": "shard-0002.jsonl",
+      "rows": 338353,
+      "sha256": "a5fbbf6283e8f9dc931a1d0b5dbe218ba0fae948f75ceb64db33eb33b25e4f21"
+    },
+    {
+      "bytes": 6763682,
+      "first_truth_table": 15263745,
+      "last_truth_table": 16777214,
+      "path": "shard-0003.jsonl",
+      "rows": 6458,
+      "sha256": "15db3a54c11d7052afb9c0d8b451332e53c6388caeb62fd0abdfd8c2e83540e5"
+    },
+    {
+      "bytes": 550361842,
+      "first_truth_table": 18224744,
+      "last_truth_table": 20971518,
+      "path": "shard-0004.jsonl",
+      "rows": 432522,
+      "sha256": "2a6c5407a613165e21f7620dd8aa70e91c36f3027a79858dd249d03b64ed3fc6"
+    },
+    {
+      "bytes": 127163785,
+      "first_truth_table": 23619585,
+      "last_truth_table": 25165822,
+      "path": "shard-0005.jsonl",
+      "rows": 93622,
+      "sha256": "6d84892d922e9bee3492a88ec476ed29a27db6913091e91c55421bae776db64c"
+    },
+    {
+      "bytes": 412024565,
+      "first_truth_table": 25198593,
+      "last_truth_table": 29360126,
+      "path": "shard-0006.jsonl",
+      "rows": 325820,
+      "sha256": "28dfc7090ff37500296c2a3617fed581af24047951301a3b199a587dc45c32bc"
+    },
+    {
+      "bytes": 7962258,
+      "first_truth_table": 32040961,
+      "last_truth_table": 33554430,
+      "path": "shard-0007.jsonl",
+      "rows": 6224,
+      "sha256": "ffb7faace83f5803feaf64abbd1c801cc90ca4ac2a563838b334b201682b262f"
+    },
+    {
+      "bytes": 272142211,
+      "first_truth_table": 36186241,
+      "last_truth_table": 37748734,
+      "path": "shard-0008.jsonl",
+      "rows": 216980,
+      "sha256": "86982cafb7220ec644421015727443fb7fa89e7e65cf1e343c6e689628f5ebf7"
+    },
+    {
+      "bytes": 979807372,
+      "first_truth_table": 37775489,
+      "last_truth_table": 41943038,
+      "path": "shard-0009.jsonl",
+      "rows": 753224,
+      "sha256": "35e66d41d06e1b52d974577db77d22739c87ca600e4abfebb36f95576d578bd2"
+    },
+    {
+      "bytes": 816016937,
+      "first_truth_table": 41975809,
+      "last_truth_table": 46137342,
+      "path": "shard-0010.jsonl",
+      "rows": 643314,
+      "sha256": "0d1ef94853e47dcdcd5a36c4bb9ade4f7347c1fe48cc865fa81368f1ae36e0f2"
+    },
+    {
+      "bytes": 264890540,
+      "first_truth_table": 46186497,
+      "last_truth_table": 50331646,
+      "path": "shard-0011.jsonl",
+      "rows": 207776,
+      "sha256": "408ee52dfce7de4e78c876af862c58287cffbb4bc1f6c1f4fc84c3a8fe5cbbd6"
+    },
+    {
+      "bytes": 31576045,
+      "first_truth_table": 54279360,
+      "last_truth_table": 54525950,
+      "path": "shard-0012.jsonl",
+      "rows": 24029,
+      "sha256": "fb69f864ae611e8f211346db2b124a8c32ef83099c376635fe719f4d7fc3efb8"
+    },
+    {
+      "bytes": 457324386,
+      "first_truth_table": 55994497,
+      "last_truth_table": 58720254,
+      "path": "shard-0013.jsonl",
+      "rows": 336179,
+      "sha256": "170e34e38d1f8e6035db83b4d46d080140e1835b01f306962e27cbb1a559d539"
+    },
+    {
+      "bytes": 756902806,
+      "first_truth_table": 58753025,
+      "last_truth_table": 62914558,
+      "path": "shard-0014.jsonl",
+      "rows": 577994,
+      "sha256": "44f3f8d488effc0827f75d70f29aad6b7362ddb8f9c6895fa327638d91b0e401"
+    },
+    {
+      "bytes": 246917929,
+      "first_truth_table": 62963713,
+      "last_truth_table": 67108862,
+      "path": "shard-0015.jsonl",
+      "rows": 187154,
+      "sha256": "ee6fd94c0d321090598eda05758f6f67b695c109feed89a8ea099bc167feb190"
+    },
+    {
+      "bytes": 328368989,
+      "first_truth_table": 106981505,
+      "last_truth_table": 109051902,
+      "path": "shard-0025.jsonl",
+      "rows": 237573,
+      "sha256": "a57b30d7a45ed437ece23158c78d68d17410d2fc3792bcd12ce6bd0c40e39f85"
+    },
+    {
+      "bytes": 880443573,
+      "first_truth_table": 109084673,
+      "last_truth_table": 113246206,
+      "path": "shard-0026.jsonl",
+      "rows": 636392,
+      "sha256": "955735324450ce4319943038b147641b8371ddc24f250c2254029cca90b22c47"
+    },
+    {
+      "bytes": 59047963,
+      "first_truth_table": 115400705,
+      "last_truth_table": 117440510,
+      "path": "shard-0027.jsonl",
+      "rows": 43704,
+      "sha256": "f67db80f8912fd16718117624a86da8c061da18b7dd181cbaab52f97b4aae14c"
+    },
+    {
+      "bytes": 69448317,
+      "first_truth_table": 125204617,
+      "last_truth_table": 125829118,
+      "path": "shard-0029.jsonl",
+      "rows": 50955,
+      "sha256": "5b5695d327b0d2aca81a075f761867665cf8dfbe68fd50865e5627eb9d9046cf"
+    },
+    {
+      "bytes": 776985807,
+      "first_truth_table": 125861889,
+      "last_truth_table": 130023422,
+      "path": "shard-0030.jsonl",
+      "rows": 576049,
+      "sha256": "50003c5860c1402ad5b1dc427a71c81508119304f21ce3e1a06a3cfa947a8cfb"
+    },
+    {
+      "bytes": 53180678,
+      "first_truth_table": 132177921,
+      "last_truth_table": 134217726,
+      "path": "shard-0031.jsonl",
+      "rows": 39475,
+      "sha256": "c2f8334b9541a46ad6578b25ffe26881570b3386b088e2427609dd222dc2806e"
+    },
+    {
+      "bytes": 571773817,
+      "first_truth_table": 142639105,
+      "last_truth_table": 146800638,
+      "path": "shard-0034.jsonl",
+      "rows": 452611,
+      "sha256": "14319b8b24802b3ddb5c167ce3ce68bae6760c0912c199efab55f4413cddfb24"
+    },
+    {
+      "bytes": 44451771,
+      "first_truth_table": 148955137,
+      "last_truth_table": 150994942,
+      "path": "shard-0035.jsonl",
+      "rows": 34771,
+      "sha256": "730f7ded4dc40bce0dbe85b6e855a3d355d3267b788e4f6fbb5068918e8f3755"
+    },
+    {
+      "bytes": 425728435,
+      "first_truth_table": 160468993,
+      "last_truth_table": 163577854,
+      "path": "shard-0038.jsonl",
+      "rows": 310787,
+      "sha256": "52258ffcd7be0a9d2b71ff39b57641e3ac6670e25d10018e0425670c0e97e749"
+    },
+    {
+      "bytes": 46213309,
+      "first_truth_table": 165732353,
+      "last_truth_table": 167772158,
+      "path": "shard-0039.jsonl",
+      "rows": 33143,
+      "sha256": "0ef1ac162cffcdff2e8e719b929ccecb7bddb5e6aed15563214a4e280647bba3"
+    },
+    {
+      "bytes": 279006655,
+      "first_truth_table": 178298881,
+      "last_truth_table": 180355070,
+      "path": "shard-0042.jsonl",
+      "rows": 212502,
+      "sha256": "49d81f46baaae5af3a46f7a2586e017392774a925e997bce5bc4f839725ff8e2"
+    },
+    {
+      "bytes": 203329979,
+      "first_truth_table": 180412417,
+      "last_truth_table": 184549374,
+      "path": "shard-0043.jsonl",
+      "rows": 151688,
+      "sha256": "cd40ed6223c2a1cca03e32d5a45c926e4cea0d70cfd8b1a5f0d51d06d06ecead"
+    },
+    {
+      "bytes": 67528554,
+      "first_truth_table": 196128769,
+      "last_truth_table": 197132286,
+      "path": "shard-0046.jsonl",
+      "rows": 49012,
+      "sha256": "e435cf8a278614ae25a6113de297fcad89853982af7d32d6b9c2a59c2d2fb9ce"
+    },
+    {
+      "bytes": 110949519,
+      "first_truth_table": 198238209,
+      "last_truth_table": 201326590,
+      "path": "shard-0047.jsonl",
+      "rows": 80398,
+      "sha256": "db5676021ca2ef944dee30afadb7893acd6aa183fca125e6f3790992e239a100"
+    },
+    {
+      "bytes": 23840977,
+      "first_truth_table": 249618433,
+      "last_truth_table": 251658238,
+      "path": "shard-0059.jsonl",
+      "rows": 17501,
+      "sha256": "d7c074ccd2ba9b1ff48f1af11c812fc5c4aafab9a8186888fdcac86f653cc6ce"
+    },
+    {
+      "bytes": 4088863,
+      "first_truth_table": 267448321,
+      "last_truth_table": 268435454,
+      "path": "shard-0063.jsonl",
+      "rows": 2983,
+      "sha256": "f1a0c4d867b70679c58e4f030cb965354b7e64f1f26f9dc70bb27fd5425617b1"
+    },
+    {
+      "bytes": 28032474,
+      "first_truth_table": 375941249,
+      "last_truth_table": 377487358,
+      "path": "shard-0089.jsonl",
+      "rows": 19565,
+      "sha256": "ead7744736ca7e7adea23db28d455f2e973e4a3323c6e6147b4b810312481b4f"
+    },
+    {
+      "bytes": 196948800,
+      "first_truth_table": 377520129,
+      "last_truth_table": 381681662,
+      "path": "shard-0090.jsonl",
+      "rows": 135752,
+      "sha256": "82089edb113b427f50341446a2b9ed5850988fbc93cff2ea9a37b99c9acb475f"
+    },
+    {
+      "bytes": 3717797,
+      "first_truth_table": 384362497,
+      "last_truth_table": 385875966,
+      "path": "shard-0091.jsonl",
+      "rows": 2626,
+      "sha256": "26039ce46a55e85e65321183193f7e6939a012a2ecb6e0e805948cbb358fb12d"
+    },
+    {
+      "bytes": 2144859,
+      "first_truth_table": 394165992,
+      "last_truth_table": 394264574,
+      "path": "shard-0093.jsonl",
+      "rows": 1647,
+      "sha256": "e82767824c3b86749f68a199bdd30966fc608c2cf0fd049a33c5b91439fa5c96"
+    },
+    {
+      "bytes": 181939577,
+      "first_truth_table": 394297345,
+      "last_truth_table": 398458878,
+      "path": "shard-0094.jsonl",
+      "rows": 130610,
+      "sha256": "ed8c3dbb93d43f2e5505d5ea4ff2cd2793ce3971e897ed99fafe7aa9616b8e92"
+    },
+    {
+      "bytes": 3467164,
+      "first_truth_table": 401139713,
+      "last_truth_table": 402653182,
+      "path": "shard-0095.jsonl",
+      "rows": 2516,
+      "sha256": "130342fc3679a750a4d0cf56a4f22cba80d5229f774f9b557166af63895e5640"
+    },
+    {
+      "bytes": 394819593,
+      "first_truth_table": 411074561,
+      "last_truth_table": 415236094,
+      "path": "shard-0098.jsonl",
+      "rows": 282326,
+      "sha256": "c0bade2646a16b71b29d4e5edb69c5e6e7266fae50cf55e23540df236f15e631"
+    },
+    {
+      "bytes": 30008519,
+      "first_truth_table": 417390593,
+      "last_truth_table": 419430398,
+      "path": "shard-0099.jsonl",
+      "rows": 21445,
+      "sha256": "25346d60969f1e6a105f1f3e2a0112d241991d4a5e83f1cf457d4368a8ce266c"
+    },
+    {
+      "bytes": 251738799,
+      "first_truth_table": 428904449,
+      "last_truth_table": 432013310,
+      "path": "shard-0102.jsonl",
+      "rows": 178756,
+      "sha256": "fd2cbf42723dc8be8fdc1174b6ddca5ee83e27c148c509451363ac3d8be573fc"
+    },
+    {
+      "bytes": 26721795,
+      "first_truth_table": 434167809,
+      "last_truth_table": 436207614,
+      "path": "shard-0103.jsonl",
+      "rows": 18853,
+      "sha256": "d68c60d4ccbe9a4bc5c3e7c2a7ab82695c3554500b815a9bd47945251ae2c1dc"
+    },
+    {
+      "bytes": 165225072,
+      "first_truth_table": 446734337,
+      "last_truth_table": 448790526,
+      "path": "shard-0106.jsonl",
+      "rows": 116558,
+      "sha256": "a7d3dd2756a0e9ea3d21df9733a94d7c17bea284c866f3b922ada784c141fe1c"
+    },
+    {
+      "bytes": 112330477,
+      "first_truth_table": 448847873,
+      "last_truth_table": 452984830,
+      "path": "shard-0107.jsonl",
+      "rows": 79884,
+      "sha256": "c79f5e74293d46dcb8be6aede3cc3c1441e01f6b16d711a7df590b3b7d882cef"
+    },
+    {
+      "bytes": 35163325,
+      "first_truth_table": 464564225,
+      "last_truth_table": 465567742,
+      "path": "shard-0110.jsonl",
+      "rows": 25364,
+      "sha256": "b10c002ca1eff3d367cbfba024ced318aa42094265d69e65a76aaba7bf902005"
+    },
+    {
+      "bytes": 56554644,
+      "first_truth_table": 466673665,
+      "last_truth_table": 469762046,
+      "path": "shard-0111.jsonl",
+      "rows": 40394,
+      "sha256": "e02209dc0b86869bd841a684e1001f37300d4a1e59bd099deb589c2718de8933"
+    },
+    {
+      "bytes": 12507651,
+      "first_truth_table": 518053889,
+      "last_truth_table": 520093694,
+      "path": "shard-0123.jsonl",
+      "rows": 8830,
+      "sha256": "f1ff62535047539a92425bba32c62dc38cfa71f9b380db439e5293097fca58f2"
+    },
+    {
+      "bytes": 2005727,
+      "first_truth_table": 535883777,
+      "last_truth_table": 536870910,
+      "path": "shard-0127.jsonl",
+      "rows": 1478,
+      "sha256": "0267a434fd754ed0525b226e3b09e5dc145c504b0d6c015e9a0f1b7965f6b48f"
+    },
+    {
+      "bytes": 137468545,
+      "first_truth_table": 679510017,
+      "last_truth_table": 683671550,
+      "path": "shard-0162.jsonl",
+      "rows": 100001,
+      "sha256": "affbe5aef27b1b4db115ebf9683d1e46364f6683408e3eae5726b7f898fc5337"
+    },
+    {
+      "bytes": 54542635,
+      "first_truth_table": 683720705,
+      "last_truth_table": 687865854,
+      "path": "shard-0163.jsonl",
+      "rows": 38750,
+      "sha256": "4ad033f88a309fc116a913ef6d3e01d2c786f7b934a5a0f8dd5548783056b879"
+    },
+    {
+      "bytes": 53394412,
+      "first_truth_table": 697603137,
+      "last_truth_table": 700448766,
+      "path": "shard-0166.jsonl",
+      "rows": 37679,
+      "sha256": "3759bf9d09058e7616583f9a1ae6c850f88eb3f6964cd2ff7cc5f8d6fee4cada"
+    },
+    {
+      "bytes": 49415010,
+      "first_truth_table": 700497921,
+      "last_truth_table": 704643070,
+      "path": "shard-0167.jsonl",
+      "rows": 34396,
+      "sha256": "2ec67ee9fc6836e3abe1e4c499bf90b1adfd54e898d22c5b270e290185f165c7"
+    },
+    {
+      "bytes": 13185280,
+      "first_truth_table": 715696257,
+      "last_truth_table": 717225982,
+      "path": "shard-0170.jsonl",
+      "rows": 10200,
+      "sha256": "14f85e3a731b081f0fedc0a7a7fd5cb1218425ff6f4d689714731293c280c694"
+    },
+    {
+      "bytes": 38976472,
+      "first_truth_table": 717275137,
+      "last_truth_table": 721420286,
+      "path": "shard-0171.jsonl",
+      "rows": 28170,
+      "sha256": "5526832c3eb53abcdfe2b697f989787a49764cc87cb1052af759d7ca99d6df6c"
+    },
+    {
+      "bytes": 1914298,
+      "first_truth_table": 733789377,
+      "last_truth_table": 734003198,
+      "path": "shard-0174.jsonl",
+      "rows": 1430,
+      "sha256": "74ad4335f0856cc800260de5251f30c02f344cc6b887a7ce0acd9e7c6eadb59b"
+    },
+    {
+      "bytes": 33965933,
+      "first_truth_table": 734052353,
+      "last_truth_table": 738197502,
+      "path": "shard-0175.jsonl",
+      "rows": 24518,
+      "sha256": "cc430ac0b710aa7dc9a78bbde1ac7ef40050dbda714f13910f8c8daffe9e4e7c"
+    },
+    {
+      "bytes": 41490682,
+      "first_truth_table": 750829569,
+      "last_truth_table": 754974718,
+      "path": "shard-0179.jsonl",
+      "rows": 29126,
+      "sha256": "d62a093b71399c08f66c806d0115a4491eda4873e42a1e9bda9f3e73b2ebeb01"
+    },
+    {
+      "bytes": 17665501,
+      "first_truth_table": 768659457,
+      "last_truth_table": 771751934,
+      "path": "shard-0183.jsonl",
+      "rows": 12518,
+      "sha256": "95a1852e267199024ee9184b607a3a19c9ae9288e99634da860d02059bedf79b"
+    },
+    {
+      "bytes": 5376331,
+      "first_truth_table": 786489345,
+      "last_truth_table": 788529150,
+      "path": "shard-0187.jsonl",
+      "rows": 3888,
+      "sha256": "a3a77e8146333b49137440a10ca3138b65a21553a729494b6bb955527d88ee20"
+    },
+    {
+      "bytes": 986226,
+      "first_truth_table": 804319233,
+      "last_truth_table": 805306366,
+      "path": "shard-0191.jsonl",
+      "rows": 732,
+      "sha256": "89121e7971716080c60fa32d8a6ec06959f1ef33d1227eb091a6621af679b8b4"
+    },
+    {
+      "bytes": 9166141,
+      "first_truth_table": 1019265025,
+      "last_truth_table": 1023410174,
+      "path": "shard-0243.jsonl",
+      "rows": 6417,
+      "sha256": "a977f33f0a65d5c81f446b1ab75efae7aca7109ff0f64848921d0fb705e5ce26"
+    },
+    {
+      "bytes": 1906010,
+      "first_truth_table": 1037358145,
+      "last_truth_table": 1040187390,
+      "path": "shard-0247.jsonl",
+      "rows": 1367,
+      "sha256": "86f6bfa0c243accc60be1ba0d866ae9beaf2af041728ef3ece059aafc1af5cdb"
+    },
+    {
+      "bytes": 236055,
+      "first_truth_table": 1055451265,
+      "last_truth_table": 1056964606,
+      "path": "shard-0251.jsonl",
+      "rows": 172,
+      "sha256": "1534e50a6fca84334a104aebb7b352ca34fea722b4dde4d2fc0db7361007ae19"
+    },
+    {
+      "bytes": 14245,
+      "first_truth_table": 1073544385,
+      "last_truth_table": 1073741822,
+      "path": "shard-0255.jsonl",
+      "rows": 12,
+      "sha256": "0f6e880b5bae7f18a046139c4f42a09f98c8ac25c7b6e13dfa2347a8d3ad9199"
+    },
+    {
+      "bytes": 9628079,
+      "first_truth_table": 1753251841,
+      "last_truth_table": 1757413374,
+      "path": "shard-0418.jsonl",
+      "rows": 6727,
+      "sha256": "1ac8a69ee13c03ebb050304e679543fdd2af4445872a4b3a9761af9f49fe78b3"
+    },
+    {
+      "bytes": 195930,
+      "first_truth_table": 1760094209,
+      "last_truth_table": 1761607678,
+      "path": "shard-0419.jsonl",
+      "rows": 144,
+      "sha256": "fb9d6ef750332dd5e79be70af1e5b590f4596ad8c376cf0fb1eb22951360961b"
+    },
+    {
+      "bytes": 3327981,
+      "first_truth_table": 1771476585,
+      "last_truth_table": 1774190590,
+      "path": "shard-0422.jsonl",
+      "rows": 2285,
+      "sha256": "63431aebaab6d1c4c2a19834280149dc2514d6611b7e08b70ed5bb383de6346c"
+    },
+    {
+      "bytes": 176775,
+      "first_truth_table": 1776871425,
+      "last_truth_table": 1778384894,
+      "path": "shard-0423.jsonl",
+      "rows": 122,
+      "sha256": "bf8679e9e5d0e52379cef24a6457a5b4d06d8043979125541c3ba7f4127b0ee1"
+    },
+    {
+      "bytes": 1231380,
+      "first_truth_table": 1789438081,
+      "last_truth_table": 1790967806,
+      "path": "shard-0426.jsonl",
+      "rows": 893,
+      "sha256": "3862fba28f215e9b0668a6b86066b3420fe4b734db5e289fd51479c62790e7cd"
+    },
+    {
+      "bytes": 713719,
+      "first_truth_table": 1791027329,
+      "last_truth_table": 1795162110,
+      "path": "shard-0427.jsonl",
+      "rows": 531,
+      "sha256": "863d534ddbdd7403daa4738525e26b0fd77de52258f832377dd59e893478d046"
+    },
+    {
+      "bytes": 83988,
+      "first_truth_table": 1807542401,
+      "last_truth_table": 1807745022,
+      "path": "shard-0430.jsonl",
+      "rows": 62,
+      "sha256": "9b1f5803fa0039a7578d589ef91113dc7c7f7d700eadf0dafc31a2f8152c6b78"
+    },
+    {
+      "bytes": 179771,
+      "first_truth_table": 1809312726,
+      "last_truth_table": 1811939326,
+      "path": "shard-0431.jsonl",
+      "rows": 142,
+      "sha256": "e602802f9304ba8679a3d87fc07d5cee9218528c6f07b59852609cba9981cb8f"
+    },
+    {
+      "bytes": 22929,
+      "first_truth_table": 1860233345,
+      "last_truth_table": 1862270974,
+      "path": "shard-0443.jsonl",
+      "rows": 18,
+      "sha256": "2cb5eadd4684b26917235c594d1cfc458f049c63c5136bf21a732a56477e0b8e"
+    },
+    {
+      "bytes": 6070,
+      "first_truth_table": 1878522846,
+      "last_truth_table": 1879048190,
+      "path": "shard-0447.jsonl",
+      "rows": 6,
+      "sha256": "004c0e06e8ba700559db12b66d06d81283c8f8719b55a80da14c77af6e1a5a25"
+    },
+    {
+      "bytes": 1418,
+      "first_truth_table": 2129193089,
+      "last_truth_table": 2129193089,
+      "path": "shard-0507.jsonl",
+      "rows": 1,
+      "sha256": "58790919198ef7d258bb4a70789e4ccb26b85924a1278a09a087f9b982c0a5c4"
+    },
+    {
+      "bytes": 946,
+      "first_truth_table": 2147483646,
+      "last_truth_table": 2147483646,
+      "path": "shard-0511.jsonl",
+      "rows": 1,
+      "sha256": "b0737a34c34e96006e09baf51c8ae75c57536db07454d003facc4d556c8386dc"
+    }
+  ],
+  "truth_tables_sha256": "ce9b36b73f9b088e62a294ce3b77204c37bc28fc16cfbee221e9208c8897e270"
+}
