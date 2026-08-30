@@ -707,6 +707,18 @@ theorem head_sum_sign (hd : 1 ≤ d) (p₀ p₁ : Polynomial ℝ)
 
 end Compiler
 
+private theorem sum_bitReal_tailBits (x : Fin (m + 1) → Bool) :
+    (∑ i : Fin m, TypicalLogCloseness.bitReal (x i.succ)) =
+      (hammingWeight (tailBits x) : ℝ) := by
+  unfold hammingWeight tailBits TypicalLogCloseness.bitReal
+  have h_eq : (fun (i : Fin m) => if x i.succ = true then (1 : ℝ) else 0) =
+      (fun (i : Fin m) => if i ∈ Finset.univ.filter
+        (fun (i : Fin m) => x i.succ = true) then (1 : ℝ) else 0) := by
+    ext i
+    simp
+  rw [h_eq, Finset.sum_boole]
+  simp
+
 /-- [MB09] Atom realization: the compiled score is `d` fractional atoms.
 Route: head `h` has numerator affine form `constant = a h`, marked slope
 `c h`, block slopes all `μ h`, and denominator affine form
@@ -720,7 +732,85 @@ MB04 + MB07 + MB08. -/
 theorem markedFn_fracComputable {d : ℕ} (hd : 1 ≤ d) (F : Bool → ℕ → Bool)
     (hTD : ThresholdDegLE (markedFn (m := m) F) d) :
     fracComputable (m + 1) d (markedFn (m := m) F) := by
-  sorry
+  obtain ⟨P, hPdeg, hPstrict⟩ := exists_strictSignRep_of_ThresholdDegLE hTD
+  obtain ⟨p₀, p₁, hp₀_deg, hp₁_deg, hgrid⟩ := exists_grid_pair hd F P hPdeg hPstrict
+  obtain ⟨a, μ, c, hid₀, hid₁⟩ := exists_numerators d hd p₀ p₁ hp₀_deg hp₁_deg
+  have h_atoms : ∀ h : Fin d, ∃ φ : FracAtom (m + 1), ∀ x, φ.eval x =
+      (a h + μ h * (hammingWeight (tailBits x) : ℝ) + c h * boolToReal (x 0)) /
+      ((hammingWeight (tailBits x) : ℝ) + (h : ℝ) + 1 +
+        2 * (d : ℝ) * boolToReal (x 0)) := by
+    intro h
+    let B : TypicalLogCloseness.AffineForm (m + 1) := {
+      constant := (h : ℝ) + 1
+      linear := Fin.cases (2 * (d : ℝ)) (fun _ => 1)
+    }
+    let A : TypicalLogCloseness.AffineForm (m + 1) := {
+      constant := a h
+      linear := Fin.cases (c h) (fun _ => μ h)
+    }
+    have hB_pos : B.PositiveCoefficients := by
+      have hdR : 0 < (d : ℝ) := Nat.cast_pos.mpr (by omega)
+      have hC : 0 < B.constant := by dsimp [B]; positivity
+      refine ⟨hC, ?_⟩
+      intro i
+      induction i using Fin.cases with
+      | zero =>
+        change 0 < 2 * (d : ℝ)
+        exact mul_pos (by positivity) hdR
+      | succ i' =>
+        change 0 < (1 : ℝ)
+        exact zero_lt_one
+    obtain ⟨φ, hφ⟩ := TypicalLogCloseness.exists_fracAtom_eval_eq A B hB_pos
+    refine ⟨φ, fun x => ?_⟩
+    rw [hφ]
+    have hA_eval : A.eval x = a h + μ h * (hammingWeight (tailBits x) : ℝ) +
+        c h * boolToReal (x 0) := by
+      unfold TypicalLogCloseness.AffineForm.eval A
+      rw [Fin.sum_univ_succ]
+      simp only [Fin.cases_zero, Fin.cases_succ]
+      rw [← Finset.mul_sum, sum_bitReal_tailBits]
+      have hbit : TypicalLogCloseness.bitReal (x 0) = boolToReal (x 0) := by
+        cases x 0 <;> rfl
+      rw [hbit]
+      ring
+    have hB_eval : B.eval x = (hammingWeight (tailBits x) : ℝ) + (h : ℝ) + 1 +
+        2 * (d : ℝ) * boolToReal (x 0) := by
+      unfold TypicalLogCloseness.AffineForm.eval B
+      rw [Fin.sum_univ_succ]
+      simp only [Fin.cases_zero, Fin.cases_succ, one_mul]
+      rw [sum_bitReal_tailBits]
+      have hbit : TypicalLogCloseness.bitReal (x 0) = boolToReal (x 0) := by
+        cases x 0 <;> rfl
+      rw [hbit]
+      ring
+    rw [hA_eval, hB_eval]
+  choose φ hφ using h_atoms
+  refine ⟨φ, 0, fun x => ?_⟩
+  rw [zero_add]
+  have hsum : (∑ h : Fin d, (φ h).eval x) =
+      ∑ h : Fin d, (a h + μ h * (hammingWeight (tailBits x) : ℝ) +
+        c h * boolToReal (x 0)) /
+      ((hammingWeight (tailBits x) : ℝ) + (h : ℝ) + 1 +
+        2 * (d : ℝ) * boolToReal (x 0)) := by
+    congr 1; ext h; exact hφ h x
+  rw [hsum]
+  have hsign := head_sum_sign d hd p₀ p₁ a μ c hid₀ hid₁ (x 0) (hammingWeight (tailBits x))
+  rw [hsign]
+  obtain ⟨htrue, hfalse⟩ := hgrid (x 0) (tailBits x)
+  unfold markedFn
+  cases hF : F (x 0) (hammingWeight (tailBits x))
+  · have h1 := hfalse hF
+    constructor
+    · intro h0
+      linarith
+    · intro h
+      contradiction
+  · have h1 := htrue hF
+    constructor
+    · intro _
+      rfl
+    · intro _
+      exact h1
 
 /-- [MB10] Degree-zero case: a function of threshold degree zero is
 constant, and a constant function has `HStar = 0`.  Route: a strict sign
