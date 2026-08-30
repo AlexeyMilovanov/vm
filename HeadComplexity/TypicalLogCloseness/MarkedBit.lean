@@ -88,7 +88,20 @@ theorem sliceAt_cube_eval (z : Bool) (y : Fin m → Bool)
     (P : MvPolynomial (Fin (m + 1)) ℝ) :
     eval (cubePoint y) (sliceAt (boolToReal z) P) =
       eval (cubePoint (consBit z y)) P := by
-  sorry
+  unfold sliceAt
+  rw [aeval_def, eval_eval₂]
+  have h1 : (eval (cubePoint y)).comp (algebraMap ℝ (MvPolynomial (Fin m) ℝ)) = RingHom.id ℝ := by
+    ext r
+    simp [eval_C]
+  have h2 : (fun s : Fin (m + 1) => eval (cubePoint y) (Fin.cases (C (boolToReal z)) X s)) =
+      cubePoint (consBit z y) := by
+    ext s
+    induction s using Fin.cases with
+    | zero =>
+      simp [cubePoint, boolToReal]
+    | succ i =>
+      simp [cubePoint]
+  rw [h1, h2, eval₂_id]
 
 /-- [MB02] Slicing never raises the total degree.  Route: `sliceAt` is
 `aeval` sending `X 0 ↦ C t` (degree `0`) and `X i.succ ↦ X i` (degree `1`);
