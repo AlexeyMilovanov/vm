@@ -230,7 +230,65 @@ theorem exists_grid_pair {d : ℕ} (hd : 1 ≤ d) (F : Bool → ℕ → Bool)
         (F z (hammingWeight y) = false →
           p₀.eval (hammingWeight y : ℝ) +
             boolToReal z * p₁.eval (hammingWeight y : ℝ) < 0) := by
-  sorry
+  have hP0_deg : (sliceAt 0 P).totalDegree ≤ d :=
+    (sliceAt_totalDegree_le 0 P).trans hdeg
+  have hP0_sym : (symmetrize (sliceAt 0 P)).IsSymmetric :=
+    symmetrize_isSymmetric _
+  have hP0_sym_deg : (symmetrize (sliceAt 0 P)).totalDegree ≤ d :=
+    symmetrize_totalDegree_le hP0_deg
+  obtain ⟨p0, hp0_deg, hp0_eval⟩ :=
+    exists_univariate_of_symmetric (symmetrize (sliceAt 0 P)) hP0_sym hP0_sym_deg
+  have hP1_deg : (sliceAt 1 P - sliceAt 0 P).totalDegree ≤ d - 1 :=
+    sliceDiff_totalDegree_le hd P hdeg
+  have hP1_sym : (symmetrize (sliceAt 1 P - sliceAt 0 P)).IsSymmetric :=
+    symmetrize_isSymmetric _
+  have hP1_sym_deg : (symmetrize (sliceAt 1 P - sliceAt 0 P)).totalDegree ≤ d - 1 :=
+    symmetrize_totalDegree_le hP1_deg
+  obtain ⟨p1, hp1_deg, hp1_eval⟩ :=
+    exists_univariate_of_symmetric (symmetrize (sliceAt 1 P - sliceAt 0 P)) hP1_sym hP1_sym_deg
+  refine ⟨p0, p1, hp0_deg, hp1_deg, fun z y => ?_⟩
+  rw [hp0_eval y, hp1_eval y]
+  cases z
+  · have hfalse : boolToReal false = 0 := rfl
+    rw [hfalse, zero_mul, add_zero]
+    unfold symmetrize
+    rw [map_sum]
+    refine ⟨fun htr => sum_pos (fun σ _ => ?_) univ_nonempty,
+      fun hfl => sum_neg (fun σ _ => ?_) univ_nonempty⟩
+    · rw [eval_rename]
+      have := sliceAt_cube_eval false (fun i => y (σ i)) P
+      rw [hfalse] at this
+      exact this ▸ (hrep (consBit false (fun i => y (σ i)))).1
+        ((markedFn_consBit F false (fun i => y (σ i))).symm ▸
+          (hammingWeight_comp_perm y σ).symm ▸ htr)
+    · rw [eval_rename]
+      have := sliceAt_cube_eval false (fun i => y (σ i)) P
+      rw [hfalse] at this
+      exact this ▸ (hrep (consBit false (fun i => y (σ i)))).2
+        ((markedFn_consBit F false (fun i => y (σ i))).symm ▸
+          (hammingWeight_comp_perm y σ).symm ▸ hfl)
+  · have htrue : boolToReal true = 1 := rfl
+    rw [htrue, one_mul]
+    unfold symmetrize
+    rw [map_sum, map_sum, ← sum_add_distrib]
+    have hsum : ∀ σ : Equiv.Perm (Fin m),
+        eval (cubePoint y) (rename (σ : Fin m → Fin m) (sliceAt 0 P)) +
+        eval (cubePoint y) (rename (σ : Fin m → Fin m) (sliceAt 1 P - sliceAt 0 P)) =
+        eval (cubePoint (consBit true (fun i => y (σ i)))) P := by
+      intro σ
+      rw [eval_rename, eval_rename, ← map_add, add_sub_cancel]
+      have := sliceAt_cube_eval true (fun i => y (σ i)) P
+      rw [htrue] at this
+      exact this
+    simp_rw [hsum]
+    refine ⟨fun htr => sum_pos (fun σ _ => ?_) univ_nonempty,
+      fun hfl => sum_neg (fun σ _ => ?_) univ_nonempty⟩
+    · exact (hrep (consBit true (fun i => y (σ i)))).1
+        ((markedFn_consBit F true (fun i => y (σ i))).symm ▸
+          (hammingWeight_comp_perm y σ).symm ▸ htr)
+    · exact (hrep (consBit true (fun i => y (σ i)))).2
+        ((markedFn_consBit F true (fun i => y (σ i))).symm ▸
+          (hammingWeight_comp_perm y σ).symm ▸ hfl)
 
 /-! ## The theorem-138 compiler (univariate layer) -/
 
