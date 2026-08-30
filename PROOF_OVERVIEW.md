@@ -72,6 +72,20 @@ finite endpoint is `typical_log_closeness` in `Headline.lean`.
 The same counting infrastructure yields an explicit finite form of the
 worst-case `Omega(2^n/n^2)` lower bound and the fixed-pole `Bank` theorems.
 
+The same layer also contains the independent infinite-class theorem
+`markedBit_exact`.  For every function `f(z,y) = F(z, |y|)` with one marked
+bit and one fully symmetric block, it proves
+
+```text
+thresholdDeg(f) = RelaxedPOIC2(f) = POIC2(f) = HStar(f).
+```
+
+The proof slices a minimum-degree strict sign polynomial at `z = 0,1`,
+symmetrizes the remaining block, and compiles the two univariate slices into
+legal fractional atoms with shared interpolation data.  Its implementation is
+`HeadComplexity/TypicalLogCloseness/MarkedBit.lean` and its statement lock is
+`HeadComplexity/StatementLocks/MarkedBit.lean`.
+
 ## 4. Five-bit exact census
 
 The complete theorem for `n <= 5` is not part of the Lean-kernel layer.  Its
@@ -93,7 +107,7 @@ separately as documented in `SUBMISSION.md`.
 |---|---|---|
 | Algebraic foundation | proved | Lean kernel + standard axioms |
 | Separations, Warren, NDISJ | proved | Lean kernel + standard axioms |
-| `POIC2` sandwich and typicality | proved | Lean kernel + standard axioms |
+| `POIC2` sandwich, marked-bit exactness, and typicality | proved | Lean kernel + standard axioms |
 | Full five-bit census | exact external proof | small Python/C verifier + machine |
 
 The general equality and polynomial-equivalence questions between `POIC2` and

@@ -32,15 +32,16 @@ bash scripts/validate.sh
 
 The validator performs three independent gates:
 
-1. builds every tracked Lean library source and separately elaborates the
-   frozen-statement smoke test; the metaprogram used by the axiom audit is not
-   treated as library code;
-2. runs a comment-aware scan rejecting `sorry`, `admit`, `native_decide`,
-   `Lean.ofReduceBool`, project `axiom`, and `unsafe` declarations in library
-   sources;
-3. imports every tracked library module and uses `Lean.collectAxioms` to reject any
-   theorem depending on an axiom other than `propext`, `Classical.choice`, or
-   `Quot.sound`.
+1. builds every tracked Lean library source, including the statement-lock
+   modules, and separately elaborates every import wrapper under
+   `scripts/smoke/`; the metaprogram used by the axiom audit is not treated as
+   library code;
+2. runs a comment-aware hygiene scan over every tracked Lean source,
+   rejecting `sorry`, `sorryAx`, `admit`, `native_decide`, `Lean.ofReduceBool`,
+   project `axiom`, and `unsafe` declarations;
+3. imports every tracked library module, including the statement locks, and
+   uses `Lean.collectAxioms` to reject any theorem depending on an axiom other
+   than `propext`, `Classical.choice`, or `Quot.sound`.
 
 Successful output ends with:
 
@@ -71,9 +72,18 @@ lake build HeadComplexity.Separations.All
 lake build HeadComplexity.TypicalLogCloseness
 ```
 
+Build and elaborate the one-marked-bit exact theorem and its statement lock:
+
+```bash
+lake build HeadComplexity.TypicalLogCloseness.MarkedBit
+lake build HeadComplexity.StatementLocks.MarkedBit
+lake env lean scripts/smoke/FrozenMarkedBit.lean
+```
+
 Run the frozen separation statement smoke test:
 
 ```bash
+lake build HeadComplexity.StatementLocks.Separations
 lake env lean scripts/smoke/FrozenStatements.lean
 ```
 
@@ -86,7 +96,13 @@ python3 scripts/check_lean_placeholders.py
 Run the all-theorem axiom audit after building:
 
 ```bash
-mapfile -d '' files < <(git ls-files -z -- '*.lean' ':!:scripts/*.lean')
+files=()
+while IFS= read -r -d '' file; do
+  case "$file" in
+    scripts/AxiomCheck.lean|scripts/smoke/*.lean) ;;
+    *) files+=("$file") ;;
+  esac
+done < <(git ls-files -z -- '*.lean')
 lake env lean --run scripts/AxiomCheck.lean "${files[@]}"
 ```
 
@@ -97,7 +113,7 @@ For an adversarial reproduction, do not reuse an existing `.lake` directory:
 ```bash
 git clone https://github.com/AlexeyMilovanov/vm.git vm-clean
 cd vm-clean
-git checkout takehome-submission-2026-08-30
+git checkout takehome-submission-2026-08-30-v2
 bash scripts/validate.sh --fetch-cache
 ```
 

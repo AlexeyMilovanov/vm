@@ -40,38 +40,53 @@ if $fetch_cache; then
   echo "CACHE_RC=0"
 fi
 
-tracked_lean_files=()
+library_lean_files=()
+smoke_lean_files=()
 while IFS= read -r -d '' source_file; do
-  if [ "$source_file" != "scripts/AxiomCheck.lean" ] &&
-      [ "$source_file" != "scripts/smoke/FrozenStatements.lean" ]; then
-    tracked_lean_files+=("$source_file")
-  fi
+  case "$source_file" in
+    scripts/AxiomCheck.lean)
+      ;;
+    scripts/smoke/*.lean)
+      smoke_lean_files+=("$source_file")
+      ;;
+    *)
+      library_lean_files+=("$source_file")
+      ;;
+  esac
 done < <(git ls-files -z -- '*.lean')
 
-if [ "${#tracked_lean_files[@]}" -eq 0 ]; then
-  echo "No tracked Lean sources found." >&2
+if [ "${#library_lean_files[@]}" -eq 0 ]; then
+  echo "No tracked Lean library sources found." >&2
+  exit 1
+fi
+if [ "${#smoke_lean_files[@]}" -eq 0 ]; then
+  echo "No tracked Lean statement-lock import smoke tests found." >&2
   exit 1
 fi
 
 library_targets=()
-for source_file in "${tracked_lean_files[@]}"; do
+for source_file in "${library_lean_files[@]}"; do
   library_targets+=("./$source_file")
 done
 
-echo "=== Building ${#library_targets[@]} tracked Lean sources ==="
+echo "=== Building ${#library_targets[@]} tracked Lean library sources ==="
 lake build "${library_targets[@]}"
 echo "BUILD_RC=0"
 
-echo "=== Elaborating the frozen-statement smoke test ==="
-lake env lean scripts/smoke/FrozenStatements.lean
+echo "=== Elaborating ${#smoke_lean_files[@]} statement-lock import smoke tests ==="
+for smoke_file in "${smoke_lean_files[@]}"; do
+  echo "--- $smoke_file"
+  lake env lean "$smoke_file"
+done
 echo "SMOKE_RC=0"
 
 echo "=== Rejecting proof placeholders and extra trust primitives ==="
 python3 "$placeholder_check"
 echo "PLACEHOLDER_RC=0"
 
-echo "=== Auditing every theorem in ${#tracked_lean_files[@]} modules ==="
-lake env lean --run "$axiom_check" "${tracked_lean_files[@]}"
+axiom_audit_files=("${library_lean_files[@]}")
+echo "=== Auditing every theorem in ${#axiom_audit_files[@]} modules ==="
+lake env lean --run "$axiom_check" "${axiom_audit_files[@]}"
 echo "AXIOM_RC=0"
 
 echo "VALIDATION_RC=0"

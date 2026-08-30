@@ -15,7 +15,7 @@ from pathlib import Path
 
 BANNED = re.compile(
     r"(?<![A-Za-z0-9_'])"
-    r"(sorry|admit|native_decide|Lean\.ofReduceBool|axiom|unsafe)"
+    r"(sorry|sorryAx|admit|native_decide|Lean\.ofReduceBool|axiom|unsafe)"
     r"(?![A-Za-z0-9_'])"
 )
 

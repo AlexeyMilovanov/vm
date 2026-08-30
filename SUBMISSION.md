@@ -40,6 +40,26 @@ HStar <= 512 * POIC2 * (floor(log_2 POIC2) + 1)
 by `2^(2^(n-1))`.  Out of `2^(2^n)` functions, this is a fraction at most
 `2^(-2^(n-1))`.
 
+### Exact equality with one marked bit
+
+For every Boolean function of the form
+
+```text
+f(z,y) = F(z, |y|),
+```
+
+with one marked bit and one fully symmetric block, the kernel-checked theorem
+`markedBit_exact` proves
+
+```text
+thresholdDeg(f) = RelaxedPOIC2(f) = POIC2(f) = HStar(f).
+```
+
+This is an infinite-class exact theorem, not a finite census or a numerical
+observation.  Its implementation is
+`HeadComplexity/TypicalLogCloseness/MarkedBit.lean`, and its frozen public
+statement is in `HeadComplexity/StatementLocks/MarkedBit.lean`.
+
 ### Exact five-bit frontier
 
 The external exact certificate table proves
@@ -69,6 +89,9 @@ and archived fresh-run report, but not the 12 GB table itself.
 
 ## Reproduction
 
+The audited repository snapshot is the immutable tag
+`takehome-submission-2026-08-30-v2`.
+
 Lean release validation:
 
 ```bash
@@ -85,7 +108,7 @@ bash artifacts/n5-certificate-table-proof-v1/verify.sh \
 
 ## Trust boundaries
 
-* The Lean theorems contain no proof placeholders or native decision
+* The Lean theorems, including `markedBit_exact`, contain no proof placeholders or native decision
   procedures and depend only on `propext`, `Classical.choice`, and
   `Quot.sound`.
 * The full census is an exact computer-checked proof, not a Lean theorem.  A

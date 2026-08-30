@@ -22,6 +22,6 @@ set_option linter.style.header false
 # Typical logarithmic closeness of H* and POIC₂
 
 Umbrella import for the completed formalization.  It includes the Hamming-star
-bank, localization matrix, POIC-to-Warren bridge, and the headline
-finite-cardinality theorem.
+bank, localization matrix, POIC-to-Warren bridge, the one-marked-bit exactness
+theorem, and the headline finite-cardinality theorem.
 -/
