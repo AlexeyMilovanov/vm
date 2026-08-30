@@ -812,6 +812,29 @@ theorem markedFn_fracComputable {d : ℕ} (hd : 1 ≤ d) (F : Bool → ℕ → B
     · intro _
       exact h1
 
+private theorem totalDegree_zero_eq_C {σ R : Type*} [CommSemiring R]
+    (P : MvPolynomial σ R) (h : P.totalDegree ≤ 0) :
+    P = C (P.coeff 0) := by
+  classical
+  ext d
+  rw [coeff_C]
+  split_ifs with h0
+  · rw [h0]
+  · have hsupp : d ∉ P.support := fun hd => by
+      have hdeg := le_totalDegree hd
+      have hsum : d.sum (fun _ e => e) = 0 := by omega
+      have hd0 : d = 0 := by
+        ext i
+        by_cases hi : i ∈ d.support
+        · have hle : d i ≤ d.sum (fun _ e => e) :=
+            Finset.single_le_sum (fun _ _ => Nat.zero_le _) hi
+          have : d i = 0 := by omega
+          rw [this]
+          rfl
+        · exact Finsupp.notMem_support_iff.mp hi
+      exact h0 hd0.symm
+    exact notMem_support_iff.mp hsupp
+
 /-- [MB10] Degree-zero case: a function of threshold degree zero is
 constant, and a constant function has `HStar = 0`.  Route: a strict sign
 witness of total degree `0` is a constant polynomial `C c` whose sign is
@@ -821,7 +844,33 @@ unfolding as in `HStar_f8`-style arguments. -/
 theorem HStar_eq_zero_of_thresholdDeg_zero (F : Bool → ℕ → Bool)
     (h0 : thresholdDeg (markedFn (m := m) F) = 0) :
     HStar (m + 1) (markedFn (m := m) F) = 0 := by
-  sorry
+  have hdeg0 : ThresholdDegLE (markedFn (m := m) F) 0 := by
+    rw [← h0]
+    exact thresholdDegLE_thresholdDeg _
+  obtain ⟨P, hPdeg, hPrep⟩ := hdeg0
+  have hP_eq : P = C (P.coeff 0) := totalDegree_zero_eq_C P hPdeg
+  rw [hP_eq] at hPrep
+  have hconst : ∀ x y, markedFn (m := m) F x = markedFn (m := m) F y := by
+    intro x y
+    have hx := hPrep x
+    have hy := hPrep y
+    rw [eval_C] at hx hy
+    cases hfx : markedFn (m := m) F x <;> cases hfy : markedFn (m := m) F y
+    · rfl
+    · exfalso
+      rw [hfx] at hx
+      rw [hfy] at hy
+      have : 0 < P.coeff 0 := hy.mpr rfl
+      have : ¬ 0 < P.coeff 0 := by intro hpos; exact Bool.false_ne_true (hx.mp hpos)
+      contradiction
+    · exfalso
+      rw [hfx] at hx
+      rw [hfy] at hy
+      have : 0 < P.coeff 0 := hx.mpr rfl
+      have : ¬ 0 < P.coeff 0 := by intro hpos; exact Bool.false_ne_true (hy.mp hpos)
+      contradiction
+    · rfl
+  exact (HStar_eq_zero_iff (markedFn (m := m) F)).mpr hconst
 
 /-! ## Assembly -/
 
