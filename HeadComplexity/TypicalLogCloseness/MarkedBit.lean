@@ -427,6 +427,49 @@ theorem exists_coprod_interpolation (hd : 1 ≤ d) (t : ℝ) (R : Polynomial ℝ
     exact Nat.lt_of_le_of_lt hdiff_deg (Nat.sub_lt hd (by decide))
   exact sub_eq_zero.mp hdiff_zero
 
+private theorem X_mul_coprod_coeff_d (d : ℕ) (hd : 1 ≤ d) (h : Fin d) (t : ℝ) :
+    (Polynomial.X * coprod d h t).coeff d = 1 := by
+  have hd1 : d = (d - 1) + 1 := (Nat.sub_add_cancel hd).symm
+  conv_lhs => arg 2; rw [hd1]
+  rw [Polynomial.coeff_X_mul]
+  have := (coprod_structure d h t).1
+  have hmonic := (coprod_structure d h t).2.1
+  rw [← this]
+  exact hmonic.coeff_natDegree
+
+private theorem natDegree_C_mul_coprod_le (d : ℕ) (h : Fin d) (t c : ℝ) :
+    (Polynomial.C c * coprod d h t).natDegree ≤ d - 1 := by
+  calc (Polynomial.C c * coprod d h t).natDegree
+    _ ≤ (Polynomial.C c).natDegree + (coprod d h t).natDegree := Polynomial.natDegree_mul_le
+    _ ≤ 0 + (d - 1) := by
+        have hC : (Polynomial.C c).natDegree ≤ 0 := (Polynomial.natDegree_C c).le
+        have hcop : (coprod d h t).natDegree ≤ d - 1 := (coprod_structure d h t).1.le
+        exact add_le_add hC hcop
+    _ = d - 1 := zero_add (d - 1)
+
+private theorem natDegree_X_mul_coprod_le (d : ℕ) (hd : 1 ≤ d) (h : Fin d) (t : ℝ) :
+    (Polynomial.X * coprod d h t).natDegree ≤ d := by
+  calc (Polynomial.X * coprod d h t).natDegree
+    _ ≤ Polynomial.X.natDegree + (coprod d h t).natDegree := Polynomial.natDegree_mul_le
+    _ = 1 + (d - 1) := by rw [Polynomial.natDegree_X, (coprod_structure d h t).1]
+    _ = d := Nat.add_sub_of_le hd
+
+private theorem coeff_d_eq_zero_of_natDegree_le_sub_one {d : ℕ} (hd : 1 ≤ d) {p : Polynomial ℝ}
+    (hp : p.natDegree ≤ d - 1) : p.coeff d = 0 := by
+  apply Polynomial.coeff_eq_zero_of_natDegree_lt
+  omega
+
+private theorem natDegree_le_sub_one_of_coeff_d_eq_zero {d : ℕ} (hd : 1 ≤ d) {p : Polynomial ℝ}
+    (hp : p.natDegree ≤ d) (hcoeff : p.coeff d = 0) : p.natDegree ≤ d - 1 := by
+  rcases hp.lt_or_eq with hlt | heq
+  · omega
+  · have hlc : p.leadingCoeff = 0 := by
+      change p.coeff p.natDegree = 0
+      rw [heq, hcoeff]
+    rw [Polynomial.leadingCoeff_eq_zero] at hlc
+    rw [hlc, Polynomial.natDegree_zero]
+    omega
+
 /-- [MB07] The theorem-138 numerator construction.  Given the grid pair
 `(p₀, p₁)` with `deg p₀ ≤ d`, `deg p₁ ≤ d - 1`, there are affine numerator
 data `a, μ, c : Fin d → ℝ` with the two exact slice identities below.
@@ -444,7 +487,128 @@ theorem exists_numerators (hd : 1 ≤ d) (p₀ p₁ : Polynomial ℝ)
         coprod d h 0 ∧
       p₀ + p₁ = ∑ h, (Polynomial.C (a h + c h) + Polynomial.C (μ h) *
         Polynomial.X) * coprod d h 1 := by
-  sorry
+  have hd_pos : 0 < d := hd
+  let h0 : Fin d := ⟨0, hd_pos⟩
+  let ℓ : ℝ := p₀.coeff d
+  let μ : Fin d → ℝ := fun h => if h = h0 then ℓ else 0
+  have hμ_sum : ∑ h, μ h = ℓ := by
+    rw [sum_ite_eq']
+    simp [h0]
+  let p₀_rem : Polynomial ℝ := p₀ - ∑ h, Polynomial.C (μ h) * Polynomial.X * coprod d h 0
+  have h_rem_deg : p₀_rem.natDegree ≤ d - 1 := by
+    apply natDegree_le_sub_one_of_coeff_d_eq_zero hd
+    · calc p₀_rem.natDegree
+        _ ≤ max p₀.natDegree (∑ h, Polynomial.C (μ h) * Polynomial.X *
+              coprod d h 0).natDegree :=
+            Polynomial.natDegree_sub_le _ _
+        _ ≤ d := by
+          apply max_le h₀
+          apply Polynomial.natDegree_sum_le_of_forall_le
+          intro h _
+          calc (Polynomial.C (μ h) * Polynomial.X * coprod d h 0).natDegree
+            _ = (Polynomial.C (μ h) * (Polynomial.X * coprod d h 0)).natDegree := by
+                rw [mul_assoc]
+            _ ≤ (Polynomial.X * coprod d h 0).natDegree := by
+              calc (Polynomial.C (μ h) * (Polynomial.X * coprod d h 0)).natDegree
+                _ ≤ (Polynomial.C (μ h)).natDegree +
+                      (Polynomial.X * coprod d h 0).natDegree :=
+                    Polynomial.natDegree_mul_le
+                _ ≤ 0 + (Polynomial.X * coprod d h 0).natDegree :=
+                    add_le_add (Polynomial.natDegree_C _).le le_rfl
+                _ = (Polynomial.X * coprod d h 0).natDegree := zero_add _
+            _ ≤ d := natDegree_X_mul_coprod_le d hd h 0
+    · simp only [p₀_rem, Polynomial.coeff_sub]
+      have h_sum_coeff : (∑ h, Polynomial.C (μ h) * Polynomial.X * coprod d h 0).coeff d = ℓ := by
+        rw [Polynomial.finsetSum_coeff]
+        have : (fun h => (Polynomial.C (μ h) * Polynomial.X * coprod d h 0).coeff d) =
+            (fun h => μ h) := by
+          ext h
+          calc (Polynomial.C (μ h) * Polynomial.X * coprod d h 0).coeff d
+            _ = (Polynomial.C (μ h) * (Polynomial.X * coprod d h 0)).coeff d := by
+                rw [mul_assoc]
+            _ = μ h * (Polynomial.X * coprod d h 0).coeff d :=
+                Polynomial.coeff_C_mul (Polynomial.X * coprod d h 0)
+            _ = μ h * 1 := by rw [X_mul_coprod_coeff_d d hd h 0]
+            _ = μ h := mul_one (μ h)
+        rw [this, hμ_sum]
+      rw [h_sum_coeff, sub_self]
+  rcases exists_coprod_interpolation d hd 0 p₀_rem h_rem_deg with ⟨a, ha⟩
+  have hp0_eq : p₀ = ∑ h, (Polynomial.C (a h) + Polynomial.C (μ h) * Polynomial.X) *
+      coprod d h 0 := by
+    have h_split : p₀ = p₀_rem + ∑ h, Polynomial.C (μ h) * Polynomial.X * coprod d h 0 :=
+      (sub_add_cancel p₀ _).symm
+    rw [h_split, ha, ← sum_add_distrib]
+    congr 1
+    funext h
+    ring
+  let S1 : Polynomial ℝ := ∑ h, (Polynomial.C (a h) + Polynomial.C (μ h) * Polynomial.X) *
+    coprod d h 1
+  let p1_rem : Polynomial ℝ := (p₀ + p₁) - S1
+  have h_p1_rem_deg : p1_rem.natDegree ≤ d - 1 := by
+    apply natDegree_le_sub_one_of_coeff_d_eq_zero hd
+    · calc p1_rem.natDegree
+        _ ≤ max (p₀ + p₁).natDegree S1.natDegree := Polynomial.natDegree_sub_le _ _
+        _ ≤ d := by
+          apply max_le
+          · calc (p₀ + p₁).natDegree
+              _ ≤ max p₀.natDegree p₁.natDegree := Polynomial.natDegree_add_le _ _
+              _ ≤ d := max_le h₀ (by omega)
+          · apply Polynomial.natDegree_sum_le_of_forall_le
+            intro h _
+            calc ((Polynomial.C (a h) + Polynomial.C (μ h) * Polynomial.X) *
+                  coprod d h 1).natDegree
+              _ = (Polynomial.C (a h) * coprod d h 1 +
+                    Polynomial.C (μ h) * Polynomial.X * coprod d h 1).natDegree := by ring_nf
+              _ ≤ max (Polynomial.C (a h) * coprod d h 1).natDegree
+                    (Polynomial.C (μ h) * Polynomial.X * coprod d h 1).natDegree :=
+                  Polynomial.natDegree_add_le _ _
+              _ ≤ d := by
+                apply max_le
+                · have := natDegree_C_mul_coprod_le d h 1 (a h)
+                  omega
+                · calc (Polynomial.C (μ h) * Polynomial.X * coprod d h 1).natDegree
+                    _ = (Polynomial.C (μ h) * (Polynomial.X * coprod d h 1)).natDegree := by
+                        rw [mul_assoc]
+                    _ ≤ d := by
+                      calc (Polynomial.C (μ h) * (Polynomial.X * coprod d h 1)).natDegree
+                        _ ≤ (Polynomial.C (μ h)).natDegree +
+                              (Polynomial.X * coprod d h 1).natDegree :=
+                            Polynomial.natDegree_mul_le
+                        _ ≤ 0 + d := add_le_add (Polynomial.natDegree_C _).le
+                              (natDegree_X_mul_coprod_le d hd h 1)
+                        _ = d := zero_add d
+    · simp only [p1_rem, Polynomial.coeff_sub]
+      have h_p0_p1_coeff : (p₀ + p₁).coeff d = ℓ := by
+        rw [Polynomial.coeff_add, coeff_d_eq_zero_of_natDegree_le_sub_one hd h₁, add_zero]
+      have h_S1_coeff : S1.coeff d = ℓ := by
+        change (∑ h, (Polynomial.C (a h) + Polynomial.C (μ h) * Polynomial.X) *
+            coprod d h 1).coeff d = ℓ
+        rw [Polynomial.finsetSum_coeff]
+        have : (fun h => ((Polynomial.C (a h) + Polynomial.C (μ h) * Polynomial.X) *
+            coprod d h 1).coeff d) = (fun h => μ h) := by
+          ext h
+          have h_expand : (Polynomial.C (a h) + Polynomial.C (μ h) * Polynomial.X) *
+              coprod d h 1 =
+            Polynomial.C (a h) * coprod d h 1 +
+              Polynomial.C (μ h) * (Polynomial.X * coprod d h 1) := by ring
+          rw [h_expand, Polynomial.coeff_add]
+          have h_a_coeff : (Polynomial.C (a h) * coprod d h 1).coeff d = 0 :=
+            coeff_d_eq_zero_of_natDegree_le_sub_one hd (natDegree_C_mul_coprod_le d h 1 (a h))
+          have h_mu_coeff : (Polynomial.C (μ h) * (Polynomial.X * coprod d h 1)).coeff d = μ h := by
+            rw [Polynomial.coeff_C_mul, X_mul_coprod_coeff_d d hd h 1, mul_one]
+          rw [h_a_coeff, h_mu_coeff, zero_add]
+        rw [this, hμ_sum]
+      rw [h_p0_p1_coeff, h_S1_coeff, sub_self]
+  rcases exists_coprod_interpolation d hd 1 p1_rem h_p1_rem_deg with ⟨c, hc⟩
+  refine ⟨a, μ, c, hp0_eq, ?_⟩
+  have h_split1 : p₀ + p₁ = p1_rem + S1 := by
+    change p₀ + p₁ = ((p₀ + p₁) - S1) + S1
+    rw [sub_add_cancel]
+  rw [h_split1, hc, ← sum_add_distrib]
+  congr 1
+  funext h
+  rw [map_add]
+  ring
 
 /-- [MB08] Pointwise sign transfer.  On the Boolean slice `z ∈ {0, 1}` and
 any grid point `u = k ≥ 0`, the head sum with numerators
