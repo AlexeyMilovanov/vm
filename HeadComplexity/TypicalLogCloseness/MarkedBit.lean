@@ -619,6 +619,69 @@ cleared sum telescopes into the slice identity of MB07 evaluated at `u`
 (`div_add_div`, `Finset.sum_div`, positivity of the product;
 `Polynomial.eval_prod` connects `coprod` values with the denominator
 product with one factor removed). -/
+private def headSumDen (d : ℕ) (z : Bool) (k : ℕ) (h : Fin d) : ℝ :=
+  (k : ℝ) + (h : ℝ) + 1 + 2 * d * boolToReal z
+
+private theorem headSumDen_pos (d : ℕ) (z : Bool) (k : ℕ) (h : Fin d) :
+    0 < headSumDen d z k h := by
+  dsimp [headSumDen, boolToReal]
+  split_ifs <;> linarith
+
+private theorem prod_headSumDen_pos (d : ℕ) (z : Bool) (k : ℕ) :
+    0 < ∏ j : Fin d, headSumDen d z k j :=
+  prod_pos (fun j _ => headSumDen_pos d z k j)
+
+private theorem coprod_eval_eq (d : ℕ) (z : Bool) (k : ℕ) (h : Fin d) :
+    (coprod d h (boolToReal z)).eval (k : ℝ) =
+      ∏ j ∈ Finset.univ.erase h, headSumDen d z k j := by
+  dsimp [coprod]
+  rw [Polynomial.eval_prod]
+  refine Finset.prod_congr rfl (fun j _ => ?_)
+  dsimp [denPoly, headSumDen]
+  rw [Polynomial.eval_add, Polynomial.eval_X, Polynomial.eval_C]
+  ring
+
+private theorem prod_erase_headSumDen (d : ℕ) (z : Bool) (k : ℕ) (h : Fin d) :
+    (∏ j ∈ Finset.univ.erase h, headSumDen d z k j) * headSumDen d z k h =
+      ∏ j : Fin d, headSumDen d z k j :=
+  mul_comm (∏ j ∈ Finset.univ.erase h, headSumDen d z k j) (headSumDen d z k h) ▸
+    mul_prod_erase Finset.univ (fun j => headSumDen d z k j) (mem_univ h)
+
+private theorem div_mul_prod_headSumDen (d : ℕ) (z : Bool) (k : ℕ) (h : Fin d) (N : ℝ) :
+    (N / headSumDen d z k h) * (∏ j : Fin d, headSumDen d z k j) =
+      N * (∏ j ∈ Finset.univ.erase h, headSumDen d z k j) := by
+  have hpos : headSumDen d z k h ≠ 0 := (headSumDen_pos d z k h).ne'
+  rw [← prod_erase_headSumDen d z k h]
+  calc
+    (N / headSumDen d z k h) *
+        ((∏ j ∈ Finset.univ.erase h, headSumDen d z k j) * headSumDen d z k h)
+      = ((N / headSumDen d z k h) * headSumDen d z k h) *
+          (∏ j ∈ Finset.univ.erase h, headSumDen d z k j) := by ring
+    _ = N * (∏ j ∈ Finset.univ.erase h, headSumDen d z k j) := by
+      rw [div_mul_cancel₀ N hpos]
+
+private theorem eval_slice_id (d : ℕ) (p₀ p₁ : Polynomial ℝ) (a μ c : Fin d → ℝ)
+    (hid₀ : p₀ = ∑ h, (Polynomial.C (a h) + Polynomial.C (μ h) * Polynomial.X) *
+      coprod d h 0)
+    (hid₁ : p₀ + p₁ = ∑ h, (Polynomial.C (a h + c h) + Polynomial.C (μ h) * Polynomial.X) *
+      coprod d h 1)
+    (z : Bool) (k : ℕ) :
+    p₀.eval (k : ℝ) + boolToReal z * p₁.eval (k : ℝ) =
+      ∑ h : Fin d, (a h + μ h * (k : ℝ) + c h * boolToReal z) *
+        (coprod d h (boolToReal z)).eval (k : ℝ) := by
+  cases z
+  · dsimp [boolToReal]
+    rw [zero_mul, add_zero, hid₀, Polynomial.eval_finsetSum]
+    refine Finset.sum_congr rfl (fun h _ => ?_)
+    rw [Polynomial.eval_mul, Polynomial.eval_add, Polynomial.eval_C, Polynomial.eval_mul,
+      Polynomial.eval_C, Polynomial.eval_X, mul_zero, add_zero]
+  · dsimp [boolToReal]
+    rw [one_mul, ← Polynomial.eval_add, hid₁, Polynomial.eval_finsetSum]
+    refine Finset.sum_congr rfl (fun h _ => ?_)
+    rw [Polynomial.eval_mul, Polynomial.eval_add, Polynomial.eval_C, Polynomial.eval_mul,
+      Polynomial.eval_C, Polynomial.eval_X, mul_one]
+    ring
+
 theorem head_sum_sign (hd : 1 ≤ d) (p₀ p₁ : Polynomial ℝ)
     (a μ c : Fin d → ℝ)
     (hid₀ : p₀ = ∑ h, (Polynomial.C (a h) + Polynomial.C (μ h) *
@@ -629,7 +692,18 @@ theorem head_sum_sign (hd : 1 ≤ d) (p₀ p₁ : Polynomial ℝ)
     (0 < ∑ h : Fin d, (a h + μ h * k + c h * boolToReal z) /
         ((k : ℝ) + (h : ℝ) + 1 + 2 * d * boolToReal z) ↔
       0 < p₀.eval (k : ℝ) + boolToReal z * p₁.eval (k : ℝ)) := by
-  sorry
+  change (0 < ∑ h : Fin d, (a h + μ h * (k : ℝ) + c h * boolToReal z) / headSumDen d z k h ↔
+      0 < p₀.eval (k : ℝ) + boolToReal z * p₁.eval (k : ℝ))
+  have H_pos : 0 < ∏ j : Fin d, headSumDen d z k j := prod_headSumDen_pos d z k
+  rw [← mul_pos_iff_of_pos_right H_pos]
+  rw [sum_mul]
+  have h_left : (∑ h : Fin d, ((a h + μ h * (k : ℝ) + c h * boolToReal z) / headSumDen d z k h) *
+        (∏ j : Fin d, headSumDen d z k j)) =
+      ∑ h : Fin d, (a h + μ h * (k : ℝ) + c h * boolToReal z) *
+        (coprod d h (boolToReal z)).eval (k : ℝ) := by
+    refine Finset.sum_congr rfl (fun h _ => ?_)
+    rw [div_mul_prod_headSumDen, coprod_eval_eq]
+  rw [h_left, ← eval_slice_id d p₀ p₁ a μ c hid₀ hid₁ z k]
 
 end Compiler
 
