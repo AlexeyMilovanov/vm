@@ -36,7 +36,7 @@ whole content is the converse `HStar f ≤ thresholdDeg f`:
 4. each ratio is one `FracAtom` (`exists_fracAtom_eval_eq`), giving
    `fracComputable (m+1) d` and `HStar ≤ d`.
 
-Every `sorry` below is one Jules target; doc comments fix the local
+All ten targets were proved by the 2026-08-30 Jules campaign; doc comments fix the local
 contract.  Statements are frozen: repair requests go through BLOCKER files,
 never silent edits.
 -/

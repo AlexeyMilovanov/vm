@@ -3,70 +3,70 @@
     {
       "name": "sliceAt_cube_eval",
       "file": "HeadComplexity/TypicalLogCloseness/MarkedBit.lean",
-      "status": "jules_ready",
+      "status": "closed",
       "pref": "MB.MB01",
       "note": "aeval composition; Fin.cases split; boolToReal/cubePoint bookkeeping."
     },
     {
       "name": "sliceAt_totalDegree_le",
       "file": "HeadComplexity/TypicalLogCloseness/MarkedBit.lean",
-      "status": "jules_ready",
+      "status": "closed",
       "pref": "MB.MB02",
       "note": "substitution degree bound via support sums; images of variables have degree <= 1."
     },
     {
       "name": "sliceDiff_totalDegree_le",
       "file": "HeadComplexity/TypicalLogCloseness/MarkedBit.lean",
-      "status": "jules_ready",
+      "status": "closed",
       "pref": "MB.MB03",
       "note": "marked-exponent-zero terms cancel; surviving block degree <= d-1."
     },
     {
       "name": "exists_grid_pair",
       "file": "HeadComplexity/TypicalLogCloseness/MarkedBit.lean",
-      "status": "jules_ready",
+      "status": "closed",
       "pref": "MB.MB04",
       "note": "slice, symmetrize, univariate-reduce; additivity of symmetrize; strictness via symmetrize_strictSignRep with target symmetricFn (F z)."
     },
     {
       "name": "coprod_structure",
       "file": "HeadComplexity/TypicalLogCloseness/MarkedBit.lean",
-      "status": "jules_ready",
+      "status": "closed",
       "pref": "MB.MB05",
       "note": "monic linear factors; degree/leading/eval-at-node facts; distinct nodes."
     },
     {
       "name": "exists_coprod_interpolation",
       "file": "HeadComplexity/TypicalLogCloseness/MarkedBit.lean",
-      "status": "jules_ready",
+      "status": "closed",
       "pref": "MB.MB06",
       "note": "diagonal interpolation at d nodes; difference has d roots and degree < d, hence zero."
     },
     {
       "name": "exists_numerators",
       "file": "HeadComplexity/TypicalLogCloseness/MarkedBit.lean",
-      "status": "jules_ready",
+      "status": "closed",
       "pref": "MB.MB07",
       "note": "shared leading coefficient; mu at head 0; expand residuals by MB06 at t=0 then t=1."
     },
     {
       "name": "head_sum_sign",
       "file": "HeadComplexity/TypicalLogCloseness/MarkedBit.lean",
-      "status": "jules_ready",
+      "status": "closed",
       "pref": "MB.MB08",
       "note": "clear the positive denominator product; cleared sum equals the MB07 slice identity at u=k."
     },
     {
       "name": "markedFn_fracComputable",
       "file": "HeadComplexity/TypicalLogCloseness/MarkedBit.lean",
-      "status": "jules_ready",
+      "status": "closed",
       "pref": "MB.MB09",
       "note": "strict witness -> MB04 -> MB07; build affine forms; exists_fracAtom_eval_eq; score constant 0; MB08."
     },
     {
       "name": "HStar_eq_zero_of_thresholdDeg_zero",
       "file": "HeadComplexity/TypicalLogCloseness/MarkedBit.lean",
-      "status": "jules_ready",
+      "status": "closed",
       "pref": "MB.MB10",
       "note": "degree-zero witness is a signed constant; constant function has HStar = 0."
     }
