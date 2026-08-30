@@ -367,6 +367,14 @@ theorem coprod_structure (h : Fin d) (t : ℝ) :
   intro j hj
   exact coprod_eval_other_eq_zero d h j t hj
 
+private def coprodNode (d : ℕ) (t : ℝ) (h : Fin d) : ℝ := -((h : ℝ) + 1 + 2 * d * t)
+
+private theorem coprodNode_injective (d : ℕ) (t : ℝ) : Function.Injective (coprodNode d t) := by
+  intro i j h
+  dsimp [coprodNode] at h
+  have h1 : (i : ℝ) = (j : ℝ) := by linarith [h]
+  exact Fin.ext (by exact_mod_cast h1)
+
 /-- [MB06] Interpolation basis: every polynomial of degree `< d` is a linear
 combination of the `d` coproducts of a fixed slice.  Route: the map
 `c ↦ ∑ h, c h • coprod h t` into polynomials of degree `≤ d - 1` is
@@ -379,7 +387,45 @@ counting via `Polynomial.card_roots'`). -/
 theorem exists_coprod_interpolation (hd : 1 ≤ d) (t : ℝ) (R : Polynomial ℝ)
     (hR : R.natDegree ≤ d - 1) :
     ∃ cvec : Fin d → ℝ, R = ∑ h, Polynomial.C (cvec h) * coprod d h t := by
-  sorry
+  have hnd : Function.Injective (coprodNode d t) := coprodNode_injective d t
+  let nd := coprodNode d t
+  let cvec : Fin d → ℝ := fun h => R.eval (nd h) / (coprod d h t).eval (nd h)
+  use cvec
+  let S : Polynomial ℝ := ∑ h, Polynomial.C (cvec h) * coprod d h t
+  have hS_eval : ∀ i : Fin d, S.eval (nd i) = R.eval (nd i) := by
+    intro i
+    dsimp [S]
+    rw [Polynomial.eval_finsetSum]
+    have hsum : (∑ h : Fin d, (Polynomial.C (cvec h) * coprod d h t).eval (nd i)) =
+        (Polynomial.C (cvec i) * coprod d i t).eval (nd i) := by
+      refine Finset.sum_eq_single i ?_ ?_
+      · intro j _ hji
+        rw [Polynomial.eval_mul, Polynomial.eval_C]
+        have hzero : (coprod d j t).eval (nd i) = 0 := (coprod_structure d i t).2.2.2 j hji
+        rw [hzero, mul_zero]
+      · intro hi
+        exact False.elim (hi (Finset.mem_univ i))
+    rw [hsum, Polynomial.eval_mul, Polynomial.eval_C]
+    dsimp [cvec]
+    exact div_mul_cancel₀ _ ((coprod_structure d i t).2.2.1)
+  have hdiff_eval : ∀ i : Fin d, (R - S).eval (nd i) = 0 := by
+    intro i
+    rw [Polynomial.eval_sub, hS_eval i, sub_self]
+  have hcoprod_deg : ∀ h : Fin d, (coprod d h t).natDegree ≤ d - 1 := by
+    intro h
+    rw [(coprod_structure d h t).1]
+  have hS_deg : S.natDegree ≤ d - 1 := by
+    dsimp [S]
+    refine Polynomial.natDegree_sum_le_of_forall_le _ _ (fun h _ => ?_)
+    refine (Polynomial.natDegree_C_mul_le _ _).trans ?_
+    exact hcoprod_deg h
+  have hdiff_deg : (R - S).natDegree ≤ d - 1 := by
+    exact (Polynomial.natDegree_sub_le R S).trans (max_le hR hS_deg)
+  have hdiff_zero : R - S = 0 := by
+    apply Polynomial.eq_zero_of_natDegree_lt_card_of_eval_eq_zero (R - S) hnd hdiff_eval
+    rw [Fintype.card_fin]
+    exact Nat.lt_of_le_of_lt hdiff_deg (Nat.sub_lt hd (by decide))
+  exact sub_eq_zero.mp hdiff_zero
 
 /-- [MB07] The theorem-138 numerator construction.  Given the grid pair
 `(p₀, p₁)` with `deg p₀ ≤ d`, `deg p₁ ≤ d - 1`, there are affine numerator
