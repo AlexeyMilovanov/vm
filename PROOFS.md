@@ -1121,3 +1121,72 @@ The frozen-adjacent parent `exists_sorted_eigen_data` (P5.3a-M5) assembles as:
 `eigenvalue_pos_of_eigen` (positivity) → `exists_sorted_of_eigen_data` (sort).  It is
 the last residual debt of the proved coercivity/minimizer chain
 `exists_forsterPotential_minimizer` (P5.3a).
+
+## MB. Marked-bit exactness (P04): proof plans
+
+Layer file: `HeadComplexity/TypicalLogCloseness/MarkedBit.lean`.  Statement
+lock: `scripts/smoke/FrozenMarkedBit.lean` (off-limits).  Each item repeats
+the mathematical route of the target doc comment; the informal source is the
+companion note ONE_MARKED_BIT_EXACT (P04) and corpus theorem 138.
+
+- **MB01 `sliceAt_cube_eval`** — push `eval (cubePoint y)` through
+  `aeval (Fin.cases (C t) X)` (e.g. via `aeval_def`, `eval₂_comp` style
+  rewriting or induction on `P` with `MvPolynomial.induction_on`), then
+  case-split the variable index by `Fin.cases`: index `0` gives
+  `boolToReal z`, successors give `cubePoint y i`.
+- **MB02 `sliceAt_totalDegree_le`** — bound the degree of the substituted
+  polynomial: each variable image has total degree `≤ 1` and the image of
+  `X 0` is a constant; use the support-sum representation and
+  `totalDegree_finsetSum_le`/`totalDegree_mul`/`totalDegree_prod`.
+- **MB03 `sliceDiff_totalDegree_le`** — both slices are support sums; the
+  terms of marked exponent `0` are identical and cancel in the difference;
+  a term with marked exponent `e ≥ 1` and block degree `b` has `e + b ≤ d`,
+  hence `b ≤ d - 1`; conclude with `totalDegree_sub`-style estimates
+  restricted to the surviving support.
+- **MB04 `exists_grid_pair`** — apply `symmetrize` and
+  `exists_univariate_of_symmetric` to `sliceAt 0 P` (degree `≤ d` by MB02)
+  and to `sliceAt 1 P - sliceAt 0 P` (degree `≤ d - 1` by MB03).
+  `symmetrize` is a `Finset`-sum of renames, hence additive with
+  evaluation-averaging; strictness of each slice target transports by
+  `symmetrize_strictSignRep` with target `symmetricFn (F z)`; evaluate via
+  MB01.  Assemble `p₀ := uni(sym(slice₀))`, `p₁ := uni(sym(diff))`; the
+  slice-1 value is the sum of the two evaluations.
+- **MB05 `coprod_structure`** — `denPoly` is `X + C a`, monic of degree one
+  (`Polynomial.monic_X_add_C`); use `Polynomial.Monic.prod`,
+  `natDegree_prod` (nonzero factors), `eval_prod`; nodes
+  `-(j + 1 + 2 d t)` are pairwise distinct for fixed `t`, so exactly the
+  factor `j = h` vanishes at node `h`.
+- **MB06 `exists_coprod_interpolation`** — solve the diagonal system at the
+  `d` nodes: pick `cvec h := R.eval node_h / (coprod d h t).eval node_h`
+  (denominator nonzero by MB05); the difference
+  `R - ∑ C (cvec h) * coprod h t` has degree `≤ d - 1` and vanishes at `d`
+  distinct nodes, hence is `0` (root counting:
+  `Polynomial.eq_zero_of_natDegree_lt_card_of_eval_eq_zero` or
+  `card_roots`).
+- **MB07 `exists_numerators`** — set `ℓ := p₀.coeff d`; choose `μ` with all
+  mass at head `0` (`μ 0 = ℓ`, else `0`).  `X * coprod h 0` is monic of
+  degree `d`, so `p₀ - ∑ μ_h • (X * coprod h 0)` has degree `≤ d - 1`;
+  expand by MB06 at `t = 0` to get `a`.  Then
+  `∑ (C (a h) + C (μ h) X) * coprod h 1` has `u^d`-coefficient `ℓ` again,
+  and `p₀ + p₁` has the same (`p₁` has degree `≤ d - 1`), so their
+  difference expands by MB06 at `t = 1`, giving `c`.
+- **MB08 `head_sum_sign`** — for `z ∈ {0, 1}` and `u = k ≥ 0` every
+  denominator `k + h + 1 + 2 d z` is `≥ 1`; multiply the head sum by the
+  positive full product `∏ j, (k + j + 1 + 2 d z)`; the cleared sum is
+  exactly the right identity of MB07 evaluated at `u = k` (on the `z = 0`
+  slice, the left identity).  Use `Finset.sum_div`, `div_mul_cancel₀`,
+  `Polynomial.eval_prod`, and `mul_pos_iff_of_pos_right`-style lemmas.
+- **MB09 `markedFn_fracComputable`** — obtain a strict witness by
+  `exists_strictSignRep_of_ThresholdDegLE`, feed MB04, then MB07, then for
+  each head build the affine forms (numerator: constant `a h`, marked slope
+  `c h`, block slopes `μ h`; denominator: constant `h + 1`, marked slope
+  `2 d`, block slopes `1` — strictly positive coefficients since `d ≥ 1`)
+  and invoke `TypicalLogCloseness.exists_fracAtom_eval_eq`; the atom values
+  at `x` match the MB08 head sum at `k = hammingWeight (tailBits x)`,
+  `z = x 0` because `∑ i, boolToReal (x i.succ) = hammingWeight (tailBits x)`.
+  Conclude with score constant `0` and MB08 + MB04.
+- **MB10 `HStar_eq_zero_of_thresholdDeg_zero`** — a total-degree-zero strict
+  witness is `C c` with a fixed sign, so `markedFn F` is constant; a
+  constant function is computable with zero heads
+  (`computableWithHeadsN_zero_iff` or the explicit empty model), and
+  `HStar` unfolds through `Nat.find` to `0`.

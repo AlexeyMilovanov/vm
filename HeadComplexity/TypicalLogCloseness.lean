@@ -10,6 +10,7 @@ import HeadComplexity.TypicalLogCloseness.PowerBlockForms
 import HeadComplexity.TypicalLogCloseness.PowerBlockPartition
 import HeadComplexity.TypicalLogCloseness.LocalizationMatrix
 import HeadComplexity.TypicalLogCloseness.POICWarren
+import HeadComplexity.TypicalLogCloseness.MarkedBit
 import HeadComplexity.TypicalLogCloseness.CanonicalCounting
 import HeadComplexity.TypicalLogCloseness.Headline
 import HeadComplexity.TypicalLogCloseness.Bank
