@@ -135,6 +135,54 @@ theorem sliceAt_totalDegree_le (t : ℝ) (P : MvPolynomial (Fin (m + 1)) ℝ) :
   rw [h_sum]
   exact le_totalDegree hd
 
+private lemma sliceAt_monomial (t : ℝ) (s : Fin (m + 1) →₀ ℕ) (c : ℝ) :
+    sliceAt t ((monomial s) c) =
+      (C (c * t ^ (s 0))) * ∏ i : Fin m, (X i) ^ (s i.succ) := by
+  dsimp [sliceAt]
+  rw [aeval_monomial]
+  dsimp
+  rw [Finsupp.prod_fintype s _ (fun _ => pow_zero _)]
+  rw [Fin.prod_univ_succ]
+  simp [Fin.cases]
+  ring
+
+private lemma sliceDiff_monomial (s : Fin (m + 1) →₀ ℕ) (c : ℝ) :
+    sliceAt 1 ((monomial s) c) - sliceAt 0 ((monomial s) c) =
+      C (c * (1 ^ (s 0) - 0 ^ (s 0))) * ∏ i : Fin m, (X i) ^ (s i.succ) := by
+  rw [sliceAt_monomial, sliceAt_monomial]
+  rw [← sub_mul, ← C_sub]
+  congr 2
+  ring
+
+private lemma sliceDiff_monomial_totalDegree_le (s : Fin (m + 1) →₀ ℕ) (c : ℝ) :
+    (sliceAt 1 ((monomial s) c) - sliceAt 0 ((monomial s) c)).totalDegree ≤
+      ∑ i : Fin m, s i.succ := by
+  rw [sliceDiff_monomial]
+  refine (totalDegree_mul _ _).trans ?_
+  rw [totalDegree_C, zero_add]
+  refine (totalDegree_finsetProd _ _).trans ?_
+  refine sum_le_sum fun i _ => ?_
+  refine (totalDegree_pow _ _).trans ?_
+  rw [totalDegree_X]
+  simp
+
+private lemma sum_succ_le_sum_sub_one {d : ℕ} (hd : 1 ≤ d) (s : Fin (m + 1) →₀ ℕ)
+    (hs_deg : s.sum (fun _ e => e) ≤ d) (hs0 : s 0 ≠ 0) :
+    ∑ i : Fin m, s i.succ ≤ d - 1 := by
+  rw [Finsupp.sum_fintype _ _ (fun _ => rfl)] at hs_deg
+  rw [Fin.sum_univ_succ] at hs_deg
+  have h1 : 1 ≤ s 0 := Nat.succ_le_of_lt (Nat.pos_of_ne_zero hs0)
+  omega
+
+private lemma sliceDiff_monomial_eq_zero_of_s0_zero (s : Fin (m + 1) →₀ ℕ) (c : ℝ) (hs0 : s 0 = 0) :
+    sliceAt 1 ((monomial s) c) - sliceAt 0 ((monomial s) c) = 0 := by
+  rw [sliceDiff_monomial, hs0]
+  norm_num
+
+private lemma sliceAt_sum (t : ℝ) (s : Finset (Fin (m + 1) →₀ ℕ)) (f : (Fin (m + 1) →₀ ℕ) → MvPolynomial (Fin (m + 1)) ℝ) :
+    sliceAt t (∑ x ∈ s, f x) = ∑ x ∈ s, sliceAt t (f x) :=
+  aeval_sum _ _ _
+
 /-- [MB03] The slice difference loses one degree: every monomial that
 survives `sliceAt 1 P - sliceAt 0 P` comes from a monomial of `P`
 containing the marked variable, whose block part therefore has degree
@@ -145,7 +193,20 @@ bound the difference's total degree by the maximum surviving block degree. -/
 theorem sliceDiff_totalDegree_le {d : ℕ} (hd : 1 ≤ d)
     (P : MvPolynomial (Fin (m + 1)) ℝ) (hP : P.totalDegree ≤ d) :
     (sliceAt 1 P - sliceAt 0 P).totalDegree ≤ d - 1 := by
-  sorry
+  have h1 : sliceAt 1 P = ∑ s ∈ P.support, sliceAt 1 (monomial s (coeff s P)) := by
+    conv_lhs => rw [as_sum P]
+    exact sliceAt_sum 1 P.support _
+  have h0 : sliceAt 0 P = ∑ s ∈ P.support, sliceAt 0 (monomial s (coeff s P)) := by
+    conv_lhs => rw [as_sum P]
+    exact sliceAt_sum 0 P.support _
+  rw [h1, h0, ← sum_sub_distrib]
+  refine totalDegree_finsetSum_le (fun s hs => ?_)
+  by_cases hs0 : s 0 = 0
+  · rw [sliceDiff_monomial_eq_zero_of_s0_zero s _ hs0]
+    rw [totalDegree_zero]
+    exact Nat.zero_le _
+  · refine (sliceDiff_monomial_totalDegree_le s _).trans ?_
+    exact sum_succ_le_sum_sub_one hd s (le_totalDegree hs |>.trans hP) hs0
 
 /-- [MB04] The grid pair.  From a minimal strict witness for `markedFn F`,
 symmetrizing each slice and reducing to the Hamming weight produces a pair
