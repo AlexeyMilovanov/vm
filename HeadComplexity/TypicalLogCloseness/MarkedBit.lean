@@ -305,6 +305,50 @@ noncomputable def denPoly (h : Fin d) (t : ℝ) : Polynomial ℝ :=
 noncomputable def coprod (h : Fin d) (t : ℝ) : Polynomial ℝ :=
   ∏ j ∈ Finset.univ.erase h, denPoly d j t
 
+private lemma denPoly_monic (t : ℝ) (j : Fin d) : (denPoly d j t).Monic :=
+  Polynomial.monic_X_add_C _
+
+private lemma denPoly_ne_zero (t : ℝ) (j : Fin d) : denPoly d j t ≠ 0 :=
+  (denPoly_monic d t j).ne_zero
+
+private lemma coprod_natDegree (h : Fin d) (t : ℝ) : (coprod d h t).natDegree = d - 1 := by
+  dsimp [coprod]
+  rw [Polynomial.natDegree_prod _ _ (fun j _ => denPoly_ne_zero d t j)]
+  have h1 : ∀ j ∈ Finset.univ.erase h, (denPoly d j t).natDegree = 1 :=
+    fun j _ => Polynomial.natDegree_X_add_C _
+  rw [Finset.sum_congr rfl h1]
+  simp [Finset.card_erase_of_mem]
+
+private lemma coprod_monic (h : Fin d) (t : ℝ) : (coprod d h t).Monic := by
+  dsimp [coprod]
+  exact Polynomial.monic_prod_of_monic _ _ (fun j _ => denPoly_monic d t j)
+
+private lemma coprod_eval_self_ne_zero (h : Fin d) (t : ℝ) :
+    (coprod d h t).eval (-((h : ℝ) + 1 + 2 * d * t)) ≠ 0 := by
+  dsimp [coprod]
+  rw [Polynomial.eval_prod]
+  intro h0
+  have h_ex :
+    ∃ j ∈ Finset.univ.erase h, (denPoly d j t).eval (-((h : ℝ) + 1 + 2 * d * t)) = 0 :=
+    Finset.prod_eq_zero_iff.mp h0
+  rcases h_ex with ⟨j, hj, hj_eval⟩
+  dsimp [denPoly] at hj_eval
+  rw [Polynomial.eval_add, Polynomial.eval_X, Polynomial.eval_C] at hj_eval
+  have hjh : j ≠ h := Finset.mem_erase.mp hj |>.1
+  have h_eq : (j : ℝ) = (h : ℝ) := by linarith
+  exact hjh (Fin.ext (by exact_mod_cast h_eq))
+
+private lemma coprod_eval_other_eq_zero (h j : Fin d) (t : ℝ) (hj : j ≠ h) :
+    (coprod d j t).eval (-((h : ℝ) + 1 + 2 * d * t)) = 0 := by
+  dsimp [coprod]
+  rw [Polynomial.eval_prod]
+  refine Finset.prod_eq_zero (i := h) ?_ ?_
+  · rw [Finset.mem_erase]
+    exact ⟨hj.symm, Finset.mem_univ _⟩
+  · dsimp [denPoly]
+    rw [Polynomial.eval_add, Polynomial.eval_X, Polynomial.eval_C]
+    ring
+
 /-- [MB05] Structure of the coproducts: degree `d - 1`, leading coefficient
 `1`, and diagonalizing evaluations at the nodes `u_j = -(j + 1 + 2 d t)`:
 `coprod h t` is nonzero at `u_h` and vanishes at `u_j` for `j ≠ h`.
@@ -319,7 +363,9 @@ theorem coprod_structure (h : Fin d) (t : ℝ) :
       (coprod d h t).eval (-((h : ℝ) + 1 + 2 * d * t)) ≠ 0 ∧
       ∀ j : Fin d, j ≠ h →
         (coprod d j t).eval (-((h : ℝ) + 1 + 2 * d * t)) = 0 := by
-  sorry
+  refine ⟨coprod_natDegree d h t, coprod_monic d h t, coprod_eval_self_ne_zero d h t, ?_⟩
+  intro j hj
+  exact coprod_eval_other_eq_zero d h j t hj
 
 /-- [MB06] Interpolation basis: every polynomial of degree `< d` is a linear
 combination of the `d` coproducts of a fixed slice.  Route: the map
