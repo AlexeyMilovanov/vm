@@ -123,14 +123,25 @@ multi-core machine.  `LEAN_NUM_THREADS` may be set to cap parallelism.
 
 ## Rechecking the five-bit certificate table
 
-The 12 GB census is deliberately outside the Git repository.  Download it from
-the view-only location in [SUBMISSION.md](SUBMISSION.md), then run:
+The 12 GB census is distributed as assets of the
+[`n5-certificate-table-v1` GitHub release](https://github.com/AlexeyMilovanov/vm/releases/tag/n5-certificate-table-v1),
+not as objects in Git history.  With the GitHub CLI installed, download and
+verify it as follows:
 
 ```bash
+mkdir -p merged-complete-v1
+gh release download n5-certificate-table-v1 \
+  --repo AlexeyMilovanov/vm \
+  --pattern 'manifest.json' \
+  --pattern 'shard-*.jsonl' \
+  --dir merged-complete-v1
 bash artifacts/n5-certificate-table-proof-v1/verify.sh \
-  /path/to/merged-complete-v1 \
-  /path/to/fresh-verification-run
+  merged-complete-v1 \
+  fresh-verification-run
 ```
+
+The view-only Google Drive location in [SUBMISSION.md](SUBMISSION.md) remains
+available as a mirror.
 
 The successful report must contain `"ok": true`, exactly `9,340,584` rows,
 `298,898,688` vertex evaluations, and zero noncanonical truth tables.  The

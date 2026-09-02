@@ -78,14 +78,21 @@ The table contains `9,340,584` canonical rows in `77` JSONL shards and
 9197b62b6836c32e0ae0a872343f62a8fcbda7dcfdbdca1021b5bfee2f8c993a
 ```
 
-View-only table and proof-package folder:
+Primary data release:
+
+```text
+https://github.com/AlexeyMilovanov/vm/releases/tag/n5-certificate-table-v1
+```
+
+Google Drive mirror:
 
 ```text
 https://drive.google.com/open?id=1IeW5qqoim6V4Pdp34xziR6r-qoAaATU9
 ```
 
 The Git repository contains the verifier, complete per-shard manifest, hashes,
-and archived fresh-run report, but not the 12 GB table itself.
+and archived fresh-run report.  The 12 GB table is attached as release assets
+rather than stored in Git history.
 
 ## Reproduction
 
@@ -98,12 +105,18 @@ Lean release validation:
 bash scripts/validate.sh --fetch-cache
 ```
 
-Five-bit table verification after downloading `merged-complete-v1`:
+Download and verify the five-bit table:
 
 ```bash
+mkdir -p merged-complete-v1
+gh release download n5-certificate-table-v1 \
+  --repo AlexeyMilovanov/vm \
+  --pattern 'manifest.json' \
+  --pattern 'shard-*.jsonl' \
+  --dir merged-complete-v1
 bash artifacts/n5-certificate-table-proof-v1/verify.sh \
-  /path/to/merged-complete-v1 \
-  /path/to/fresh-verification-run
+  merged-complete-v1 \
+  fresh-verification-run
 ```
 
 ## Trust boundaries

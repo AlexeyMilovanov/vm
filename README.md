@@ -116,10 +116,12 @@ separate verification artifact, not a Lean theorem.  The repository contains
 the independent checker, tests, complete per-shard manifest, hashes, and an
 archived successful verification report in
 [`artifacts/n5-certificate-table-proof-v1/`](artifacts/n5-certificate-table-proof-v1/).
-The 12 GB table itself is available from this
-[view-only Google Drive folder](https://drive.google.com/open?id=1IeW5qqoim6V4Pdp34xziR6r-qoAaATU9).
-See [`SUBMISSION.md`](SUBMISSION.md) for the result and trust boundary, and
-[`BUILDING.md`](BUILDING.md) for the reproduction command.
+The 12 GB table is attached to the
+[`n5-certificate-table-v1` GitHub release](https://github.com/AlexeyMilovanov/vm/releases/tag/n5-certificate-table-v1).
+A [view-only Google Drive folder](https://drive.google.com/open?id=1IeW5qqoim6V4Pdp34xziR6r-qoAaATU9)
+is retained as a mirror.  See [`SUBMISSION.md`](SUBMISSION.md) for the result
+and trust boundary, and [`BUILDING.md`](BUILDING.md) for download and
+verification commands.
 
 ## Building and verification
 
