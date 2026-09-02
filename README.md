@@ -103,6 +103,24 @@ The proof and reusable interpolation compiler are in
 Its public, axiom-audited statement lock is
 [`HeadComplexity/StatementLocks/MarkedBit.lean`](HeadComplexity/StatementLocks/MarkedBit.lean).
 
+## External exact five-bit census
+
+An exact computer-checked certificate table establishes
+
+```text
+thresholdDeg(f) = POIC2(f) = HStar(f)
+```
+
+for every Boolean function on at most five variables.  This census is a
+separate verification artifact, not a Lean theorem.  The repository contains
+the independent checker, tests, complete per-shard manifest, hashes, and an
+archived successful verification report in
+[`artifacts/n5-certificate-table-proof-v1/`](artifacts/n5-certificate-table-proof-v1/).
+The 12 GB table itself is available from this
+[view-only Google Drive folder](https://drive.google.com/open?id=1IeW5qqoim6V4Pdp34xziR6r-qoAaATU9).
+See [`SUBMISSION.md`](SUBMISSION.md) for the result and trust boundary, and
+[`BUILDING.md`](BUILDING.md) for the reproduction command.
+
 ## Building and verification
 
 The repository is pinned to Lean `v4.31.0` and mathlib `v4.31.0`.  From a
