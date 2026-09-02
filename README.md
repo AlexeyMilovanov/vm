@@ -152,3 +152,9 @@ extensions.  Its theorems depend only on Lean's standard `propext`,
 See [`BUILDING.md`](BUILDING.md) for individual commands and the exact
 clean-clone procedure, and [`PROOF_OVERVIEW.md`](PROOF_OVERVIEW.md) for the
 proof architecture.
+
+## License
+
+This repository is licensed under the
+[Apache License 2.0](LICENSE).  Copyright 2026 Alexey Milovanov.
+Citation metadata for research use is provided in [`CITATION.cff`](CITATION.cff).

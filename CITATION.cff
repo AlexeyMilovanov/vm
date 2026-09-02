@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata in this file."
+title: "Head complexity: Lean 4 formalization"
+authors:
+  - family-names: "Milovanov"
+    given-names: "Alexey"
+repository-code: "https://github.com/AlexeyMilovanov/vm"
+license: Apache-2.0
